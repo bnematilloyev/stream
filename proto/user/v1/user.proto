@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package user.v1;
+
+option go_package = "github.com/sahiy/sahiy-stream/proto/gen/user/v1;userv1";
+
+service UserService {
+  rpc GetProfile(GetProfileRequest) returns (Profile);
+  rpc UpdateProfile(UpdateProfileRequest) returns (Profile);
+  rpc GetPublicProfile(GetPublicProfileRequest) returns (PublicProfile);
+}
+
+service ChannelService {
+  rpc CreateChannel(CreateChannelRequest) returns (Channel);
+  rpc GetChannel(GetChannelRequest) returns (Channel);
+  rpc GetMyChannel(GetMyChannelRequest) returns (Channel);
+  rpc UpdateChannel(UpdateChannelRequest) returns (Channel);
+  rpc Follow(FollowRequest) returns (FollowResponse);
+  rpc Unfollow(UnfollowRequest) returns (UnfollowResponse);
+  rpc ListFollowers(ListFollowersRequest) returns (ListFollowersResponse);
+  rpc IsFollowing(IsFollowingRequest) returns (IsFollowingResponse);
+  rpc GetIngestKey(GetIngestKeyRequest) returns (IngestKeyResponse);
+  rpc RotateIngestKey(RotateIngestKeyRequest) returns (IngestKeyResponse);
+}
+
+message Profile {
+  string id = 1;
+  string email = 2;
+  string username = 3;
+  string display_name = 4;
+  string avatar_url = 5;
+  string role = 6;
+  bool email_verified = 7;
+  int64 created_at_unix = 8;
+}
+
+message PublicProfile {
+  string id = 1;
+  string username = 2;
+  string display_name = 3;
+  string avatar_url = 4;
+  int64 created_at_unix = 5;
+}
+
+message Channel {
+  string id = 1;
+  string user_id = 2;
+  string slug = 3;
+  string title = 4;
+  string description = 5;
+  string banner_url = 6;
+  string avatar_url = 7;
+  string category_id = 8;
+  string category_slug = 9;
+  bool is_verified = 10;
+  bool is_live = 11;
+  int32 follower_count = 12;
+  int64 created_at_unix = 13;
+  int64 updated_at_unix = 14;
+}
+
+message GetProfileRequest { string user_id = 1; }
+message UpdateProfileRequest {
+  string user_id = 1;
+  optional string display_name = 2;
+  optional string avatar_url = 3;
+}
+message GetPublicProfileRequest { string username = 1; }
+
+message CreateChannelRequest {
+  string user_id = 1;
+  string slug = 2;
+  string title = 3;
+  string description = 4;
+  string category_id = 5;
+}
+message GetChannelRequest { string slug = 1; }
+message GetMyChannelRequest { string user_id = 1; }
+message UpdateChannelRequest {
+  string user_id = 1;
+  string slug = 2;
+  optional string title = 3;
+  optional string description = 4;
+  optional string banner_url = 5;
+  optional string avatar_url = 6;
+  optional string category_id = 7;
+}
+
+message FollowRequest { string user_id = 1; string channel_slug = 2; }
+message FollowResponse { bool success = 1; int32 follower_count = 2; }
+message UnfollowRequest { string user_id = 1; string channel_slug = 2; }
+message UnfollowResponse { bool success = 1; int32 follower_count = 2; }
+message ListFollowersRequest { string channel_slug = 1; int32 page = 2; int32 limit = 3; }
+message Follower {
+  string user_id = 1;
+  string username = 2;
+  string display_name = 3;
+  int64 followed_at_unix = 4;
+}
+message ListFollowersResponse {
+  repeated Follower followers = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+message IsFollowingRequest { string user_id = 1; string channel_slug = 2; }
+message IsFollowingResponse { bool following = 1; }
+
+message GetIngestKeyRequest { string user_id = 1; string channel_slug = 2; }
+message RotateIngestKeyRequest { string user_id = 1; string channel_slug = 2; }
+message IngestKeyResponse {
+  string stream_key = 1;
+  string rtmp_url = 2;
+  string srt_url = 3;
+  string key_prefix = 4;
+}

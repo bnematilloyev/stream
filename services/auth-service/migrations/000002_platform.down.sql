@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS streams;
+DROP TABLE IF EXISTS stream_keys;
+DROP TABLE IF EXISTS followers;
+DROP TABLE IF EXISTS channels;
+DROP TABLE IF EXISTS categories;

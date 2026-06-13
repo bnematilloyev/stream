@@ -1,0 +1,11 @@
+go 1.22.7
+
+use (
+	./pkg
+	./proto
+	./services/api-gateway
+	./services/auth-service
+	./services/media-orchestrator
+	./services/stream-service
+	./services/user-service
+)

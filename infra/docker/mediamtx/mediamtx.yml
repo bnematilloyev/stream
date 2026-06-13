@@ -1,0 +1,30 @@
+# Browser / telefon kamerasi — WebRTC + WHIP ingest
+logLevel: info
+
+api: yes
+apiAddress: :9997
+
+rtsp: yes
+rtspAddress: :8554
+
+webrtc: yes
+webrtcAddress: :8889
+webrtcAllowOrigins: ["*"]
+webrtcAdditionalHosts:
+  - stream.shopla.uz
+  - 158.220.100.58
+webrtcICEHostNAT1To1IPs:
+  - 158.220.100.58
+webrtcLocalTCPAddress: :8189
+webrtcICEServers2:
+  - url: stun:stun.l.google.com:19302
+  - url: stun:stun1.l.google.com:19302
+
+pathDefaults:
+  source: publisher
+  runOnReady: curl -s -X POST http://host.docker.internal:9084/hooks/publish -d "name=$MTX_PATH" -d "source=whip"
+  runOnReadyRestart: false
+  runOnNotReady: curl -s -X POST http://host.docker.internal:9084/hooks/publish_done -d "name=$MTX_PATH"
+
+paths:
+  all_others:

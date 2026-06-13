@@ -1,0 +1,17 @@
+bin/
+.logs/
+.env
+.env.local
+frontend/.env.local
+node_modules/
+frontend/.next/
+frontend/node_modules/
+data/hls/*
+!data/hls/.gitkeep
+for-deploy.txt
+*.exe
+*.test
+coverage.out
+.DS_Store
+.idea/
+.vscode/

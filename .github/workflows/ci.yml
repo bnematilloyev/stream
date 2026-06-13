@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sahiy
+          POSTGRES_PASSWORD: sahiy_secret
+          POSTGRES_DB: sahiy_stream
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sahiy -d sahiy_stream"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Install protoc plugins
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Generate protos
+        run: bash scripts/proto-gen.sh
+
+      - name: Sync workspace
+        run: go work sync
+
+      - name: Download dependencies
+        run: |
+          cd pkg && go mod tidy
+          cd ../services/auth-service && go mod tidy
+          cd ../api-gateway && go mod tidy
+
+      - name: Build
+        run: make build
+
+      - name: Test
+        run: go test ./...
+        env:
+          DATABASE_URL: postgres://sahiy:sahiy_secret@localhost:5432/sahiy_stream?sslmode=disable
+          REDIS_URL: redis://localhost:6379/0

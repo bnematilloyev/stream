@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+:root {
+  /* Gold palette */
+  --gold-color-1: #936a2d;
+  --gold-color-2: #faecc9;
+  --gold-color-3: #ddb96c;
+  --gold-color-4: #fce6c7;
+  --gold-accent: #e4c277;
+  --gold-hover-dark: #7a5825;
+  --gold-hover-mid: #f4d589;
+  --gold-hover: #c5a55e;
+
+  /* Brand / Navy */
+  --primary-color: #0a2840;
+  --brand: #0a2937;
+  --brand-secondary: #155871;
+  --brand-gradient-end: #134e5e;
+  --brand-light: #f0f9ff;
+  --brand-gray: #f1f5f9;
+  --icon-gold: #e6c980;
+
+  /* Semantic tokens */
+  --background: #f7f7f8;
+  --foreground: #0a2937;
+  --muted: #64748b;
+  --accent: #936a2d;
+  --accent-hover: #7a5825;
+  --live: #ef4444;
+  --surface-1: #ffffff;
+  --surface-2: #f1f5f9;
+  --surface-3: #e2e8f0;
+  --border: #e2e8f0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-live: var(--live);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-brand: var(--brand);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-light: var(--brand-light);
+  --color-brand-gray: var(--brand-gray);
+  --color-primary: var(--primary-color);
+  --color-gold-1: var(--gold-color-1);
+  --color-gold-2: var(--gold-color-2);
+  --color-gold-3: var(--gold-color-3);
+  --color-gold-4: var(--gold-color-4);
+  --color-gold-accent: var(--gold-accent);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-3) transparent;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--gold-color-3) 40%, transparent);
+}
+
+/* Brand gradients */
+.brand-bg {
+  background: linear-gradient(135deg, #0a2937 0%, #134e5e 100%);
+}
+
+.brand-bg-alt {
+  background: linear-gradient(135deg, #0a2937 0%, #155871 100%);
+}
+
+/* Gold text gradients */
+.text-gradient-gold {
+  background: linear-gradient(
+    135deg,
+    #936a2d 0%,
+    #faecc9 33%,
+    #ddb96c 66%,
+    #fce6c7 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #faf1b5 0%, #f4d589 50%, #b27533 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Premium button gradient */
+.premium-gradient {
+  background: linear-gradient(135deg, #936a2d 0%, #faecc9 50%, #ddb96c 100%);
+}
+
+.premium-gradient:hover {
+  background: linear-gradient(135deg, #7a5825 0%, #f4d589 50%, #c5a55e 100%);
+}
+
+/* Accent gradient (short) */
+.accent-gradient {
+  background: linear-gradient(135deg, #936a2d 0%, #ddb96c 100%);
+}
+
+/* Header icon gradient */
+.icon-gold-gradient {
+  background: linear-gradient(
+    135deg,
+    #e4c277 0%,
+    #f4e7c1 33%,
+    #f3d596 66%,
+    #e4c277 100%
+  );
+}

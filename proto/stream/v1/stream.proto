@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package stream.v1;
+
+option go_package = "github.com/sahiy/sahiy-stream/proto/gen/stream/v1;streamv1";
+
+service StreamService {
+  rpc CreateStream(CreateStreamRequest) returns (Stream);
+  rpc GetStream(GetStreamRequest) returns (Stream);
+  rpc UpdateStream(UpdateStreamRequest) returns (Stream);
+  rpc DeleteStream(DeleteStreamRequest) returns (DeleteStreamResponse);
+  rpc ListLiveStreams(ListLiveStreamsRequest) returns (ListStreamsResponse);
+  rpc ListChannelStreams(ListChannelStreamsRequest) returns (ListStreamsResponse);
+  rpc StartStream(StartStreamRequest) returns (Stream);
+  rpc EndStream(EndStreamRequest) returns (Stream);
+  rpc ValidateStreamKey(ValidateStreamKeyRequest) returns (ValidateStreamKeyResponse);
+  rpc GetPlayback(GetPlaybackRequest) returns (PlaybackResponse);
+  rpc StartIngest(StartIngestRequest) returns (Stream);
+  rpc EndIngest(EndIngestRequest) returns (Stream);
+  rpc GetScheduledForChannel(GetScheduledForChannelRequest) returns (Stream);
+}
+
+message Stream {
+  string id = 1;
+  string channel_id = 2;
+  string channel_slug = 3;
+  string channel_title = 4;
+  string title = 5;
+  string description = 6;
+  string thumbnail_url = 7;
+  string status = 8;
+  string ingest_protocol = 9;
+  string latency_mode = 10;
+  string visibility = 11;
+  string category_id = 12;
+  repeated string tags = 13;
+  int64 scheduled_at_unix = 14;
+  int64 started_at_unix = 15;
+  int64 ended_at_unix = 16;
+  int32 viewer_count = 17;
+  int32 peak_viewers = 18;
+  int64 created_at_unix = 19;
+  int64 updated_at_unix = 20;
+}
+
+message CreateStreamRequest {
+  string user_id = 1;
+  string channel_slug = 2;
+  string title = 3;
+  string description = 4;
+  string ingest_protocol = 5;
+  string latency_mode = 6;
+  string visibility = 7;
+  string category_id = 8;
+  repeated string tags = 9;
+  int64 scheduled_at_unix = 10;
+}
+
+message GetStreamRequest { string stream_id = 1; }
+message UpdateStreamRequest {
+  string user_id = 1;
+  string stream_id = 2;
+  optional string title = 3;
+  optional string description = 4;
+  optional string visibility = 5;
+  optional string category_id = 6;
+  repeated string tags = 7;
+}
+message DeleteStreamRequest { string user_id = 1; string stream_id = 2; }
+message DeleteStreamResponse { bool success = 1; }
+
+message ListLiveStreamsRequest { int32 page = 1; int32 limit = 2; }
+message ListChannelStreamsRequest {
+  string channel_slug = 1;
+  int32 page = 2;
+  int32 limit = 3;
+  string status = 4;
+}
+message ListStreamsResponse {
+  repeated Stream streams = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message StartStreamRequest { string user_id = 1; string stream_id = 2; }
+message EndStreamRequest { string user_id = 1; string stream_id = 2; }
+
+message ValidateStreamKeyRequest { string stream_key = 1; }
+message ValidateStreamKeyResponse {
+  bool valid = 1;
+  string channel_id = 2;
+  string channel_slug = 3;
+  string stream_id = 4;
+}
+
+message GetPlaybackRequest { string stream_id = 1; }
+message PlaybackResponse {
+  string stream_id = 1;
+  string url = 2;
+  string format = 3;
+  string status = 4;
+  int64 expires_at_unix = 5;
+}
+
+message StartIngestRequest {
+  string channel_id = 1;
+  string stream_key = 2;
+}
+message EndIngestRequest { string stream_id = 1; }
+message GetScheduledForChannelRequest { string channel_id = 1; }
