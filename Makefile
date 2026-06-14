@@ -88,7 +88,7 @@ frontend-clean:
 	rm -rf frontend/.next
 
 frontend-build:
-	cd frontend && npm run build
+	cd frontend && npm ci && npm run build
 
 deploy:
 	@bash scripts/deploy.sh

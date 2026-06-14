@@ -4,6 +4,8 @@ set -euo pipefail
 
 REMOTE_DIR="/opt/sahiy-stream"
 FRONTEND_PORT="${FRONTEND_PORT:-3002}"
+GATEWAY_PORT="${GATEWAY_PORT:-8080}"
+HLS_PORT="${HLS_PORT:-8090}"
 API_DOMAIN="${API_DOMAIN:-api.stream.vibrant.uz}"
 FRONTEND_DOMAIN="${FRONTEND_DOMAIN:-stream.vibrant.uz}"
 
@@ -16,6 +18,10 @@ fi
 if [[ -f "${REMOTE_DIR}/for-deploy.txt" ]]; then
   FRONTEND_PORT="$(grep -E '^Frontend port:' "${REMOTE_DIR}/for-deploy.txt" | cut -d: -f2- | xargs || true)"
   FRONTEND_PORT="${FRONTEND_PORT:-3002}"
+  GATEWAY_PORT="$(grep -E '^Gateway port:' "${REMOTE_DIR}/for-deploy.txt" | cut -d: -f2- | xargs || true)"
+  GATEWAY_PORT="${GATEWAY_PORT:-8080}"
+  HLS_PORT="$(grep -E '^HLS port:' "${REMOTE_DIR}/for-deploy.txt" | cut -d: -f2- | xargs || true)"
+  HLS_PORT="${HLS_PORT:-8090}"
   API_DOMAIN="$(grep -E '^API domen:' "${REMOTE_DIR}/for-deploy.txt" | cut -d: -f2- | xargs || true)"
   FRONTEND_DOMAIN="$(grep -E '^Frontend domen:' "${REMOTE_DIR}/for-deploy.txt" | cut -d: -f2- | xargs || true)"
 fi
@@ -24,7 +30,7 @@ API_URL="https://${API_DOMAIN:-api.stream.vibrant.uz}"
 FRONTEND_URL="https://${FRONTEND_DOMAIN:-stream.vibrant.uz}"
 
 pkill -f "${REMOTE_DIR}/bin/" 2>/dev/null || true
-for port in 50051 50052 50053 50054 8080 9084 9085 "${FRONTEND_PORT}"; do
+for port in 50051 50052 50053 50054 "${GATEWAY_PORT}" 9084 9085 "${FRONTEND_PORT}"; do
   fuser -k "${port}/tcp" 2>/dev/null || true
 done
 sleep 1

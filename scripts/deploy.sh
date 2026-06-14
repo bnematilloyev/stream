@@ -52,9 +52,18 @@ scp_cmd() {
   sshpass -p "${PASS}" scp ${SSH_OPTS} "$@"
 }
 
-echo "==> SSH tekshiruvi..."
+echo "==> SSH tekshiruvi (${USER}@${HOST}:22)..."
+if ! command -v sshpass >/dev/null 2>&1; then
+  echo "sshpass topilmadi. Mac: brew install sshpass"
+  echo "Yoki SSH kalit bilan: ssh ${USER}@${HOST}"
+  exit 1
+fi
 if ! ssh_cmd "echo ok" >/dev/null 2>&1; then
   echo "SSH ulanib bo'lmadi (${USER}@${HOST}:22)"
+  echo "Tekshiring:"
+  echo "  1) for-deploy.txt — IP, Foydalanuvchi nomi, Parol to'g'rimi?"
+  echo "  2) Qo'lda: ssh ${USER}@${HOST}"
+  echo "  3) Contabo paneldagi root paroli (maxsus belgilar bo'lsa qo'shtirnoqda)"
   exit 1
 fi
 
@@ -82,6 +91,10 @@ if [[ "${SKIP_FRONTEND:-}" != "1" ]]; then
     export NEXT_PUBLIC_API_URL="${API_URL}"
     export NEXT_PUBLIC_WHIP_BASE_URL="${API_URL}"
     export NEXT_PUBLIC_HLS_BASE_URL="${API_URL}/hls"
+    if [[ ! -x node_modules/.bin/next ]]; then
+      echo "==> Frontend dependencies (npm ci)..."
+      npm ci
+    fi
     npm run build
   )
 fi

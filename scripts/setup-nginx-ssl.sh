@@ -42,15 +42,20 @@ EOF
   nginx -t && systemctl restart nginx
 }
 
-echo "==> HTTP-only (certbot uchun)..."
-install_http_only "${API_DOMAIN}" "${FRONTEND_DOMAIN}"
+CERT_DIR="/etc/letsencrypt/live/${CERT_NAME}"
+if [[ -f "${CERT_DIR}/fullchain.pem" && -f "${CERT_DIR}/privkey.pem" ]]; then
+  echo "==> SSL sertifikat mavjud (${CERT_NAME}), certbot o'tkazildi"
+else
+  echo "==> HTTP-only (certbot uchun)..."
+  install_http_only "${API_DOMAIN}" "${FRONTEND_DOMAIN}"
 
-echo "==> SSL sertifikat (ikkala domen)..."
-echo "    Cloudflare: DNS-only (kulrang) yoki SSL=Full + 80-port ochiq"
-certbot certonly --webroot -w /var/www/certbot \
-  --non-interactive --agree-tos -m "${CERTBOT_EMAIL}" \
-  -d "${API_DOMAIN}" -d "${FRONTEND_DOMAIN}" \
-  --cert-name "${CERT_NAME}"
+  echo "==> SSL sertifikat (ikkala domen)..."
+  echo "    Cloudflare: DNS-only (kulrang) yoki SSL=Full + 80-port ochiq"
+  certbot certonly --webroot -w /var/www/certbot \
+    --non-interactive --agree-tos -m "${CERTBOT_EMAIL}" \
+    -d "${API_DOMAIN}" -d "${FRONTEND_DOMAIN}" \
+    --cert-name "${CERT_NAME}"
+fi
 
 echo "==> To'liq nginx konfiguratsiyasi..."
 install -m 644 "${REMOTE_DIR}/infra/nginx/api.stream.vibrant.uz.conf" \
