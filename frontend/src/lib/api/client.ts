@@ -1,14 +1,20 @@
+import { configuredApiUrl } from "@/lib/urls";
 import type { ApiError } from "@/types";
 
-/** Production: same-origin (/v1 nginx proxy). Dev: localhost:8080. */
+/** Production: NEXT_PUBLIC_API_URL (api domeni). Dev: localhost:8080. */
 export function resolveApiUrl(): string {
+  const configured = configuredApiUrl();
+  if (configured) {
+    return configured;
+  }
+
   if (typeof window !== "undefined") {
     const { hostname, origin } = window.location;
     if (hostname !== "localhost" && hostname !== "127.0.0.1") {
       return origin;
     }
   }
-  return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+  return "http://localhost:8080";
 }
 
 const API_URL = resolveApiUrl();

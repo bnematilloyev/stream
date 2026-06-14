@@ -94,6 +94,9 @@ frontend-build:
 deploy:
 	@bash scripts/deploy.sh
 
+check-ports:
+	@bash scripts/check-server-ports-remote.sh
+
 frontend:
 	cd frontend && npm install
 

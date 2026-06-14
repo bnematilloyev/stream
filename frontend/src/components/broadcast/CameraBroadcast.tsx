@@ -181,10 +181,10 @@ export function CameraBroadcast({
           <p className="font-medium">Kamera ishlamaydi</p>
           <p className="mt-1">{blocked}</p>
           <a
-            href="https://stream.shopla.uz/studio/broadcast"
+            href={broadcastPageUrl()}
             className="mt-2 inline-block font-medium text-brand underline"
           >
-            https://stream.shopla.uz/studio/broadcast
+            {broadcastPageUrl()}
           </a>
         </div>
       )}

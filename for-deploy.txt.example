@@ -1,0 +1,11 @@
+# Deploy konfiguratsiyasi — nusxa olib for-deploy.txt qiling (gitga kirmaydi)
+IP-manzil: YOUR_SERVER_IP
+Foydalanuvchi nomi: root
+Parol: YOUR_SSH_PASSWORD
+# Band portlarni tekshiring: bash scripts/check-server-ports.sh
+Frontend port: 3010
+Gateway port: 18080
+HLS port: 18090
+Frontend domen: stream.vibrant.uz
+API domen: api.stream.vibrant.uz
+Certbot email: admin@vibrant.uz

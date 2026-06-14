@@ -1,4 +1,4 @@
-# Production — Shopla bilan bir server (port to'qnashuvi yo'q)
+# Production — vibrant.uz (localhost binding where possible, shared-server safe)
 services:
   postgres:
     image: postgres:16-alpine

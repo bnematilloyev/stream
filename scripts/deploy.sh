@@ -5,18 +5,36 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEPLOY_FILE="${ROOT}/for-deploy.txt"
 
 if [[ ! -f "${DEPLOY_FILE}" ]]; then
-  echo "for-deploy.txt topilmadi"
+  echo "for-deploy.txt topilmadi. Nusxa: cp for-deploy.txt.example for-deploy.txt"
   exit 1
 fi
 
-HOST=$(grep -E '^IP-manzil:' "${DEPLOY_FILE}" | cut -d: -f2- | xargs)
-USER=$(grep -E '^Foydalanuvchi nomi:' "${DEPLOY_FILE}" | cut -d: -f2- | xargs)
-PASS=$(grep -E '^Parol:' "${DEPLOY_FILE}" | cut -d: -f2- | xargs)
-FRONTEND_PORT=$(grep -E '^Frontend port:' "${DEPLOY_FILE}" | cut -d: -f2- | xargs)
+read_deploy() {
+  grep -E "^${1}:" "${DEPLOY_FILE}" | cut -d: -f2- | xargs || true
+}
+
+HOST=$(read_deploy "IP-manzil")
+USER=$(read_deploy "Foydalanuvchi nomi")
+PASS=$(read_deploy "Parol")
+FRONTEND_PORT=$(read_deploy "Frontend port")
 FRONTEND_PORT="${FRONTEND_PORT:-3002}"
-DOMAIN=$(grep -E '^Domen:' "${DEPLOY_FILE}" | cut -d: -f2- | xargs)
-PUBLIC_URL="${DOMAIN:+https://${DOMAIN}}"
-PUBLIC_URL="${PUBLIC_URL:-http://${HOST}:${FRONTEND_PORT}}"
+GATEWAY_PORT=$(read_deploy "Gateway port")
+GATEWAY_PORT="${GATEWAY_PORT:-8080}"
+HLS_PORT=$(read_deploy "HLS port")
+HLS_PORT="${HLS_PORT:-8090}"
+FRONTEND_DOMAIN=$(read_deploy "Frontend domen")
+API_DOMAIN=$(read_deploy "API domen")
+CERTBOT_EMAIL=$(read_deploy "Certbot email")
+# Eski format: Domen: -> frontend
+if [[ -z "${FRONTEND_DOMAIN}" ]]; then
+  FRONTEND_DOMAIN=$(read_deploy "Domen")
+fi
+FRONTEND_DOMAIN="${FRONTEND_DOMAIN:-stream.vibrant.uz}"
+API_DOMAIN="${API_DOMAIN:-api.stream.vibrant.uz}"
+
+CERTBOT_EMAIL="${CERTBOT_EMAIL:-admin@vibrant.uz}"
+API_URL="https://${API_DOMAIN}"
+FRONTEND_URL="https://${FRONTEND_DOMAIN}"
 
 if [[ -z "${HOST}" || -z "${USER}" || -z "${PASS}" ]]; then
   echo "for-deploy.txt da IP, user yoki parol yo'q"
@@ -36,45 +54,49 @@ scp_cmd() {
 
 echo "==> SSH tekshiruvi..."
 if ! ssh_cmd "echo ok" >/dev/null 2>&1; then
-  echo "SSH ulanib bo'lmadi (${USER}@${HOST}:22). Server ishlayaptimi?"
+  echo "SSH ulanib bo'lmadi (${USER}@${HOST}:22)"
   exit 1
 fi
 
-echo "==> Sahiy Stream port: ${FRONTEND_PORT} (Shopla :3000 tegmaslik)"
+echo "==> Domenlar:"
+echo "    Frontend: ${FRONTEND_URL}  (port ${FRONTEND_PORT})"
+echo "    Gateway:  :${GATEWAY_PORT}"
+echo "    HLS:      :${HLS_PORT}"
 
 if [[ "${SKIP_BUILD:-}" != "1" ]]; then
   echo "==> Go servislarni build qilish (linux/amd64)..."
   export GOOS=linux GOARCH=amd64
   mkdir -p "${ROOT}/bin"
-  (cd "${ROOT}/services/auth-service" && go build -o "${ROOT}/bin/auth-service" ./cmd/server)
-  (cd "${ROOT}/services/user-service" && go build -o "${ROOT}/bin/user-service" ./cmd/server)
-  (cd "${ROOT}/services/stream-service" && go build -o "${ROOT}/bin/stream-service" ./cmd/server)
-  (cd "${ROOT}/services/chat-service" && go build -o "${ROOT}/bin/chat-service" ./cmd/server)
-  (cd "${ROOT}/services/media-orchestrator" && go build -o "${ROOT}/bin/media-orchestrator" ./cmd/server)
-  (cd "${ROOT}/services/transcode-worker" && go build -o "${ROOT}/bin/transcode-worker" ./cmd/server)
-  (cd "${ROOT}/services/api-gateway" && go build -o "${ROOT}/bin/api-gateway" ./cmd/server)
+  for svc in auth-service user-service stream-service chat-service media-orchestrator transcode-worker api-gateway; do
+    (cd "${ROOT}/services/${svc}" && go build -o "${ROOT}/bin/${svc}" ./cmd/server)
+  done
 else
-  echo "==> SKIP_BUILD=1 — Go build o'tkazib yuborildi"
+  echo "==> SKIP_BUILD=1"
 fi
 
-echo "==> Frontend build (${PUBLIC_URL})..."
-pkill -f "next dev" 2>/dev/null || true
-(
-  cd "${ROOT}/frontend"
-  export NEXT_PUBLIC_API_URL="${PUBLIC_URL}"
-  export NEXT_PUBLIC_WHIP_BASE_URL="${PUBLIC_URL}"
-  export NEXT_PUBLIC_HLS_BASE_URL="${PUBLIC_URL}/hls"
-  npm run build
-)
+if [[ "${SKIP_FRONTEND:-}" != "1" ]]; then
+  echo "==> Frontend build..."
+  pkill -f "next dev" 2>/dev/null || true
+  (
+    cd "${ROOT}/frontend"
+    export NEXT_PUBLIC_API_URL="${API_URL}"
+    export NEXT_PUBLIC_WHIP_BASE_URL="${API_URL}"
+    export NEXT_PUBLIC_HLS_BASE_URL="${API_URL}/hls"
+    npm run build
+  )
+fi
 
 ARCHIVE="/tmp/sahiy-stream-deploy.tar.gz"
-echo "==> Arxiv yaratish..."
+echo "==> Arxiv..."
 tar -czf "${ARCHIVE}" -C "${ROOT}" \
   bin \
   infra \
   scripts/migrate.sh \
   scripts/wait-for-api.sh \
   scripts/deploy-remote-only.sh \
+  scripts/setup-nginx-ssl.sh \
+  scripts/check-server-ports.sh \
+  for-deploy.txt.example \
   services/auth-service/migrations \
   frontend/.next \
   frontend/public \
@@ -83,7 +105,8 @@ tar -czf "${ARCHIVE}" -C "${ROOT}" \
   frontend/next.config.ts
 
 echo "==> Serverga yuklash..."
-ssh_cmd "mkdir -p ${REMOTE_DIR} && echo '${HOST}' > ${REMOTE_DIR}/deploy-host.txt"
+ssh_cmd "mkdir -p ${REMOTE_DIR}"
+scp_cmd "${DEPLOY_FILE}" "${USER}@${HOST}:${REMOTE_DIR}/for-deploy.txt"
 scp_cmd "${ARCHIVE}" "${USER}@${HOST}:${REMOTE_DIR}/deploy.tar.gz"
 
 echo "==> Serverda sozlash..."
@@ -92,11 +115,18 @@ set -euo pipefail
 REMOTE_DIR="${REMOTE_DIR}"
 HOST_IP="${HOST}"
 FRONTEND_PORT="${FRONTEND_PORT}"
-PUBLIC_URL="${PUBLIC_URL}"
+GATEWAY_PORT="${GATEWAY_PORT}"
+HLS_PORT="${HLS_PORT}"
+API_DOMAIN="${API_DOMAIN}"
+FRONTEND_DOMAIN="${FRONTEND_DOMAIN}"
+API_URL="${API_URL}"
+FRONTEND_URL="${FRONTEND_URL}"
+CERTBOT_EMAIL="${CERTBOT_EMAIL}"
 
 cd "\${REMOTE_DIR}"
 tar -xzf deploy.tar.gz
 rm -f deploy.tar.gz
+chmod +x scripts/setup-nginx-ssl.sh
 mv services/auth-service/migrations migrations 2>/dev/null || true
 
 export DEBIAN_FRONTEND=noninteractive
@@ -123,25 +153,17 @@ fi
 
 mkdir -p "\${REMOTE_DIR}/data/hls" "\${REMOTE_DIR}/.logs"
 
-if [[ -f "\${REMOTE_DIR}/infra/nginx/stream.shopla.uz.conf" ]]; then
-  cp "\${REMOTE_DIR}/infra/nginx/stream.shopla.uz.conf" /etc/nginx/sites-available/stream.shopla.uz
-  ln -sf /etc/nginx/sites-available/stream.shopla.uz /etc/nginx/sites-enabled/stream.shopla.uz
-  nginx -t && systemctl reload nginx
-fi
-
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
-  ufw allow "\${FRONTEND_PORT}/tcp" comment "Sahiy Stream frontend" 2>/dev/null || true
-  ufw allow 8080/tcp comment "Sahiy Stream API" 2>/dev/null || true
-  ufw allow 8889/tcp comment "Sahiy WHIP" 2>/dev/null || true
-  ufw allow 8090/tcp comment "Sahiy HLS" 2>/dev/null || true
-  ufw allow 1935/tcp comment "Sahiy RTMP" 2>/dev/null || true
-  ufw allow 8189/tcp comment "Sahiy WebRTC ICE" 2>/dev/null || true
-  ufw allow 8189/udp comment "Sahiy WebRTC ICE" 2>/dev/null || true
-  ufw allow from 172.16.0.0/12 to any port 9084 proto tcp comment "Docker to media-orchestrator" 2>/dev/null || true
+  ufw allow 80/tcp comment "HTTP certbot" 2>/dev/null || true
+  ufw allow 443/tcp comment "HTTPS" 2>/dev/null || true
+  ufw allow "\${FRONTEND_PORT}/tcp" comment "Next.js" 2>/dev/null || true
+  ufw allow from 172.16.0.0/12 to any port 9084 proto tcp 2>/dev/null || true
 fi
 
 sed -i 's/host.docker.internal:9084/172.17.0.1:9084/g' "\${REMOTE_DIR}/infra/docker/nginx-rtmp/nginx.conf" 2>/dev/null || true
 sed -i 's/host.docker.internal:9084/172.17.0.1:9084/g' "\${REMOTE_DIR}/infra/docker/mediamtx/mediamtx.yml" 2>/dev/null || true
+sed -i "s/__SERVER_IP__/\${HOST_IP}/g" "\${REMOTE_DIR}/infra/docker/mediamtx/mediamtx.yml"
+sed -i "s/\"8090:8090\"/\"\${HLS_PORT}:8090\"/" "\${REMOTE_DIR}/infra/docker/docker-compose.prod.yml"
 
 JWT_ACCESS_SECRET=\$(openssl rand -hex 32)
 JWT_REFRESH_SECRET=\$(openssl rand -hex 32)
@@ -155,24 +177,14 @@ sed -i "s|/hooks/publish\"|/hooks/publish?internal_secret=\${MEDIA_HOOK_SECRET}\
 
 cd "\${REMOTE_DIR}/infra/docker"
 docker compose -f docker-compose.prod.yml down 2>/dev/null || true
-docker rm -f sahiy-redis sahiy-postgres sahiy-minio 2>/dev/null || true
-docker compose -f docker-compose.prod.yml up -d
-sleep 10
+docker compose -f docker-compose.prod.yml up -d --build
+sleep 12
 
 export DATABASE_URL="postgres://sahiy:sahiy_secret@127.0.0.1:15433/sahiy_stream?sslmode=disable"
 migrate -path "\${REMOTE_DIR}/migrations" -database "\${DATABASE_URL}" up 2>/dev/null || true
 
-docker exec sahiy-postgres psql -U sahiy -d sahiy_stream -c "
-  UPDATE streams SET status='ended', ended_at=NOW()
-  WHERE status='live' AND NOT EXISTS (
-    SELECT 1 FROM stream_media sm WHERE sm.stream_id=streams.id AND sm.status='ingesting'
-  );
-  UPDATE channels SET is_live=false WHERE is_live=true;
-" 2>/dev/null || true
-
-# Faqat Sahiy Stream (Shopla 3000 ga tegmaslik)
 pkill -f "\${REMOTE_DIR}/bin/" 2>/dev/null || true
-for port in 50051 50052 50053 50054 8080 9084 9085 9086 "\${FRONTEND_PORT}"; do
+for port in 50051 50052 50053 50054 "\${GATEWAY_PORT}" 9084 9085 "\${FRONTEND_PORT}"; do
   fuser -k "\${port}/tcp" 2>/dev/null || true
 done
 sleep 2
@@ -187,7 +199,7 @@ JWT_ACCESS_SECRET=\${JWT_ACCESS_SECRET}
 JWT_REFRESH_SECRET=\${JWT_REFRESH_SECRET}
 MEDIA_HOOK_SECRET=\${MEDIA_HOOK_SECRET}
 PLAYBACK_SIGNING_SECRET=\${PLAYBACK_SIGNING_SECRET}
-PLAYBACK_BASE_URL=\${PUBLIC_URL}
+PLAYBACK_BASE_URL=\${API_URL}
 HLS_STORAGE_BACKEND=local
 FFMPEG_VIDEO_ENCODER=libx264
 TRANSCODE_QUALITY=production
@@ -198,10 +210,10 @@ USER_SERVICE_ADDR=localhost:50052
 STREAM_SERVICE_ADDR=localhost:50053
 CHAT_SERVICE_ADDR=localhost:50054
 CHAT_HTTP_ADDR=localhost:9085
-GATEWAY_HTTP_ADDR=:8080
-GATEWAY_CORS_ORIGINS=\${PUBLIC_URL},http://\${HOST_IP}:\${FRONTEND_PORT},http://\${HOST_IP}:3000,http://\${HOST_IP}
-WHIP_BASE_URL=\${PUBLIC_URL}
-HLS_BASE_URL=\${PUBLIC_URL}/hls
+GATEWAY_HTTP_ADDR=:\${GATEWAY_PORT}
+GATEWAY_CORS_ORIGINS=\${FRONTEND_URL},https://\${FRONTEND_DOMAIN}
+WHIP_BASE_URL=\${API_URL}
+HLS_BASE_URL=\${API_URL}/hls
 HLS_OUTPUT_DIR=\${REMOTE_DIR}/data/hls
 RTMP_INTERNAL_URL=rtmp://127.0.0.1:1935/live
 RTSP_INTERNAL_URL=rtsp://127.0.0.1:8554
@@ -215,30 +227,33 @@ start_svc() {
   echo "  \$1 pid=\$!"
 }
 
-start_svc auth-service
-sleep 2
-start_svc user-service
-sleep 2
-start_svc stream-service
-sleep 2
-start_svc chat-service
-sleep 2
-start_svc media-orchestrator
-sleep 2
-start_svc api-gateway
-sleep 3
+start_svc auth-service; sleep 2
+start_svc user-service; sleep 2
+start_svc stream-service; sleep 2
+start_svc chat-service; sleep 2
+start_svc media-orchestrator; sleep 2
+start_svc api-gateway; sleep 3
 
 cd "\${REMOTE_DIR}/frontend"
-npm install
+npm install --omit=dev 2>/dev/null || npm install
 nohup npx next start -p "\${FRONTEND_PORT}" -H 0.0.0.0 >"\${LOG}/frontend.log" 2>&1 &
 
-echo "Sahiy Stream: \${PUBLIC_URL}"
-echo "Shopla: http://\${HOST_IP}:3000"
+if [[ "\${SETUP_SSL:-1}" == "1" ]]; then
+  echo "==> Nginx + SSL..."
+  REMOTE_DIR="\${REMOTE_DIR}" FRONTEND_PORT="\${FRONTEND_PORT}" \
+    GATEWAY_PORT="\${GATEWAY_PORT}" HLS_PORT="\${HLS_PORT}" \
+    API_DOMAIN="\${API_DOMAIN}" FRONTEND_DOMAIN="\${FRONTEND_DOMAIN}" \
+    CERTBOT_EMAIL="\${CERTBOT_EMAIL:-admin@vibrant.uz}" \
+    bash "\${REMOTE_DIR}/scripts/setup-nginx-ssl.sh" || echo "SSL xato — keyin: SETUP_SSL=1 bash scripts/setup-nginx-ssl.sh"
+fi
+
+echo "Frontend: \${FRONTEND_URL}"
+echo "API:      \${API_URL}/health"
 REMOTE
 
 rm -f "${ARCHIVE}"
 echo ""
-echo "Deploy muvaffaqiyatli!"
-echo "  Sahiy Stream: ${PUBLIC_URL}"
-echo "  Kamera efir:  ${PUBLIC_URL}/studio/broadcast"
-echo "  Shopla:       http://${HOST}:3000 (o'zgarmagan)"
+echo "Deploy tugadi!"
+echo "  Panel:    ${FRONTEND_URL}"
+echo "  API:      ${API_URL}/health"
+echo "  Broadcast: ${FRONTEND_URL}/studio/broadcast"
