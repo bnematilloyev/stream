@@ -88,6 +88,12 @@ cd "${REMOTE_DIR}/infra/docker"
 docker compose -f docker-compose.prod.yml up -d
 sleep 8
 
+if [[ -x "${REMOTE_DIR}/scripts/sync-hook-secrets.sh" ]]; then
+  bash "${REMOTE_DIR}/scripts/sync-hook-secrets.sh"
+elif [[ -f "${REMOTE_DIR}/scripts/sync-hook-secrets.sh" ]]; then
+  bash "${REMOTE_DIR}/scripts/sync-hook-secrets.sh"
+fi
+
 LOG="${REMOTE_DIR}/.logs"
 mkdir -p "${LOG}" "${REMOTE_DIR}/data/hls"
 
@@ -101,13 +107,20 @@ start_svc user-service; sleep 2
 start_svc stream-service; sleep 2
 start_svc chat-service; sleep 2
 start_svc media-orchestrator; sleep 2
-start_svc api-gateway; sleep 3
+start_svc api-gateway
+for i in $(seq 1 20); do
+  if curl -sf "http://127.0.0.1:${GATEWAY_PORT}/health" >/dev/null 2>&1; then
+    echo "  api-gateway tayyor (port ${GATEWAY_PORT})"
+    break
+  fi
+  sleep 1
+done
 if ! curl -sf "http://127.0.0.1:${GATEWAY_PORT}/health" >/dev/null 2>&1; then
   echo "  api-gateway ishga tushmadi (port ${GATEWAY_PORT}) — log:"
-  tail -15 "${LOG}/api-gateway.log" || true
+  tail -20 "${LOG}/api-gateway.log" 2>&1 || true
+  tail -10 "${LOG}/chat-service.log" 2>&1 || true
   exit 1
 fi
-echo "  api-gateway tayyor (port ${GATEWAY_PORT})"
 
 cd "${REMOTE_DIR}/frontend"
 if [[ ! -d .next ]]; then

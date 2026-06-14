@@ -121,7 +121,7 @@ func main() {
 	httpRouter := chi.NewRouter()
 	httpRouter.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer)
 	httpRouter.Mount("/", httphandler.NewHealthHandler(pool, redisClient, bus).Routes())
-	httpRouter.Mount("/", wsHandler.Routes())
+	httpRouter.Mount("/v1/chat", wsHandler.Routes())
 	httpServer := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           httpRouter,

@@ -68,7 +68,7 @@ func originAllowed(origins []string, appEnv string) func(*http.Request) bool {
 
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Get("/v1/chat/{streamID}", h.ServeWS)
+	r.Get("/{streamID}", h.ServeWS)
 	return r
 }
 

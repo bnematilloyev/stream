@@ -22,9 +22,9 @@ webrtcICEServers2:
 
 pathDefaults:
   source: publisher
-  runOnReady: curl -s -X POST http://host.docker.internal:9084/hooks/publish -d "name=$MTX_PATH" -d "source=whip"
+  runOnReady: curl -s -X POST "http://host.docker.internal:9084/hooks/publish?internal_secret=__MEDIA_HOOK_SECRET__" -d "name=$MTX_PATH" -d "source=whip"
   runOnReadyRestart: false
-  runOnNotReady: curl -s -X POST http://host.docker.internal:9084/hooks/publish_done -d "name=$MTX_PATH"
+  runOnNotReady: curl -s -X POST "http://host.docker.internal:9084/hooks/publish_done?internal_secret=__MEDIA_HOOK_SECRET__" -d "name=$MTX_PATH"
 
 paths:
   all_others:

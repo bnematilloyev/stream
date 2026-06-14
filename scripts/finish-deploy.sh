@@ -81,10 +81,11 @@ fi
 echo "==> Skriptlar va konfiguratsiya..."
 scp_cmd "${ROOT}/scripts/deploy-remote-only.sh" "${USER}@${HOST}:/opt/sahiy-stream/scripts/"
 scp_cmd "${ROOT}/scripts/setup-nginx-ssl.sh" "${USER}@${HOST}:/opt/sahiy-stream/scripts/"
+scp_cmd "${ROOT}/scripts/sync-hook-secrets.sh" "${USER}@${HOST}:/opt/sahiy-stream/scripts/"
 scp_cmd "${ROOT}/infra/nginx/api.stream.vibrant.uz.conf" "${USER}@${HOST}:/opt/sahiy-stream/infra/nginx/"
 scp_cmd "${ROOT}/infra/nginx/stream.vibrant.uz.conf" "${USER}@${HOST}:/opt/sahiy-stream/infra/nginx/"
 scp_cmd "${ROOT}/frontend/next.config.mjs" "${USER}@${HOST}:/opt/sahiy-stream/frontend/"
-ssh_cmd "chmod +x /opt/sahiy-stream/scripts/deploy-remote-only.sh /opt/sahiy-stream/scripts/setup-nginx-ssl.sh"
+ssh_cmd "chmod +x /opt/sahiy-stream/scripts/deploy-remote-only.sh /opt/sahiy-stream/scripts/setup-nginx-ssl.sh /opt/sahiy-stream/scripts/sync-hook-secrets.sh"
 
 echo "==> Serverda servislarni ishga tushirish..."
 ssh_cmd bash -s <<REMOTE
