@@ -46,11 +46,15 @@ if ! command -v sshpass >/dev/null 2>&1; then
 fi
 
 echo "==> Yangilangan skriptlarni yuklash..."
-ssh_cmd "mkdir -p /opt/sahiy-stream/scripts"
+ssh_cmd "mkdir -p /opt/sahiy-stream/scripts /opt/sahiy-stream/bin"
+if [[ -d "${ROOT}/bin" ]]; then
+  scp_cmd "${ROOT}/bin/"* "${USER}@${HOST}:/opt/sahiy-stream/bin/"
+fi
 scp_cmd "${ROOT}/scripts/deploy-remote-only.sh" "${USER}@${HOST}:/opt/sahiy-stream/scripts/"
 scp_cmd "${ROOT}/scripts/setup-nginx-ssl.sh" "${USER}@${HOST}:/opt/sahiy-stream/scripts/"
 scp_cmd "${ROOT}/infra/nginx/api.stream.vibrant.uz.conf" "${USER}@${HOST}:/opt/sahiy-stream/infra/nginx/"
 scp_cmd "${ROOT}/infra/nginx/stream.vibrant.uz.conf" "${USER}@${HOST}:/opt/sahiy-stream/infra/nginx/"
+scp_cmd "${ROOT}/frontend/next.config.mjs" "${USER}@${HOST}:/opt/sahiy-stream/frontend/"
 ssh_cmd "chmod +x /opt/sahiy-stream/scripts/deploy-remote-only.sh /opt/sahiy-stream/scripts/setup-nginx-ssl.sh"
 
 echo "==> Serverda servislarni ishga tushirish..."

@@ -29,6 +29,55 @@ fi
 API_URL="https://${API_DOMAIN:-api.stream.vibrant.uz}"
 FRONTEND_URL="https://${FRONTEND_DOMAIN:-stream.vibrant.uz}"
 
+ensure_env() {
+  local env_file="${REMOTE_DIR}/.env"
+  local jwt_access jwt_refresh media_hook playback_signing
+  if [[ -f "${env_file}" ]]; then
+    jwt_access="$(grep -E '^JWT_ACCESS_SECRET=' "${env_file}" | cut -d= -f2- || true)"
+    jwt_refresh="$(grep -E '^JWT_REFRESH_SECRET=' "${env_file}" | cut -d= -f2- || true)"
+    media_hook="$(grep -E '^MEDIA_HOOK_SECRET=' "${env_file}" | cut -d= -f2- || true)"
+    playback_signing="$(grep -E '^PLAYBACK_SIGNING_SECRET=' "${env_file}" | cut -d= -f2- || true)"
+  fi
+  jwt_access="${jwt_access:-$(openssl rand -hex 32)}"
+  jwt_refresh="${jwt_refresh:-$(openssl rand -hex 32)}"
+  media_hook="${media_hook:-$(openssl rand -hex 32)}"
+  playback_signing="${playback_signing:-$(openssl rand -hex 32)}"
+
+  cat >"${env_file}" <<ENVFILE
+APP_ENV=production
+LOG_LEVEL=info
+DATABASE_URL=postgres://sahiy:sahiy_secret@127.0.0.1:15433/sahiy_stream?sslmode=disable
+REDIS_URL=redis://127.0.0.1:16379/0
+NATS_URL=nats://127.0.0.1:14222
+JWT_ACCESS_SECRET=${jwt_access}
+JWT_REFRESH_SECRET=${jwt_refresh}
+MEDIA_HOOK_SECRET=${media_hook}
+PLAYBACK_SIGNING_SECRET=${playback_signing}
+PLAYBACK_BASE_URL=${API_URL}
+HLS_STORAGE_BACKEND=local
+FFMPEG_VIDEO_ENCODER=libx264
+TRANSCODE_QUALITY=production
+TRANSCODE_MODE=local
+WORKER_MAX_JOBS=1
+AUTH_SERVICE_ADDR=localhost:50051
+USER_SERVICE_ADDR=localhost:50052
+STREAM_SERVICE_ADDR=localhost:50053
+CHAT_SERVICE_ADDR=localhost:50054
+CHAT_HTTP_ADDR=localhost:9085
+GATEWAY_HTTP_ADDR=:${GATEWAY_PORT}
+GATEWAY_CORS_ORIGINS=${FRONTEND_URL},https://${FRONTEND_DOMAIN}
+WHIP_BASE_URL=${API_URL}
+HLS_BASE_URL=${API_URL}/hls
+HLS_OUTPUT_DIR=${REMOTE_DIR}/data/hls
+RTMP_INTERNAL_URL=rtmp://127.0.0.1:1935/live
+RTSP_INTERNAL_URL=rtsp://127.0.0.1:8554
+MEDIA_HTTP_ADDR=:9084
+GATEWAY_RATE_LIMIT_RPM=500
+ENVFILE
+}
+
+ensure_env
+
 pkill -f "${REMOTE_DIR}/bin/" 2>/dev/null || true
 for port in 50051 50052 50053 50054 "${GATEWAY_PORT}" 9084 9085 "${FRONTEND_PORT}"; do
   fuser -k "${port}/tcp" 2>/dev/null || true
@@ -53,10 +102,36 @@ start_svc stream-service; sleep 2
 start_svc chat-service; sleep 2
 start_svc media-orchestrator; sleep 2
 start_svc api-gateway; sleep 3
+if ! curl -sf "http://127.0.0.1:${GATEWAY_PORT}/health" >/dev/null 2>&1; then
+  echo "  api-gateway ishga tushmadi (port ${GATEWAY_PORT}) — log:"
+  tail -15 "${LOG}/api-gateway.log" || true
+  exit 1
+fi
+echo "  api-gateway tayyor (port ${GATEWAY_PORT})"
 
 cd "${REMOTE_DIR}/frontend"
-npm install --omit=dev 2>/dev/null || npm install
-nohup npx next start -p "${FRONTEND_PORT}" -H 0.0.0.0 >"${LOG}/frontend.log" 2>&1 &
+if [[ ! -d .next ]]; then
+  echo "Xato: frontend/.next yo'q. Lokalda deploy qiling: bash scripts/deploy.sh"
+  exit 1
+fi
+npm ci --omit=dev 2>/dev/null || npm ci
+pkill -f "next start -p ${FRONTEND_PORT}" 2>/dev/null || true
+fuser -k "${FRONTEND_PORT}/tcp" 2>/dev/null || true
+sleep 1
+nohup ./node_modules/.bin/next start -p "${FRONTEND_PORT}" -H 0.0.0.0 >"${LOG}/frontend.log" 2>&1 &
+echo "  frontend pid=$! port=${FRONTEND_PORT}"
+for i in $(seq 1 30); do
+  if curl -sf "http://127.0.0.1:${FRONTEND_PORT}/" >/dev/null 2>&1; then
+    echo "  frontend tayyor"
+    break
+  fi
+  sleep 1
+done
+if ! curl -sf "http://127.0.0.1:${FRONTEND_PORT}/" >/dev/null 2>&1; then
+  echo "  frontend ishga tushmadi — log:"
+  tail -15 "${LOG}/frontend.log" || true
+  exit 1
+fi
 
 echo "Panel:    ${FRONTEND_URL}"
 echo "API:      ${API_URL}/health"

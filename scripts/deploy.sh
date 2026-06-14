@@ -115,7 +115,7 @@ tar -czf "${ARCHIVE}" -C "${ROOT}" \
   frontend/public \
   frontend/package.json \
   frontend/package-lock.json \
-  frontend/next.config.ts
+  frontend/next.config.mjs
 
 echo "==> Serverga yuklash..."
 ssh_cmd "mkdir -p ${REMOTE_DIR}"
@@ -248,8 +248,23 @@ start_svc media-orchestrator; sleep 2
 start_svc api-gateway; sleep 3
 
 cd "\${REMOTE_DIR}/frontend"
-npm install --omit=dev 2>/dev/null || npm install
-nohup npx next start -p "\${FRONTEND_PORT}" -H 0.0.0.0 >"\${LOG}/frontend.log" 2>&1 &
+if [[ ! -d .next ]]; then
+  echo "Xato: frontend/.next yo'q"
+  exit 1
+fi
+npm ci --omit=dev 2>/dev/null || npm ci
+pkill -f "next start -p \${FRONTEND_PORT}" 2>/dev/null || true
+fuser -k "\${FRONTEND_PORT}/tcp" 2>/dev/null || true
+sleep 1
+nohup ./node_modules/.bin/next start -p "\${FRONTEND_PORT}" -H 0.0.0.0 >"\${LOG}/frontend.log" 2>&1 &
+echo "  frontend pid=\$! port=\${FRONTEND_PORT}"
+for i in \$(seq 1 30); do
+  if curl -sf "http://127.0.0.1:\${FRONTEND_PORT}/" >/dev/null 2>&1; then
+    echo "  frontend tayyor"
+    break
+  fi
+  sleep 1
+done
 
 if [[ "\${SETUP_SSL:-1}" == "1" ]]; then
   echo "==> Nginx + SSL..."

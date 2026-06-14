@@ -19,13 +19,13 @@ import (
 	pkgredis "github.com/sahiy/sahiy-stream/pkg/redis"
 	"github.com/sahiy/sahiy-stream/pkg/storage"
 	"github.com/sahiy/sahiy-stream/pkg/viewers"
+	streamv1 "github.com/sahiy/sahiy-stream/proto/gen/stream/v1"
 	grpchandler "github.com/sahiy/sahiy-stream/services/stream-service/internal/adapter/handler/grpc"
 	httphandler "github.com/sahiy/sahiy-stream/services/stream-service/internal/adapter/handler/http"
 	"github.com/sahiy/sahiy-stream/services/stream-service/internal/adapter/repository"
 	"github.com/sahiy/sahiy-stream/services/stream-service/internal/config"
 	"github.com/sahiy/sahiy-stream/services/stream-service/internal/usecase"
 	"github.com/sahiy/sahiy-stream/services/stream-service/internal/worker"
-	streamv1 "github.com/sahiy/sahiy-stream/proto/gen/stream/v1"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -106,7 +106,7 @@ func main() {
 	httpRouter := chi.NewRouter()
 	httpRouter.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer)
 	httpRouter.Mount("/", httphandler.NewHealthHandler(dbRouter).Routes())
-	httpRouter.Mount("/", httphandler.NewDeliveryHandler(store, signer).Routes())
+	httpRouter.Mount("/playback", httphandler.NewDeliveryHandler(store, signer).Routes())
 	httpServer := &http.Server{Addr: cfg.HTTPAddr, Handler: httpRouter, ReadHeaderTimeout: 5 * time.Second}
 	go func() {
 		log.Info("stream HTTP started",

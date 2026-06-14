@@ -22,7 +22,7 @@ func NewDeliveryHandler(store storage.ObjectStorage, signer *playback.Signer) *D
 
 func (h *DeliveryHandler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Get("/playback/{streamID}/*", h.serve)
+	r.Get("/{streamID}/*", h.serve)
 	return r
 }
 
