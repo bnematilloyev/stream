@@ -9,6 +9,7 @@ import (
 	"github.com/sahiy/sahiy-stream/pkg/httputil"
 	"github.com/sahiy/sahiy-stream/services/api-gateway/internal/client"
 	"github.com/sahiy/sahiy-stream/services/api-gateway/internal/middleware"
+	"github.com/sahiy/sahiy-stream/pkg/auth"
 	authv1 "github.com/sahiy/sahiy-stream/proto/gen/auth/v1"
 )
 
@@ -142,7 +143,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		httputil.JSON(w, http.StatusOK, map[string]any{})
 		return
 	}
-	httputil.JSON(w, http.StatusOK, toUserResponse(user))
+	httputil.JSON(w, http.StatusOK, toPrincipalResponse(user))
 }
 
 func refreshTokenFromRequest(r *http.Request) string {
@@ -181,6 +182,19 @@ func toAuthResponse(resp *authv1.AuthResponse) authResponse {
 		AccessToken:  resp.AccessToken,
 		RefreshToken: resp.RefreshToken,
 		ExpiresAt:    time.Unix(resp.ExpiresAtUnix, 0).UTC(),
+	}
+}
+
+func toPrincipalResponse(u *auth.Principal) userResponse {
+	return userResponse{
+		ID:            u.ID,
+		Email:         u.Email,
+		Username:      u.Username,
+		DisplayName:   u.DisplayName,
+		Role:          u.Role,
+		Status:        u.Status,
+		EmailVerified: u.EmailVerified,
+		CreatedAt:     u.CreatedAt,
 	}
 }
 

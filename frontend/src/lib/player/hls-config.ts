@@ -1,34 +1,32 @@
 import type Hls from "hls.js";
 
-/** Production LL-HLS tuning — 2–4s glass-to-glass target. */
+/** Production LL-HLS — quality-first ABR for VPS origin (few viewers, high bitrate ladder). */
 export function createHlsConfig(): Partial<Hls["config"]> {
   return {
     enableWorker: true,
     lowLatencyMode: true,
 
-    // Aggressive live edge tracking
     liveSyncDurationCount: 2,
-    liveMaxLatencyDurationCount: 5,
-    maxLiveSyncPlaybackRate: 1.15,
+    liveMaxLatencyDurationCount: 6,
+    maxLiveSyncPlaybackRate: 1.1,
     liveDurationInfinity: true,
 
-    // Minimal buffering — reduces perceived latency
     backBufferLength: 0,
     liveBackBufferLength: 0,
-    maxBufferLength: 8,
-    maxMaxBufferLength: 16,
-    maxBufferSize: 20 * 1000 * 1000,
+    maxBufferLength: 12,
+    maxMaxBufferLength: 24,
+    maxBufferSize: 32 * 1000 * 1000,
     maxBufferHole: 0.5,
 
-    // Fast ABR for quality under load
+    // Prefer higher renditions when bandwidth allows
     startLevel: -1,
-    capLevelToPlayerSize: true,
-    abrEwmaDefaultEstimate: 8_000_000,
-    abrBandWidthFactor: 0.9,
-    abrBandWidthUpFactor: 0.7,
+    capLevelToPlayerSize: false,
+    abrEwmaDefaultEstimate: 12_000_000,
+    abrBandWidthFactor: 0.95,
+    abrBandWidthUpFactor: 0.85,
     abrMaxWithRealBitrate: true,
+    minAutoBitrate: 2_500_000,
 
-    // Resilience
     fragLoadingMaxRetry: 8,
     fragLoadingRetryDelay: 500,
     manifestLoadingMaxRetry: 6,
@@ -36,7 +34,6 @@ export function createHlsConfig(): Partial<Hls["config"]> {
     startFragPrefetch: true,
     testBandwidth: true,
 
-    // LL-HLS part handling
     highBufferWatchdogPeriod: 1,
   };
 }

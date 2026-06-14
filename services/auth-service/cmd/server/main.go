@@ -13,7 +13,9 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sahiy/sahiy-stream/pkg/crypto"
 	"github.com/sahiy/sahiy-stream/pkg/database"
+	"github.com/sahiy/sahiy-stream/pkg/grpcserver"
 	"github.com/sahiy/sahiy-stream/pkg/logger"
+	"github.com/sahiy/sahiy-stream/pkg/auth"
 	pkgredis "github.com/sahiy/sahiy-stream/pkg/redis"
 	grpchandler "github.com/sahiy/sahiy-stream/services/auth-service/internal/adapter/handler/grpc"
 	httphandler "github.com/sahiy/sahiy-stream/services/auth-service/internal/adapter/handler/http"
@@ -30,6 +32,9 @@ import (
 
 func main() {
 	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		panic("invalid config: " + err.Error())
+	}
 
 	log, err := logger.New("auth-service", cfg.LogLevel)
 	if err != nil {
@@ -53,16 +58,14 @@ func main() {
 	defer func() { _ = redisClient.Close() }()
 
 	jwtManager := crypto.NewJWTManager(cfg.JWTAccess, cfg.JWTRefresh, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
+	sessionCache := auth.NewSessionCache(redisClient, cfg.UserCacheTTL)
 
 	userRepo := repository.NewPostgresUserRepository(pool)
 	sessionRepo := repository.NewPostgresSessionRepository(pool)
 	auditRepo := repository.NewPostgresAuditRepository(pool)
-	authUC := usecase.NewAuthUseCase(userRepo, sessionRepo, auditRepo, jwtManager)
+	authUC := usecase.NewAuthUseCase(userRepo, sessionRepo, auditRepo, jwtManager, sessionCache)
 
-	grpcServer := grpc.NewServer(
-		grpc.MaxRecvMsgSize(4*1024*1024),
-		grpc.MaxSendMsgSize(4*1024*1024),
-	)
+	grpcServer := grpc.NewServer(grpcserver.DefaultServerOptions(log, cfg.GRPCRequestTimeout)...)
 	authv1.RegisterAuthServiceServer(grpcServer, grpchandler.NewAuthServer(authUC))
 
 	healthServer := health.NewServer()

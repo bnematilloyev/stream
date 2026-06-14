@@ -32,6 +32,8 @@ const (
 	StreamService_StartIngest_FullMethodName            = "/stream.v1.StreamService/StartIngest"
 	StreamService_EndIngest_FullMethodName              = "/stream.v1.StreamService/EndIngest"
 	StreamService_GetScheduledForChannel_FullMethodName = "/stream.v1.StreamService/GetScheduledForChannel"
+	StreamService_RecordViewerHeartbeat_FullMethodName  = "/stream.v1.StreamService/RecordViewerHeartbeat"
+	StreamService_GetViewerStats_FullMethodName         = "/stream.v1.StreamService/GetViewerStats"
 )
 
 // StreamServiceClient is the client API for StreamService service.
@@ -51,6 +53,8 @@ type StreamServiceClient interface {
 	StartIngest(ctx context.Context, in *StartIngestRequest, opts ...grpc.CallOption) (*Stream, error)
 	EndIngest(ctx context.Context, in *EndIngestRequest, opts ...grpc.CallOption) (*Stream, error)
 	GetScheduledForChannel(ctx context.Context, in *GetScheduledForChannelRequest, opts ...grpc.CallOption) (*Stream, error)
+	RecordViewerHeartbeat(ctx context.Context, in *RecordViewerHeartbeatRequest, opts ...grpc.CallOption) (*ViewerStatsResponse, error)
+	GetViewerStats(ctx context.Context, in *GetViewerStatsRequest, opts ...grpc.CallOption) (*ViewerStatsResponse, error)
 }
 
 type streamServiceClient struct {
@@ -191,6 +195,26 @@ func (c *streamServiceClient) GetScheduledForChannel(ctx context.Context, in *Ge
 	return out, nil
 }
 
+func (c *streamServiceClient) RecordViewerHeartbeat(ctx context.Context, in *RecordViewerHeartbeatRequest, opts ...grpc.CallOption) (*ViewerStatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ViewerStatsResponse)
+	err := c.cc.Invoke(ctx, StreamService_RecordViewerHeartbeat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *streamServiceClient) GetViewerStats(ctx context.Context, in *GetViewerStatsRequest, opts ...grpc.CallOption) (*ViewerStatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ViewerStatsResponse)
+	err := c.cc.Invoke(ctx, StreamService_GetViewerStats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StreamServiceServer is the server API for StreamService service.
 // All implementations must embed UnimplementedStreamServiceServer
 // for forward compatibility.
@@ -208,6 +232,8 @@ type StreamServiceServer interface {
 	StartIngest(context.Context, *StartIngestRequest) (*Stream, error)
 	EndIngest(context.Context, *EndIngestRequest) (*Stream, error)
 	GetScheduledForChannel(context.Context, *GetScheduledForChannelRequest) (*Stream, error)
+	RecordViewerHeartbeat(context.Context, *RecordViewerHeartbeatRequest) (*ViewerStatsResponse, error)
+	GetViewerStats(context.Context, *GetViewerStatsRequest) (*ViewerStatsResponse, error)
 	mustEmbedUnimplementedStreamServiceServer()
 }
 
@@ -256,6 +282,12 @@ func (UnimplementedStreamServiceServer) EndIngest(context.Context, *EndIngestReq
 }
 func (UnimplementedStreamServiceServer) GetScheduledForChannel(context.Context, *GetScheduledForChannelRequest) (*Stream, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetScheduledForChannel not implemented")
+}
+func (UnimplementedStreamServiceServer) RecordViewerHeartbeat(context.Context, *RecordViewerHeartbeatRequest) (*ViewerStatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RecordViewerHeartbeat not implemented")
+}
+func (UnimplementedStreamServiceServer) GetViewerStats(context.Context, *GetViewerStatsRequest) (*ViewerStatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetViewerStats not implemented")
 }
 func (UnimplementedStreamServiceServer) mustEmbedUnimplementedStreamServiceServer() {}
 func (UnimplementedStreamServiceServer) testEmbeddedByValue()                       {}
@@ -512,6 +544,42 @@ func _StreamService_GetScheduledForChannel_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _StreamService_RecordViewerHeartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RecordViewerHeartbeatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StreamServiceServer).RecordViewerHeartbeat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StreamService_RecordViewerHeartbeat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StreamServiceServer).RecordViewerHeartbeat(ctx, req.(*RecordViewerHeartbeatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StreamService_GetViewerStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetViewerStatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StreamServiceServer).GetViewerStats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StreamService_GetViewerStats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StreamServiceServer).GetViewerStats(ctx, req.(*GetViewerStatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // StreamService_ServiceDesc is the grpc.ServiceDesc for StreamService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -570,6 +638,14 @@ var StreamService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetScheduledForChannel",
 			Handler:    _StreamService_GetScheduledForChannel_Handler,
+		},
+		{
+			MethodName: "RecordViewerHeartbeat",
+			Handler:    _StreamService_RecordViewerHeartbeat_Handler,
+		},
+		{
+			MethodName: "GetViewerStats",
+			Handler:    _StreamService_GetViewerStats_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

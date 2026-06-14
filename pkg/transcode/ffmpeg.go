@@ -10,11 +10,26 @@ import (
 )
 
 type Runner struct {
-	bin string
+	bin     string
+	encoder VideoEncoder
+	quality string
 }
 
-func NewRunner(bin string) *Runner {
-	return &Runner{bin: bin}
+func NewRunner(bin string, encoder VideoEncoder) *Runner {
+	return NewRunnerWithQuality(bin, encoder, QualityProduction)
+}
+
+func NewRunnerWithQuality(bin string, encoder VideoEncoder, quality string) *Runner {
+	if encoder.Codec == "" {
+		encoder.Codec = "libx264"
+	}
+	return &Runner{bin: bin, encoder: encoder, quality: NormalizeQuality(quality)}
+}
+
+// StartForLatency encodes using the runner's quality profile and ladder.
+func (r *Runner) StartForLatency(inputURL, outputDir, latencyMode string) (*exec.Cmd, error) {
+	profile, ladder := ResolvePipeline(r.quality, latencyMode)
+	return r.StartABR(inputURL, outputDir, profile, ladder)
 }
 
 // StartABR launches multi-bitrate LL-HLS (or standard HLS) transcoding.
@@ -32,7 +47,7 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 	}
 
 	n := len(ladder)
-	filter := buildScaleFilter(n, ladder)
+	filter := buildScaleFilter(n, ladder, profile.HighQuality)
 	args := []string{"-hide_banner", "-loglevel", "warning", "-fflags", "+genpts+discardcorrupt"}
 
 	if strings.HasPrefix(inputURL, "rtsp://") {
@@ -44,13 +59,7 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 
 	args = append(args, "-i", inputURL, "-filter_complex", filter)
 
-	x264Base := []string{
-		"-c:v", "libx264", "-preset", profile.Preset, "-tune", "zerolatency",
-		"-profile:v", "high", "-pix_fmt", "yuv420p",
-		"-g", strconv.Itoa(profile.GOP), "-keyint_min", strconv.Itoa(profile.GOP),
-		"-sc_threshold", "0", "-bf", "0",
-		"-x264-params", "nal-hrd=cbr:force-cfr=1",
-	}
+	x264Base := r.encoder.BaseArgs(profile)
 
 	for i, t := range ladder {
 		label := fmt.Sprintf("v%dout", i+1)
@@ -109,10 +118,15 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 	return cmd, nil
 }
 
-func buildScaleFilter(n int, ladder []Tier) string {
+func buildScaleFilter(n int, ladder []Tier, highQuality bool) string {
+	scaleFlags := ""
+	if highQuality {
+		scaleFlags = ":flags=lanczos"
+	}
 	if n == 1 {
 		t := ladder[0]
-		return fmt.Sprintf("[0:v]scale=w=%d:h=%d:force_original_aspect_ratio=decrease[v1out]", t.Width, t.Height)
+		return fmt.Sprintf("[0:v]scale=w=%d:h=%d:force_original_aspect_ratio=decrease%s[v1out]",
+			t.Width, t.Height, scaleFlags)
 	}
 	var b strings.Builder
 	b.WriteString("[0:v]split=")
@@ -122,8 +136,8 @@ func buildScaleFilter(n int, ladder []Tier) string {
 	}
 	b.WriteString(";")
 	for i, t := range ladder {
-		fmt.Fprintf(&b, "[v%d]scale=w=%d:h=%d:force_original_aspect_ratio=decrease[v%dout];",
-			i+1, t.Width, t.Height, i+1)
+		fmt.Fprintf(&b, "[v%d]scale=w=%d:h=%d:force_original_aspect_ratio=decrease%s[v%dout];",
+			i+1, t.Width, t.Height, scaleFlags, i+1)
 	}
 	return strings.TrimSuffix(b.String(), ";")
 }

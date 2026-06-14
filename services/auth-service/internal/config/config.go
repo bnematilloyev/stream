@@ -17,6 +17,8 @@ type Config struct {
 	JWTRefresh    string
 	JWTAccessTTL  time.Duration
 	JWTRefreshTTL time.Duration
+	UserCacheTTL  time.Duration
+	GRPCRequestTimeout time.Duration
 }
 
 func Load() Config {
@@ -31,5 +33,15 @@ func Load() Config {
 		JWTRefresh:    pkgconfig.Get("JWT_REFRESH_SECRET", "dev-refresh-secret-change-in-production-32"),
 		JWTAccessTTL:  pkgconfig.Duration("JWT_ACCESS_TTL", 15*time.Minute),
 		JWTRefreshTTL: pkgconfig.Duration("JWT_REFRESH_TTL", 168*time.Hour),
+		UserCacheTTL:  pkgconfig.Duration("AUTH_USER_CACHE_TTL", 5*time.Minute),
+		GRPCRequestTimeout: pkgconfig.Duration("GRPC_REQUEST_TIMEOUT", 10*time.Second),
 	}
+}
+
+// Validate fails fast when production secrets are missing or insecure.
+func (c Config) Validate() error {
+	return pkgconfig.ValidateProductionSecrets(c.AppEnv, map[string]string{
+		"JWT_ACCESS_SECRET":  c.JWTAccess,
+		"JWT_REFRESH_SECRET": c.JWTRefresh,
+	})
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PORTS=(50051 50052 50053 9081 9082 9083 9084 8080)
+PORTS=(50051 50052 50053 50054 9081 9082 9083 9084 9085 9086 8080)
 
 echo "Stopping Sahiy Stream dev services..."
 

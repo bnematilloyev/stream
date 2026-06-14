@@ -5,17 +5,16 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/sahiy/sahiy-stream/pkg/auth"
 	apperrors "github.com/sahiy/sahiy-stream/pkg/errors"
 	"github.com/sahiy/sahiy-stream/pkg/httputil"
-	"github.com/sahiy/sahiy-stream/services/api-gateway/internal/client"
-	authv1 "github.com/sahiy/sahiy-stream/proto/gen/auth/v1"
 )
 
 type contextKey string
 
 const UserContextKey contextKey = "user"
 
-func Authenticate(auth *client.AuthClient) func(http.Handler) http.Handler {
+func Authenticate(validator *auth.Validator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token := extractBearer(r.Header.Get("Authorization"))
@@ -24,30 +23,29 @@ func Authenticate(auth *client.AuthClient) func(http.Handler) http.Handler {
 				return
 			}
 
-			resp, err := auth.ValidateToken(r.Context(), &authv1.ValidateTokenRequest{
-				AccessToken: token,
-			})
-			if err != nil || resp == nil || !resp.Valid || resp.User == nil {
+			user, err := validator.ValidateAccess(r.Context(), token)
+			if err != nil {
+				if appErr, ok := apperrors.IsAppError(err); ok {
+					httputil.Error(w, appErr)
+					return
+				}
 				httputil.Error(w, apperrors.Unauthorized("invalid or expired token"))
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), UserContextKey, resp.User)
+			ctx := context.WithValue(r.Context(), UserContextKey, user)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-func OptionalAuth(auth *client.AuthClient) func(http.Handler) http.Handler {
+func OptionalAuth(validator *auth.Validator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token := extractBearer(r.Header.Get("Authorization"))
 			if token != "" {
-				resp, err := auth.ValidateToken(r.Context(), &authv1.ValidateTokenRequest{
-					AccessToken: token,
-				})
-				if err == nil && resp != nil && resp.Valid && resp.User != nil {
-					ctx := context.WithValue(r.Context(), UserContextKey, resp.User)
+				if user, err := validator.ValidateAccess(r.Context(), token); err == nil && user != nil {
+					ctx := context.WithValue(r.Context(), UserContextKey, user)
 					r = r.WithContext(ctx)
 				}
 			}
@@ -56,8 +54,8 @@ func OptionalAuth(auth *client.AuthClient) func(http.Handler) http.Handler {
 	}
 }
 
-func GetUser(r *http.Request) *authv1.User {
-	user, _ := r.Context().Value(UserContextKey).(*authv1.User)
+func GetUser(r *http.Request) *auth.Principal {
+	user, _ := r.Context().Value(UserContextKey).(*auth.Principal)
 	return user
 }
 

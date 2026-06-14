@@ -34,6 +34,7 @@ type AuthUseCase struct {
 	sessions domain.SessionRepository
 	audit    domain.AuditRepository
 	jwt      *crypto.JWTManager
+	cache    sessionCache
 }
 
 func NewAuthUseCase(
@@ -41,12 +42,14 @@ func NewAuthUseCase(
 	sessions domain.SessionRepository,
 	audit domain.AuditRepository,
 	jwt *crypto.JWTManager,
+	cache sessionCache,
 ) *AuthUseCase {
 	return &AuthUseCase{
 		users:    users,
 		sessions: sessions,
 		audit:    audit,
 		jwt:      jwt,
+		cache:    cache,
 	}
 }
 
@@ -89,6 +92,8 @@ func (uc *AuthUseCase) Register(ctx context.Context, email, username, displayNam
 		return nil, err
 	}
 
+	uc.cacheUserSession(ctx, user)
+
 	_ = uc.audit.Log(ctx, &user.ID, "user.registered", "user", &user.ID, map[string]any{"email": email}, nil)
 
 	return &AuthResult{User: user, Tokens: *tokens}, nil
@@ -113,6 +118,8 @@ func (uc *AuthUseCase) Login(ctx context.Context, email, password, deviceInfo, i
 	if err != nil {
 		return nil, err
 	}
+
+	uc.cacheUserSession(ctx, user)
 
 	_ = uc.users.UpdateLastLogin(ctx, user.ID)
 	_ = uc.audit.Log(ctx, &user.ID, "user.login", "user", &user.ID, map[string]any{}, clientIP)
@@ -159,6 +166,8 @@ func (uc *AuthUseCase) Refresh(ctx context.Context, refreshToken string) (*AuthR
 		return nil, err
 	}
 
+	uc.cacheUserSession(ctx, user)
+
 	return &AuthResult{User: user, Tokens: *tokens}, nil
 }
 
@@ -166,7 +175,17 @@ func (uc *AuthUseCase) Logout(ctx context.Context, refreshToken string) error {
 	if refreshToken == "" {
 		return apperrors.Validation("refresh_token is required", nil)
 	}
-	return uc.sessions.DeleteByRefreshToken(ctx, refreshToken)
+	session, err := uc.sessions.GetByRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return apperrors.Internal(err)
+	}
+	if err := uc.sessions.DeleteByRefreshToken(ctx, refreshToken); err != nil {
+		return apperrors.Internal(err)
+	}
+	if session != nil {
+		uc.revokeUserSession(ctx, session.UserID)
+	}
+	return nil
 }
 
 func (uc *AuthUseCase) ValidateAccess(ctx context.Context, accessToken string) (*domain.User, error) {

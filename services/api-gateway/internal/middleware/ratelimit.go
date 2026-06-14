@@ -10,20 +10,25 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func RateLimit(redisClient *redis.Client, maxPerMinute int) func(http.Handler) http.Handler {
+// RateLimitRules applies per-path rate limits with a default fallback.
+func RateLimitRules(redisClient *redis.Client, defaultRPM int, rules map[string]int) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			key := fmt.Sprintf("ratelimit:%s:%s", clientIP(r), r.URL.Path)
+			limit := defaultRPM
+			if v, ok := rules[r.URL.Path]; ok {
+				limit = v
+			}
 
+			key := fmt.Sprintf("ratelimit:%s:%s", httputil.ClientIP(r), r.URL.Path)
 			count, err := redisClient.Incr(r.Context(), key).Result()
 			if err != nil {
-				next.ServeHTTP(w, r)
+				httputil.Error(w, apperrors.ServiceUnavailable("rate limiter unavailable"))
 				return
 			}
 			if count == 1 {
 				_ = redisClient.Expire(r.Context(), key, time.Minute).Err()
 			}
-			if int(count) > maxPerMinute {
+			if int(count) > limit {
 				httputil.Error(w, apperrors.RateLimited())
 				return
 			}
@@ -31,11 +36,4 @@ func RateLimit(redisClient *redis.Client, maxPerMinute int) func(http.Handler) h
 			next.ServeHTTP(w, r)
 		})
 	}
-}
-
-func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		return xff
-	}
-	return r.RemoteAddr
 }

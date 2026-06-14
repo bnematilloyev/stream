@@ -47,7 +47,7 @@ func (h *ChannelHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ch, err := h.user.Channel.CreateChannel(r.Context(), &userv1.CreateChannelRequest{
-		UserId: u.Id, Slug: body.Slug, Title: body.Title, Description: body.Description, CategoryId: body.CategoryID,
+		UserId: u.ID, Slug: body.Slug, Title: body.Title, Description: body.Description, CategoryId: body.CategoryID,
 	})
 	if err != nil {
 		httputil.Error(w, grpcError(err))
@@ -70,7 +70,7 @@ func (h *ChannelHandler) GetMine(w http.ResponseWriter, r *http.Request) {
 	if u == nil {
 		return
 	}
-	ch, err := h.user.Channel.GetMyChannel(r.Context(), &userv1.GetMyChannelRequest{UserId: u.Id})
+	ch, err := h.user.Channel.GetMyChannel(r.Context(), &userv1.GetMyChannelRequest{UserId: u.ID})
 	if err != nil {
 		httputil.Error(w, grpcError(err))
 		return
@@ -95,7 +95,7 @@ func (h *ChannelHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ch, err := h.user.Channel.UpdateChannel(r.Context(), &userv1.UpdateChannelRequest{
-		UserId: u.Id, Slug: chi.URLParam(r, "slug"),
+		UserId: u.ID, Slug: chi.URLParam(r, "slug"),
 		Title: body.Title, Description: body.Description, BannerUrl: body.BannerURL,
 		AvatarUrl: body.AvatarURL, CategoryId: body.CategoryID,
 	})
@@ -111,7 +111,7 @@ func (h *ChannelHandler) Follow(w http.ResponseWriter, r *http.Request) {
 	if u == nil {
 		return
 	}
-	resp, err := h.user.Channel.Follow(r.Context(), &userv1.FollowRequest{UserId: u.Id, ChannelSlug: chi.URLParam(r, "slug")})
+	resp, err := h.user.Channel.Follow(r.Context(), &userv1.FollowRequest{UserId: u.ID, ChannelSlug: chi.URLParam(r, "slug")})
 	if err != nil {
 		httputil.Error(w, grpcError(err))
 		return
@@ -124,7 +124,7 @@ func (h *ChannelHandler) Unfollow(w http.ResponseWriter, r *http.Request) {
 	if u == nil {
 		return
 	}
-	resp, err := h.user.Channel.Unfollow(r.Context(), &userv1.UnfollowRequest{UserId: u.Id, ChannelSlug: chi.URLParam(r, "slug")})
+	resp, err := h.user.Channel.Unfollow(r.Context(), &userv1.UnfollowRequest{UserId: u.ID, ChannelSlug: chi.URLParam(r, "slug")})
 	if err != nil {
 		httputil.Error(w, grpcError(err))
 		return
@@ -150,7 +150,7 @@ func (h *ChannelHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 	if u == nil {
 		return
 	}
-	resp, err := h.user.Channel.GetIngestKey(r.Context(), &userv1.GetIngestKeyRequest{UserId: u.Id, ChannelSlug: chi.URLParam(r, "slug")})
+	resp, err := h.user.Channel.GetIngestKey(r.Context(), &userv1.GetIngestKeyRequest{UserId: u.ID, ChannelSlug: chi.URLParam(r, "slug")})
 	if err != nil {
 		httputil.Error(w, grpcError(err))
 		return
@@ -163,7 +163,7 @@ func (h *ChannelHandler) RotateKey(w http.ResponseWriter, r *http.Request) {
 	if u == nil {
 		return
 	}
-	resp, err := h.user.Channel.RotateIngestKey(r.Context(), &userv1.RotateIngestKeyRequest{UserId: u.Id, ChannelSlug: chi.URLParam(r, "slug")})
+	resp, err := h.user.Channel.RotateIngestKey(r.Context(), &userv1.RotateIngestKeyRequest{UserId: u.ID, ChannelSlug: chi.URLParam(r, "slug")})
 	if err != nil {
 		httputil.Error(w, grpcError(err))
 		return

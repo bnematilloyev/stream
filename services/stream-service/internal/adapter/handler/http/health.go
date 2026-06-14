@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/sahiy/sahiy-stream/pkg/database"
 )
 
-type HealthHandler struct{ pool *pgxpool.Pool }
+type HealthHandler struct{ db *database.Router }
 
-func NewHealthHandler(pool *pgxpool.Pool) *HealthHandler { return &HealthHandler{pool: pool} }
+func NewHealthHandler(db *database.Router) *HealthHandler { return &HealthHandler{db: db} }
 
 func (h *HealthHandler) Routes() chi.Router {
 	r := chi.NewRouter()
@@ -25,7 +25,7 @@ func (h *HealthHandler) Routes() chi.Router {
 		defer cancel()
 		code := http.StatusOK
 		status := "ready"
-		if err := h.pool.Ping(ctx); err != nil {
+		if err := h.db.Primary().Ping(ctx); err != nil {
 			code = http.StatusServiceUnavailable
 			status = "not_ready"
 		}

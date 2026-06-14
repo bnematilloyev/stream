@@ -42,8 +42,8 @@ URL=$(echo "$playback" | python3 -c "import sys,json; print(json.load(sys.stdin)
 
 echo "Playback URL: ${URL}"
 
-if [[ "$URL" != *"master.m3u8"* ]]; then
-  echo "FAIL: unexpected playback URL"
+if [[ "$URL" != *"master.m3u8"* ]] || [[ "$URL" != *"sig="* ]]; then
+  echo "FAIL: playback URL must be signed HLS manifest"
   exit 1
 fi
 

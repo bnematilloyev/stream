@@ -65,6 +65,8 @@ type StreamRepository interface {
 	GetActiveLiveByChannel(ctx context.Context, channelID uuid.UUID) (*Stream, error)
 	CountLiveByChannel(ctx context.Context, channelID uuid.UUID) (int, error)
 	GetLatestScheduledByChannel(ctx context.Context, channelID uuid.UUID) (*Stream, error)
+	UpdateViewerStats(ctx context.Context, id uuid.UUID, concurrent, unique int) error
+	ListLiveStreamIDs(ctx context.Context) ([]uuid.UUID, error)
 }
 
 type ChannelRepository interface {

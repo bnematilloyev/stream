@@ -3,10 +3,12 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	apperrors "github.com/sahiy/sahiy-stream/pkg/errors"
+	"github.com/sahiy/sahiy-stream/pkg/playback"
 	"github.com/sahiy/sahiy-stream/services/stream-service/internal/domain"
 )
 
@@ -19,13 +21,24 @@ type PlaybackResult struct {
 }
 
 type PlaybackUseCase struct {
-	streams domain.StreamRepository
-	media   domain.StreamMediaRepository
-	hlsBase string
+	streams      domain.StreamRepository
+	media        domain.StreamMediaRepository
+	signer       *playback.Signer
+	playbackBase string
 }
 
-func NewPlaybackUseCase(streams domain.StreamRepository, media domain.StreamMediaRepository, hlsBase string) *PlaybackUseCase {
-	return &PlaybackUseCase{streams: streams, media: media, hlsBase: hlsBase}
+func NewPlaybackUseCase(
+	streams domain.StreamRepository,
+	media domain.StreamMediaRepository,
+	signer *playback.Signer,
+	playbackBase string,
+) *PlaybackUseCase {
+	return &PlaybackUseCase{
+		streams:      streams,
+		media:        media,
+		signer:       signer,
+		playbackBase: strings.TrimRight(playbackBase, "/"),
+	}
 }
 
 func (uc *PlaybackUseCase) GetPlayback(ctx context.Context, streamID uuid.UUID) (*PlaybackResult, error) {
@@ -42,13 +55,9 @@ func (uc *PlaybackUseCase) GetPlayback(ctx context.Context, streamID uuid.UUID) 
 		return nil, apperrors.Internal(err)
 	}
 
-	url := fmt.Sprintf("%s/%s/master.m3u8", uc.hlsBase, streamID.String())
 	status := domain.MediaStatusIdle
 	if m != nil {
 		status = m.Status
-		if m.PlaybackURL != nil && *m.PlaybackURL != "" {
-			url = *m.PlaybackURL
-		}
 	}
 
 	if st.Status != domain.StatusLive {
@@ -58,12 +67,16 @@ func (uc *PlaybackUseCase) GetPlayback(ctx context.Context, streamID uuid.UUID) 
 		return nil, apperrors.NotFound("playback not available")
 	}
 
+	resource := "master.m3u8"
+	unsigned := fmt.Sprintf("%s/playback/%s", uc.playbackBase, streamID.String())
+	signedURL, expiresAt := uc.signer.Sign(unsigned, streamID.String(), resource)
+
 	return &PlaybackResult{
 		StreamID:  streamID,
-		URL:       url,
+		URL:       signedURL,
 		Format:    "hls",
 		Status:    status,
-		ExpiresAt: time.Now().Add(4 * time.Hour),
+		ExpiresAt: expiresAt,
 	}, nil
 }
 

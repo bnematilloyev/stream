@@ -12,14 +12,19 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/sahiy/sahiy-stream/pkg/auth"
+	"github.com/sahiy/sahiy-stream/pkg/crypto"
 	"github.com/sahiy/sahiy-stream/pkg/httputil"
 	"github.com/sahiy/sahiy-stream/pkg/logger"
+	"github.com/sahiy/sahiy-stream/pkg/metrics"
 	pkgredis "github.com/sahiy/sahiy-stream/pkg/redis"
+	authadapter "github.com/sahiy/sahiy-stream/services/api-gateway/internal/auth"
 	"github.com/sahiy/sahiy-stream/services/api-gateway/internal/client"
 	"github.com/sahiy/sahiy-stream/services/api-gateway/internal/config"
 	"github.com/sahiy/sahiy-stream/services/api-gateway/internal/handler"
 	"github.com/sahiy/sahiy-stream/services/api-gateway/internal/middleware"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -55,17 +60,38 @@ func main() {
 	}
 	defer func() { _ = streamClient.Close() }()
 
+	chatClient, err := client.NewChatClient(cfg.ChatService)
+	if err != nil {
+		log.Fatal("chat service connection failed", zap.Error(err))
+	}
+	defer func() { _ = chatClient.Close() }()
+
+	jwtManager := crypto.NewJWTManager(cfg.JWTAccessSecret, cfg.JWTRefreshSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
+	sessionCache := auth.NewSessionCache(redisClient, cfg.UserCacheTTL)
+	tokenValidator := auth.NewValidator(jwtManager, sessionCache, authadapter.NewGRPCUserFetcher(authClient))
+
 	authHandler := handler.NewAuthHandler(authClient)
 	userHandler := handler.NewUserHandler(userClient)
 	channelHandler := handler.NewChannelHandler(userClient, cfg.WhipBaseURL)
 	streamHandler := handler.NewStreamHandler(streamClient, cfg.WhipBaseURL)
+	chatHandler, err := handler.NewChatHandler(chatClient, cfg.ChatHTTPAddr)
+	if err != nil {
+		log.Fatal("chat handler init failed", zap.Error(err))
+	}
+
+	healthHandler := handler.NewHealthHandler(redisClient, map[string]*grpc.ClientConn{
+		"auth-service":   authClient.Conn(),
+		"user-service":   userClient.Conn(),
+		"stream-service": streamClient.Conn(),
+		"chat-service":   chatClient.Conn(),
+	})
 
 	r := chi.NewRouter()
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.RealIP)
 	r.Use(httputil.Recoverer(log))
+	r.Use(metrics.Middleware("api-gateway"))
 	r.Use(httputil.RequestLogger(log))
-	r.Use(chimiddleware.Timeout(30 * time.Second))
 	corsOpts := cors.Options{
 		AllowedOrigins:   cfg.CORSOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -80,47 +106,64 @@ func main() {
 		}
 	}
 	r.Use(cors.Handler(corsOpts))
-	r.Use(middleware.RateLimit(redisClient, cfg.RateLimitRPM))
 
-	r.Get("/health", handler.Health)
+	r.Mount("/", healthHandler.Routes())
+	r.Handle("/metrics", metrics.Handler())
 
-	r.Route("/v1", func(v1 chi.Router) {
-		v1.Route("/auth", func(auth chi.Router) {
-			auth.Post("/register", authHandler.Register)
-			auth.Post("/login", authHandler.Login)
-			auth.Post("/refresh", authHandler.Refresh)
-			auth.Post("/logout", authHandler.Logout)
-			auth.With(middleware.Authenticate(authClient)).Get("/me", authHandler.Me)
-		})
+	r.Group(func(api chi.Router) {
+		api.Use(middleware.RateLimitRules(redisClient, cfg.RateLimitRPM, cfg.RateLimitRules()))
+		api.Use(httputil.MaxBody(cfg.MaxBodyBytes))
+		api.Route("/v1", func(v1 chi.Router) {
+			// WebSocket chat — no request timeout (long-lived connections).
+			v1.Route("/chat", func(chat chi.Router) {
+				chat.Get("/{streamID}/history", chatHandler.History)
+				chat.Get("/{streamID}", chatHandler.WebSocket)
+				chat.With(middleware.Authenticate(tokenValidator)).Delete("/{streamID}/messages/{messageID}", chatHandler.DeleteMessage)
+			})
 
-		v1.Route("/users", func(users chi.Router) {
-			users.With(middleware.Authenticate(authClient)).Get("/me", userHandler.GetMe)
-			users.With(middleware.Authenticate(authClient)).Patch("/me", userHandler.UpdateMe)
-			users.Get("/{username}", userHandler.GetByUsername)
-		})
+			v1.Group(func(rest chi.Router) {
+				rest.Use(chimiddleware.Timeout(30 * time.Second))
 
-		v1.Route("/channels", func(channels chi.Router) {
-			channels.With(middleware.Authenticate(authClient)).Post("/", channelHandler.Create)
-			channels.With(middleware.Authenticate(authClient)).Get("/me", channelHandler.GetMine)
-			channels.Get("/{slug}", channelHandler.Get)
-			channels.With(middleware.Authenticate(authClient)).Patch("/{slug}", channelHandler.Update)
-			channels.With(middleware.Authenticate(authClient)).Post("/{slug}/follow", channelHandler.Follow)
-			channels.With(middleware.Authenticate(authClient)).Delete("/{slug}/follow", channelHandler.Unfollow)
-			channels.Get("/{slug}/followers", channelHandler.Followers)
-			channels.With(middleware.Authenticate(authClient)).Get("/{slug}/ingest", channelHandler.Ingest)
-			channels.With(middleware.Authenticate(authClient)).Post("/{slug}/key/rotate", channelHandler.RotateKey)
-			channels.Get("/{slug}/streams", streamHandler.ListByChannel)
-		})
+				rest.Route("/auth", func(authRoutes chi.Router) {
+					authRoutes.Post("/register", authHandler.Register)
+					authRoutes.Post("/login", authHandler.Login)
+					authRoutes.Post("/refresh", authHandler.Refresh)
+					authRoutes.Post("/logout", authHandler.Logout)
+					authRoutes.With(middleware.Authenticate(tokenValidator)).Get("/me", authHandler.Me)
+				})
 
-		v1.Route("/streams", func(streams chi.Router) {
-			streams.Get("/live", streamHandler.ListLive)
-			streams.Get("/{id}/playback", streamHandler.Playback)
-			streams.Get("/{id}", streamHandler.Get)
-			streams.With(middleware.Authenticate(authClient)).Post("/", streamHandler.Create)
-			streams.With(middleware.Authenticate(authClient)).Patch("/{id}", streamHandler.Update)
-			streams.With(middleware.Authenticate(authClient)).Delete("/{id}", streamHandler.Delete)
-			streams.With(middleware.Authenticate(authClient)).Post("/{id}/start", streamHandler.Start)
-			streams.With(middleware.Authenticate(authClient)).Post("/{id}/end", streamHandler.End)
+				rest.Route("/users", func(users chi.Router) {
+					users.With(middleware.Authenticate(tokenValidator)).Get("/me", userHandler.GetMe)
+					users.With(middleware.Authenticate(tokenValidator)).Patch("/me", userHandler.UpdateMe)
+					users.Get("/{username}", userHandler.GetByUsername)
+				})
+
+				rest.Route("/channels", func(channels chi.Router) {
+					channels.With(middleware.Authenticate(tokenValidator)).Post("/", channelHandler.Create)
+					channels.With(middleware.Authenticate(tokenValidator)).Get("/me", channelHandler.GetMine)
+					channels.Get("/{slug}", channelHandler.Get)
+					channels.With(middleware.Authenticate(tokenValidator)).Patch("/{slug}", channelHandler.Update)
+					channels.With(middleware.Authenticate(tokenValidator)).Post("/{slug}/follow", channelHandler.Follow)
+					channels.With(middleware.Authenticate(tokenValidator)).Delete("/{slug}/follow", channelHandler.Unfollow)
+					channels.Get("/{slug}/followers", channelHandler.Followers)
+					channels.With(middleware.Authenticate(tokenValidator)).Get("/{slug}/ingest", channelHandler.Ingest)
+					channels.With(middleware.Authenticate(tokenValidator)).Post("/{slug}/key/rotate", channelHandler.RotateKey)
+					channels.Get("/{slug}/streams", streamHandler.ListByChannel)
+				})
+
+				rest.Route("/streams", func(streams chi.Router) {
+					streams.Get("/live", streamHandler.ListLive)
+					streams.Get("/{id}/playback", streamHandler.Playback)
+					streams.Get("/{id}", streamHandler.Get)
+					streams.With(middleware.Authenticate(tokenValidator)).Post("/", streamHandler.Create)
+					streams.With(middleware.Authenticate(tokenValidator)).Patch("/{id}", streamHandler.Update)
+					streams.With(middleware.Authenticate(tokenValidator)).Delete("/{id}", streamHandler.Delete)
+					streams.With(middleware.Authenticate(tokenValidator)).Post("/{id}/start", streamHandler.Start)
+					streams.With(middleware.Authenticate(tokenValidator)).Post("/{id}/end", streamHandler.End)
+					streams.Post("/{id}/heartbeat", streamHandler.Heartbeat)
+					streams.Get("/{id}/viewers", streamHandler.ViewerStats)
+				})
+			})
 		})
 	})
 
@@ -128,9 +171,9 @@ func main() {
 		Addr:              cfg.HTTPAddr,
 		Handler:           r,
 		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      15 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		ReadTimeout:       0,
+		WriteTimeout:      0,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	go func() {
@@ -145,8 +188,8 @@ func main() {
 	<-quit
 
 	log.Info("shutdown signal received")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	_ = server.Shutdown(ctx)
+	_ = server.Shutdown(shutdownCtx)
 	log.Info("api gateway stopped")
 }

@@ -1,22 +1,19 @@
 package redis
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/redis/go-redis/v9"
 )
 
 func NewClient(url string) (*redis.Client, error) {
-	opts, err := redis.ParseURL(url)
+	client, err := NewClientFromConfig(Config{URL: url})
 	if err != nil {
-		return nil, fmt.Errorf("parse redis url: %w", err)
+		return nil, err
 	}
-
-	client := redis.NewClient(opts)
-	if err := client.Ping(context.Background()).Err(); err != nil {
-		return nil, fmt.Errorf("ping redis: %w", err)
+	standalone, ok := client.(*redis.Client)
+	if !ok {
+		return nil, fmt.Errorf("expected standalone redis client")
 	}
-
-	return client, nil
+	return standalone, nil
 }

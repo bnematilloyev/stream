@@ -14,12 +14,14 @@ FRONTEND_PORT="${FRONTEND_PORT:-$(grep -E '^Frontend port:' /opt/sahiy-stream/fo
 FRONTEND_PORT="${FRONTEND_PORT:-3002}"
 
 pkill -f "${REMOTE_DIR}/bin/" 2>/dev/null || true
-fuser -k "${FRONTEND_PORT}/tcp" 2>/dev/null || true
+for port in 50051 50052 50053 50054 8080 9084 9085 9086 "${FRONTEND_PORT}"; do
+  fuser -k "${port}/tcp" 2>/dev/null || true
+done
 sleep 1
 
 cd "${REMOTE_DIR}/infra/docker"
 docker compose -f docker-compose.prod.yml down 2>/dev/null || true
-docker rm -f sahiy-redis sahiy-postgres sahiy-minio 2>/dev/null || true
+docker rm -f sahiy-redis sahiy-postgres sahiy-minio sahiy-nats 2>/dev/null || true
 docker compose -f docker-compose.prod.yml up -d
 sleep 8
 
@@ -28,9 +30,12 @@ APP_ENV=production
 LOG_LEVEL=info
 DATABASE_URL=postgres://sahiy:sahiy_secret@127.0.0.1:15433/sahiy_stream?sslmode=disable
 REDIS_URL=redis://127.0.0.1:16379/0
+NATS_URL=nats://127.0.0.1:14222
 AUTH_SERVICE_ADDR=localhost:50051
 USER_SERVICE_ADDR=localhost:50052
 STREAM_SERVICE_ADDR=localhost:50053
+CHAT_SERVICE_ADDR=localhost:50054
+CHAT_HTTP_ADDR=localhost:9085
 GATEWAY_HTTP_ADDR=:8080
 GATEWAY_CORS_ORIGINS=http://${HOST_IP}:${FRONTEND_PORT},http://${HOST_IP}:3000,http://${HOST_IP}
 WHIP_BASE_URL=http://${HOST_IP}:8889
@@ -39,6 +44,10 @@ HLS_OUTPUT_DIR=${REMOTE_DIR}/data/hls
 RTMP_INTERNAL_URL=rtmp://127.0.0.1:1935/live
 RTSP_INTERNAL_URL=rtsp://127.0.0.1:8554
 MEDIA_HTTP_ADDR=:9084
+TRANSCODE_QUALITY=production
+TRANSCODE_MODE=local
+WORKER_MAX_JOBS=1
+GATEWAY_RATE_LIMIT_RPM=500
 ENVFILE
 
 LOG="${REMOTE_DIR}/.logs"
@@ -61,6 +70,7 @@ start_svc() {
 start_svc auth-service; sleep 2
 start_svc user-service; sleep 2
 start_svc stream-service; sleep 2
+start_svc chat-service; sleep 2
 start_svc media-orchestrator; sleep 2
 start_svc api-gateway; sleep 3
 

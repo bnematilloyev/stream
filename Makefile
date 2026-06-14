@@ -1,4 +1,4 @@
-.PHONY: help dev smoke up down stop migrate migrate-down test test-platform test-playback lint build proto clean frontend frontend-dev frontend-build deploy
+.PHONY: help dev smoke up down stop migrate migrate-down test test-platform test-playback test-transcode lint build proto clean frontend frontend-dev frontend-build deploy
 
 help:
 	@echo "Sahiy Stream — available targets:"
@@ -17,6 +17,7 @@ help:
 	@echo "  make migrate-down Rollback last migration"
 	@echo "  make test-platform  Run platform API smoke test"
 	@echo "  make test-playback  Run playback API smoke test"
+	@echo "  make test-transcode Run transcode-worker smoke test"
 	@echo "  make proto        Generate gRPC code from protos"
 	@echo "  make build        Build all services"
 	@echo "  make test         Run unit tests"
@@ -47,7 +48,9 @@ build:
 	cd services/auth-service && go build -o ../../bin/auth-service ./cmd/server
 	cd services/user-service && go build -o ../../bin/user-service ./cmd/server
 	cd services/stream-service && go build -o ../../bin/stream-service ./cmd/server
+	cd services/chat-service && go build -o ../../bin/chat-service ./cmd/server
 	cd services/media-orchestrator && go build -o ../../bin/media-orchestrator ./cmd/server
+	cd services/transcode-worker && go build -o ../../bin/transcode-worker ./cmd/server
 	cd services/api-gateway && go build -o ../../bin/api-gateway ./cmd/server
 
 test:
@@ -63,6 +66,7 @@ dev: up migrate
 smoke: up migrate start
 	@bash scripts/test-platform.sh
 	@bash scripts/test-playback.sh
+	@bash scripts/test-transcode.sh
 
 start:
 	@bash scripts/start-dev.sh
@@ -74,6 +78,9 @@ test-platform:
 test-playback:
 	@bash scripts/wait-for-api.sh
 	@bash scripts/test-playback.sh
+
+test-transcode:
+	@bash scripts/test-transcode.sh
 
 frontend-dev:
 	cd frontend && npm run dev:clean

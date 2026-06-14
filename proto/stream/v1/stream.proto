@@ -18,6 +18,8 @@ service StreamService {
   rpc StartIngest(StartIngestRequest) returns (Stream);
   rpc EndIngest(EndIngestRequest) returns (Stream);
   rpc GetScheduledForChannel(GetScheduledForChannelRequest) returns (Stream);
+  rpc RecordViewerHeartbeat(RecordViewerHeartbeatRequest) returns (ViewerStatsResponse);
+  rpc GetViewerStats(GetViewerStatsRequest) returns (ViewerStatsResponse);
 }
 
 message Stream {
@@ -109,3 +111,16 @@ message StartIngestRequest {
 }
 message EndIngestRequest { string stream_id = 1; }
 message GetScheduledForChannelRequest { string channel_id = 1; }
+
+message RecordViewerHeartbeatRequest {
+  string stream_id = 1;
+  string session_id = 2;
+}
+
+message GetViewerStatsRequest { string stream_id = 1; }
+
+message ViewerStatsResponse {
+  string stream_id = 1;
+  int64 concurrent = 2;
+  int64 unique = 3;
+}

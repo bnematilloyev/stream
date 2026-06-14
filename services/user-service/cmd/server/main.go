@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sahiy/sahiy-stream/pkg/database"
+	"github.com/sahiy/sahiy-stream/pkg/grpcserver"
 	"github.com/sahiy/sahiy-stream/pkg/logger"
 	grpchandler "github.com/sahiy/sahiy-stream/services/user-service/internal/adapter/handler/grpc"
 	httphandler "github.com/sahiy/sahiy-stream/services/user-service/internal/adapter/handler/http"
@@ -49,7 +50,7 @@ func main() {
 	userUC := usecase.NewUserUseCase(profileRepo)
 	channelUC := usecase.NewChannelUseCase(channelRepo, followerRepo, streamKeyRepo, cfg.RTMPBaseURL, cfg.SRTBaseURL)
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(grpcserver.DefaultServerOptions(log, cfg.GRPCRequestTimeout)...)
 	userv1.RegisterUserServiceServer(grpcServer, grpchandler.NewUserServer(userUC))
 	userv1.RegisterChannelServiceServer(grpcServer, grpchandler.NewChannelServer(channelUC))
 

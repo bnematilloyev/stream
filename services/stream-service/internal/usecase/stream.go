@@ -16,10 +16,11 @@ type StreamUseCase struct {
 	streams    domain.StreamRepository
 	channels   domain.ChannelRepository
 	streamKeys domain.StreamKeyRepository
+	viewers    *ViewerUseCase
 }
 
-func NewStreamUseCase(streams domain.StreamRepository, channels domain.ChannelRepository, streamKeys domain.StreamKeyRepository) *StreamUseCase {
-	return &StreamUseCase{streams: streams, channels: channels, streamKeys: streamKeys}
+func NewStreamUseCase(streams domain.StreamRepository, channels domain.ChannelRepository, streamKeys domain.StreamKeyRepository, viewers *ViewerUseCase) *StreamUseCase {
+	return &StreamUseCase{streams: streams, channels: channels, streamKeys: streamKeys, viewers: viewers}
 }
 
 func (uc *StreamUseCase) Create(ctx context.Context, userID uuid.UUID, channelSlug, title, description, ingestProtocol, latencyMode, visibility, categoryID string, tags []string, scheduledAt *time.Time) (*domain.Stream, error) {
@@ -76,6 +77,7 @@ func (uc *StreamUseCase) Get(ctx context.Context, streamID uuid.UUID) (*domain.S
 	if s == nil {
 		return nil, apperrors.NotFound("stream not found")
 	}
+	uc.enrichStream(ctx, s)
 	return s, nil
 }
 
@@ -98,21 +100,16 @@ func (uc *StreamUseCase) Delete(ctx context.Context, userID, streamID uuid.UUID)
 }
 
 func (uc *StreamUseCase) ListLive(ctx context.Context, page, limit int) ([]domain.Stream, pagination.Result, error) {
-	if err := uc.streams.EndStaleLive(ctx); err != nil {
-		return nil, pagination.Result{}, apperrors.Internal(err)
-	}
 	p := pagination.Normalize(page, limit)
 	list, total, err := uc.streams.ListLive(ctx, p)
 	if err != nil {
 		return nil, pagination.Result{}, apperrors.Internal(err)
 	}
+	uc.enrichStreams(ctx, list)
 	return list, pagination.Result{Page: p.Page, Limit: p.Limit, Total: total}, nil
 }
 
 func (uc *StreamUseCase) ListByChannel(ctx context.Context, channelSlug, status string, page, limit int) ([]domain.Stream, pagination.Result, error) {
-	if err := uc.streams.EndStaleLive(ctx); err != nil {
-		return nil, pagination.Result{}, apperrors.Internal(err)
-	}
 	ch, err := uc.channels.GetBySlug(ctx, channelSlug)
 	if err != nil {
 		return nil, pagination.Result{}, apperrors.Internal(err)
@@ -125,6 +122,7 @@ func (uc *StreamUseCase) ListByChannel(ctx context.Context, channelSlug, status 
 	if err != nil {
 		return nil, pagination.Result{}, apperrors.Internal(err)
 	}
+	uc.enrichStreams(ctx, list)
 	return list, pagination.Result{Page: p.Page, Limit: p.Limit, Total: total}, nil
 }
 
@@ -168,6 +166,9 @@ func (uc *StreamUseCase) End(ctx context.Context, userID, streamID uuid.UUID) (*
 	}
 	if count == 0 {
 		_ = uc.channels.SetLive(ctx, s.ChannelID, false)
+	}
+	if uc.viewers != nil {
+		uc.viewers.ClearStream(ctx, streamID)
 	}
 	return uc.streams.GetByID(ctx, streamID)
 }
@@ -232,4 +233,16 @@ func (uc *StreamUseCase) getOwnedStream(ctx context.Context, userID, streamID uu
 		return nil, apperrors.Forbidden("access denied")
 	}
 	return s, nil
+}
+
+func (uc *StreamUseCase) enrichStream(ctx context.Context, s *domain.Stream) {
+	if uc.viewers != nil {
+		uc.viewers.EnrichStream(ctx, s)
+	}
+}
+
+func (uc *StreamUseCase) enrichStreams(ctx context.Context, list []domain.Stream) {
+	if uc.viewers != nil {
+		uc.viewers.EnrichStreams(ctx, list)
+	}
 }

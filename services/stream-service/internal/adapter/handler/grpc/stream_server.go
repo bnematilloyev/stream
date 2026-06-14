@@ -15,10 +15,11 @@ type StreamServer struct {
 	streamv1.UnimplementedStreamServiceServer
 	uc       *usecase.StreamUseCase
 	playback *usecase.PlaybackUseCase
+	viewers  *usecase.ViewerUseCase
 }
 
-func NewStreamServer(uc *usecase.StreamUseCase, playback *usecase.PlaybackUseCase) *StreamServer {
-	return &StreamServer{uc: uc, playback: playback}
+func NewStreamServer(uc *usecase.StreamUseCase, playback *usecase.PlaybackUseCase, viewers *usecase.ViewerUseCase) *StreamServer {
+	return &StreamServer{uc: uc, playback: playback, viewers: viewers}
 }
 
 func (s *StreamServer) CreateStream(ctx context.Context, req *streamv1.CreateStreamRequest) (*streamv1.Stream, error) {
@@ -182,6 +183,34 @@ func (s *StreamServer) GetScheduledForChannel(ctx context.Context, req *streamv1
 		return nil, toGRPCError(err)
 	}
 	return toProto(st), nil
+}
+
+func (s *StreamServer) RecordViewerHeartbeat(ctx context.Context, req *streamv1.RecordViewerHeartbeatRequest) (*streamv1.ViewerStatsResponse, error) {
+	streamID, err := uuid.Parse(req.GetStreamId())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	stats, err := s.viewers.Heartbeat(ctx, streamID, req.GetSessionId())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return &streamv1.ViewerStatsResponse{
+		StreamId: streamID.String(), Concurrent: stats.Concurrent, Unique: stats.Unique,
+	}, nil
+}
+
+func (s *StreamServer) GetViewerStats(ctx context.Context, req *streamv1.GetViewerStatsRequest) (*streamv1.ViewerStatsResponse, error) {
+	streamID, err := uuid.Parse(req.GetStreamId())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	stats, err := s.viewers.Stats(ctx, streamID)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return &streamv1.ViewerStatsResponse{
+		StreamId: streamID.String(), Concurrent: stats.Concurrent, Unique: stats.Unique,
+	}, nil
 }
 
 func toList(list []domain.Stream, meta pagination.Result) *streamv1.ListStreamsResponse {

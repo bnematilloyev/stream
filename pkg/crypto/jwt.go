@@ -101,6 +101,10 @@ func (m *JWTManager) RefreshTTL() time.Duration {
 	return m.refreshTTL
 }
 
+func (m *JWTManager) AccessTTL() time.Duration {
+	return m.accessTTL
+}
+
 func (m *JWTManager) sign(secret []byte, claims Claims) (string, error) {
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, err := t.SignedString(secret)

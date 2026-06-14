@@ -9,8 +9,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"go.uber.org/zap"
+	"github.com/sahiy/sahiy-stream/pkg/hlssync"
+	"github.com/sahiy/sahiy-stream/pkg/storage"
 	"github.com/sahiy/sahiy-stream/services/media-orchestrator/internal/domain"
+	"github.com/sahiy/sahiy-stream/services/media-orchestrator/internal/transcode"
+	"go.uber.org/zap"
 )
 
 type StreamClient interface {
@@ -21,42 +24,59 @@ type StreamClient interface {
 }
 
 type Manager struct {
-	mu       sync.Mutex
-	active   map[string]*session
-	ffmpeg   *FFmpegRunner
-	media    domain.StreamMediaRepository
-	stream   StreamClient
-	rtmpBase string
-	rtspBase string
-	hlsDir   string
-	hlsBase  string
-	log      *zap.Logger
+	mu             sync.Mutex
+	active         map[string]*session
+	backend        transcode.Backend
+	encoder        string
+	quality        string
+	storageBackend string
+	media          domain.StreamMediaRepository
+	stream         StreamClient
+	storage        storage.ObjectStorage
+	syncSegments   bool
+	rtmpBase       string
+	rtspBase       string
+	hlsDir         string
+	log            *zap.Logger
 }
 
 type session struct {
-	streamID   uuid.UUID
-	ingestName string
-	cmd        *exec.Cmd
-	startedAt  time.Time
+	streamID       uuid.UUID
+	ingestName     string
+	jobID          string
+	cmd            *exec.Cmd
+	uploaderCancel context.CancelFunc
+	startedAt      time.Time
 }
 
 func NewManager(
-	ffmpeg *FFmpegRunner,
+	backend transcode.Backend,
+	encoder, quality string,
 	media domain.StreamMediaRepository,
 	stream StreamClient,
-	rtmpBase, rtspBase, hlsDir, hlsBase string,
+	store storage.ObjectStorage,
+	syncSegments bool,
+	rtmpBase, rtspBase, hlsDir string,
 	log *zap.Logger,
 ) *Manager {
+	storageBackend := storage.BackendLocal
+	if store != nil {
+		storageBackend = store.Backend()
+	}
 	return &Manager{
-		active:   make(map[string]*session),
-		ffmpeg:   ffmpeg,
-		media:    media,
-		stream:   stream,
-		rtmpBase: rtmpBase,
-		rtspBase: rtspBase,
-		hlsDir:   hlsDir,
-		hlsBase:  hlsBase,
-		log:      log,
+		active:         make(map[string]*session),
+		backend:        backend,
+		encoder:        encoder,
+		quality:        quality,
+		storageBackend: storageBackend,
+		media:          media,
+		stream:         stream,
+		storage:        store,
+		syncSegments:   syncSegments,
+		rtmpBase:       rtmpBase,
+		rtspBase:       rtspBase,
+		hlsDir:         hlsDir,
+		log:            log,
 	}
 }
 
@@ -68,37 +88,9 @@ func (m *Manager) OnPublish(ctx context.Context, ingestName, source string) erro
 		return nil
 	}
 
-	var streamID string
-	var latencyMode string
-
-	if sid, err := uuid.Parse(ingestName); err == nil {
-		lm, st, err := m.stream.GetStream(ctx, sid.String())
-		if err != nil {
-			return err
-		}
-		if st != "live" && st != "scheduled" {
-			return fmt.Errorf("stream not publishable")
-		}
-		streamID = sid.String()
-		latencyMode = lm
-	} else {
-		valid, channelID, existingStreamID, err := m.stream.ValidateStreamKey(ctx, ingestName)
-		if err != nil {
-			return err
-		}
-		if !valid {
-			return fmt.Errorf("invalid stream key")
-		}
-		streamID = existingStreamID
-		if streamID == "" {
-			streamID, err = m.stream.StartIngest(ctx, channelID)
-			if err != nil {
-				return err
-			}
-		}
-		if lm, _, err := m.stream.GetStream(ctx, streamID); err == nil {
-			latencyMode = lm
-		}
+	streamID, latencyMode, err := m.resolveStream(ctx, ingestName)
+	if err != nil {
+		return err
 	}
 
 	sid, err := uuid.Parse(streamID)
@@ -106,51 +98,53 @@ func (m *Manager) OnPublish(ctx context.Context, ingestName, source string) erro
 		return fmt.Errorf("invalid stream id: %w", err)
 	}
 
-	inputURL := fmt.Sprintf("%s/%s", m.rtmpBase, ingestName)
-	if source == "whip" {
-		path := ingestName
-		if _, err := uuid.Parse(ingestName); err == nil {
-			path = ingestName
-		}
-		inputURL = fmt.Sprintf("%s/%s", m.rtspBase, path)
-		time.Sleep(1200 * time.Millisecond)
-		if latencyMode == "" || latencyMode == "ultra-low" {
-			latencyMode = "ultra-low"
-		}
-	}
-
-	if latencyMode == "" {
-		latencyMode = "standard"
-	}
-
+	inputURL, latencyMode := m.buildInputURL(ingestName, source, latencyMode)
 	outDir := filepath.Join(m.hlsDir, sid.String())
-	cmd, err := m.ffmpeg.StartABR(inputURL, outDir, latencyMode)
+
+	job, err := m.backend.Start(ctx, transcode.StartRequest{
+		StreamID: sid.String(), IngestName: ingestName, InputURL: inputURL,
+		OutputDir: outDir, LatencyMode: latencyMode, Quality: m.quality,
+		Encoder: m.encoder, Storage: m.storageBackend,
+	})
 	if err != nil {
 		return err
 	}
 
+	uploaderCtx, uploaderCancel := context.WithCancel(context.Background())
+	// S3 sync runs where FFmpeg writes segments (local backend; queue mode uses worker).
+	if m.syncSegments && job.Cmd != nil && m.storage != nil && m.storage.Backend() == storage.BackendS3 {
+		go hlssync.NewSegmentUploader(m.storage, outDir, sid, 2*time.Second, m.log).Run(uploaderCtx)
+	}
+
 	now := time.Now()
 	hlsPath := outDir
-	playback := fmt.Sprintf("%s/%s/master.m3u8", m.hlsBase, sid.String())
-	pid := PID(cmd)
-	ingest := ingestName
-	status := domain.StatusIngesting
+	playbackResource := fmt.Sprintf("%s/master.m3u8", sid.String())
+	pid := job.FFmpegPID
 
 	if err := m.media.Upsert(ctx, &domain.StreamMedia{
-		StreamID: sid, Status: status,
-		HLSPath: &hlsPath, PlaybackURL: &playback, IngestName: &ingest,
+		StreamID: sid, Status: domain.StatusIngesting,
+		HLSPath: &hlsPath, PlaybackURL: &playbackResource, IngestName: &ingestName,
 		FFmpegPID: &pid, StartedAt: &now,
 	}); err != nil {
-		_ = Stop(cmd)
+		uploaderCancel()
+		if job.Cmd != nil {
+			_ = transcode.StopCmd(job.Cmd)
+		}
+		_ = m.backend.Stop(ctx, sid.String(), "rollback")
 		return err
 	}
 
-	m.active[ingestName] = &session{streamID: sid, ingestName: ingestName, cmd: cmd, startedAt: now}
+	m.active[ingestName] = &session{
+		streamID: sid, ingestName: ingestName, jobID: job.JobID, cmd: job.Cmd,
+		uploaderCancel: uploaderCancel, startedAt: now,
+	}
 	m.log.Info("ingest started",
 		zap.String("stream_id", sid.String()),
+		zap.String("job_id", job.JobID),
 		zap.String("ingest", ingestName),
 		zap.String("source", source),
 		zap.String("latency_mode", latencyMode),
+		zap.String("storage", m.storageBackend),
 	)
 	return nil
 }
@@ -165,7 +159,13 @@ func (m *Manager) OnPublishDone(ctx context.Context, ingestName string) error {
 	delete(m.active, ingestName)
 	m.mu.Unlock()
 
-	_ = Stop(sess.cmd)
+	if sess.uploaderCancel != nil {
+		sess.uploaderCancel()
+	}
+	if sess.cmd != nil {
+		_ = transcode.StopCmd(sess.cmd)
+	}
+	_ = m.backend.Stop(ctx, sess.streamID.String(), "publish_done")
 
 	now := time.Now()
 	stopped := domain.StatusStopped
@@ -181,4 +181,51 @@ func (m *Manager) OnPublishDone(ctx context.Context, ingestName string) error {
 
 	m.log.Info("ingest stopped", zap.String("stream_id", sess.streamID.String()))
 	return nil
+}
+
+func (m *Manager) resolveStream(ctx context.Context, ingestName string) (streamID, latencyMode string, err error) {
+	if sid, parseErr := uuid.Parse(ingestName); parseErr == nil {
+		lm, st, getErr := m.stream.GetStream(ctx, sid.String())
+		if getErr != nil {
+			return "", "", getErr
+		}
+		if st != "live" && st != "scheduled" {
+			return "", "", fmt.Errorf("stream not publishable")
+		}
+		return sid.String(), lm, nil
+	}
+
+	valid, channelID, existingStreamID, err := m.stream.ValidateStreamKey(ctx, ingestName)
+	if err != nil {
+		return "", "", err
+	}
+	if !valid {
+		return "", "", fmt.Errorf("invalid stream key")
+	}
+
+	streamID = existingStreamID
+	if streamID == "" {
+		streamID, err = m.stream.StartIngest(ctx, channelID)
+		if err != nil {
+			return "", "", err
+		}
+	}
+	if lm, _, err := m.stream.GetStream(ctx, streamID); err == nil {
+		latencyMode = lm
+	}
+	return streamID, latencyMode, nil
+}
+
+func (m *Manager) buildInputURL(ingestName, source, latencyMode string) (string, string) {
+	if source == "whip" {
+		time.Sleep(1200 * time.Millisecond)
+		if latencyMode == "" || latencyMode == "ultra-low" {
+			latencyMode = "ultra-low"
+		}
+		return fmt.Sprintf("%s/%s", m.rtspBase, ingestName), latencyMode
+	}
+	if latencyMode == "" {
+		latencyMode = "standard"
+	}
+	return fmt.Sprintf("%s/%s", m.rtmpBase, ingestName), latencyMode
 }

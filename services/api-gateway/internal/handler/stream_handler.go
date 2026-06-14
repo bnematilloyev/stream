@@ -41,7 +41,7 @@ func (h *StreamHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	st, err := h.stream.Stream.CreateStream(r.Context(), &streamv1.CreateStreamRequest{
-		UserId: u.Id, ChannelSlug: body.ChannelSlug, Title: body.Title, Description: body.Description,
+		UserId: u.ID, ChannelSlug: body.ChannelSlug, Title: body.Title, Description: body.Description,
 		IngestProtocol: body.IngestProtocol, LatencyMode: body.LatencyMode, Visibility: body.Visibility,
 		CategoryId: body.CategoryID, Tags: body.Tags, ScheduledAtUnix: body.ScheduledAtUnix,
 	})
@@ -78,7 +78,7 @@ func (h *StreamHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	st, err := h.stream.Stream.UpdateStream(r.Context(), &streamv1.UpdateStreamRequest{
-		UserId: u.Id, StreamId: chi.URLParam(r, "id"),
+		UserId: u.ID, StreamId: chi.URLParam(r, "id"),
 		Title: body.Title, Description: body.Description, Visibility: body.Visibility,
 		CategoryId: body.CategoryID, Tags: body.Tags,
 	})
@@ -95,7 +95,7 @@ func (h *StreamHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, err := h.stream.Stream.DeleteStream(r.Context(), &streamv1.DeleteStreamRequest{
-		UserId: u.Id, StreamId: chi.URLParam(r, "id"),
+		UserId: u.ID, StreamId: chi.URLParam(r, "id"),
 	})
 	if err != nil {
 		httputil.Error(w, grpcError(err))
@@ -133,7 +133,7 @@ func (h *StreamHandler) Start(w http.ResponseWriter, r *http.Request) {
 	if u == nil {
 		return
 	}
-	st, err := h.stream.Stream.StartStream(r.Context(), &streamv1.StartStreamRequest{UserId: u.Id, StreamId: chi.URLParam(r, "id")})
+	st, err := h.stream.Stream.StartStream(r.Context(), &streamv1.StartStreamRequest{UserId: u.ID, StreamId: chi.URLParam(r, "id")})
 	if err != nil {
 		httputil.Error(w, grpcError(err))
 		return
@@ -170,12 +170,51 @@ func (h *StreamHandler) End(w http.ResponseWriter, r *http.Request) {
 	if u == nil {
 		return
 	}
-	st, err := h.stream.Stream.EndStream(r.Context(), &streamv1.EndStreamRequest{UserId: u.Id, StreamId: chi.URLParam(r, "id")})
+	st, err := h.stream.Stream.EndStream(r.Context(), &streamv1.EndStreamRequest{UserId: u.ID, StreamId: chi.URLParam(r, "id")})
 	if err != nil {
 		httputil.Error(w, grpcError(err))
 		return
 	}
 	httputil.JSON(w, http.StatusOK, streamToJSON(st))
+}
+
+func (h *StreamHandler) Heartbeat(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		SessionID string `json:"session_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		httputil.Error(w, decodeError(err))
+		return
+	}
+	if body.SessionID == "" {
+		httputil.Error(w, validationError("session_id is required"))
+		return
+	}
+	resp, err := h.stream.Stream.RecordViewerHeartbeat(r.Context(), &streamv1.RecordViewerHeartbeatRequest{
+		StreamId: chi.URLParam(r, "id"), SessionId: body.SessionID,
+	})
+	if err != nil {
+		httputil.Error(w, grpcError(err))
+		return
+	}
+	httputil.JSON(w, http.StatusOK, viewerStatsToJSON(resp))
+}
+
+func (h *StreamHandler) ViewerStats(w http.ResponseWriter, r *http.Request) {
+	resp, err := h.stream.Stream.GetViewerStats(r.Context(), &streamv1.GetViewerStatsRequest{
+		StreamId: chi.URLParam(r, "id"),
+	})
+	if err != nil {
+		httputil.Error(w, grpcError(err))
+		return
+	}
+	httputil.JSON(w, http.StatusOK, viewerStatsToJSON(resp))
+}
+
+func viewerStatsToJSON(resp *streamv1.ViewerStatsResponse) map[string]any {
+	return map[string]any{
+		"stream_id": resp.StreamId, "concurrent": resp.Concurrent, "unique": resp.Unique,
+	}
 }
 
 func streamToJSON(st *streamv1.Stream) map[string]any {

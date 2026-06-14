@@ -19,7 +19,7 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	if u == nil {
 		return
 	}
-	profile, err := h.user.User.GetProfile(r.Context(), &userv1.GetProfileRequest{UserId: u.Id})
+	profile, err := h.user.User.GetProfile(r.Context(), &userv1.GetProfileRequest{UserId: u.ID})
 	if err != nil {
 		httputil.Error(w, grpcError(err))
 		return
@@ -41,7 +41,7 @@ func (h *UserHandler) UpdateMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	profile, err := h.user.User.UpdateProfile(r.Context(), &userv1.UpdateProfileRequest{
-		UserId: u.Id, DisplayName: body.DisplayName, AvatarUrl: body.AvatarURL,
+		UserId: u.ID, DisplayName: body.DisplayName, AvatarUrl: body.AvatarURL,
 	})
 	if err != nil {
 		httputil.Error(w, grpcError(err))

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Header } from "@/components/layout/Header";
 import { formatViewerCount, timeAgo } from "@/lib/utils";
+import { ChatPanel } from "@/components/chat/ChatPanel";
 import { Eye } from "lucide-react";
 
 export default function WatchPage() {
@@ -140,12 +141,10 @@ export default function WatchPage() {
               </div>
             )}
 
-            <div className="rounded-2xl border border-border bg-surface-1 p-4">
-              <h3 className="font-semibold">Chat</h3>
-              <p className="mt-2 text-sm text-muted">
-                Chat tez orada qo&apos;shiladi (Phase 4)
-              </p>
-            </div>
+            <ChatPanel
+              streamId={id}
+              live={stream?.status === "live" && !!(playback?.url || playback?.whep_url)}
+            />
           </aside>
         </div>
       </div>

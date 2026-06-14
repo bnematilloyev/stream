@@ -9,12 +9,13 @@ type Profile struct {
 	Preset      string
 	GOP         int
 	AudioRate   int
+	HighQuality bool
 }
 
 func LLHLSProfile() Profile {
 	return Profile{
 		SegmentSec: 2.0,
-		PartSec:    0.33, // ~330ms partials → 2–4s end-to-end with player
+		PartSec:    0.33,
 		UseLLHLS:   true,
 		UseFMP4:    true,
 		Preset:     "veryfast",

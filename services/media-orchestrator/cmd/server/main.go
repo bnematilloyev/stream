@@ -12,16 +12,24 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sahiy/sahiy-stream/pkg/database"
 	"github.com/sahiy/sahiy-stream/pkg/logger"
+	pkgnats "github.com/sahiy/sahiy-stream/pkg/nats"
+	"github.com/sahiy/sahiy-stream/pkg/security/internalauth"
+	"github.com/sahiy/sahiy-stream/pkg/storage"
 	httphandler "github.com/sahiy/sahiy-stream/services/media-orchestrator/internal/adapter/handler/http"
 	"github.com/sahiy/sahiy-stream/services/media-orchestrator/internal/adapter/repository"
 	"github.com/sahiy/sahiy-stream/services/media-orchestrator/internal/client"
 	"github.com/sahiy/sahiy-stream/services/media-orchestrator/internal/config"
 	"github.com/sahiy/sahiy-stream/services/media-orchestrator/internal/pipeline"
+	"github.com/sahiy/sahiy-stream/services/media-orchestrator/internal/transcode"
 	"go.uber.org/zap"
 )
 
 func main() {
 	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		panic("invalid config: " + err.Error())
+	}
+
 	log, _ := logger.New("media-orchestrator", cfg.LogLevel)
 	defer func() { _ = log.Sync() }()
 
@@ -32,6 +40,14 @@ func main() {
 	}
 	defer pool.Close()
 
+	store, err := storage.New(cfg.Storage)
+	if err != nil {
+		log.Fatal("storage init failed", zap.Error(err))
+	}
+	if err := store.EnsureBucket(ctx); err != nil {
+		log.Warn("storage bucket ensure failed", zap.Error(err))
+	}
+
 	streamClient, err := client.NewStreamClient(cfg.StreamServiceAddr)
 	if err != nil {
 		log.Fatal("stream client failed", zap.Error(err))
@@ -39,12 +55,39 @@ func main() {
 	defer func() { _ = streamClient.Close() }()
 
 	mediaRepo := repository.NewPostgresStreamMediaRepository(pool)
-	ffmpeg := pipeline.NewFFmpegRunner(cfg.FFmpegPath)
-	mgr := pipeline.NewManager(ffmpeg, mediaRepo, streamClient, cfg.RTMPInternalURL, cfg.RTSPInternalURL, cfg.HLSOutputDir, cfg.HLSBaseURL, log)
+
+	var backend transcode.Backend
+	switch cfg.TranscodeMode {
+	case "queue":
+		bus, err := pkgnats.NewTranscodeBus(pkgnats.DefaultConfig(cfg.NATSURL))
+		if err != nil {
+			log.Fatal("nats transcode bus failed", zap.Error(err))
+		}
+		defer bus.Close()
+		backend = transcode.NewQueueBackend(bus)
+		listener := transcode.NewEventListener(mediaRepo, log)
+		if _, err := bus.SubscribeEvents(listener.Handle); err != nil {
+			log.Fatal("transcode event subscribe failed", zap.Error(err))
+		}
+		log.Info("transcode mode: queue (NATS)")
+	default:
+		backend = transcode.NewLocalBackend(cfg.FFmpegPath, cfg.FFmpegVideoEncoder, cfg.TranscodeQuality)
+		log.Info("transcode mode: local (embedded FFmpeg)")
+	}
+
+	mgr := pipeline.NewManager(
+		backend, cfg.FFmpegVideoEncoder, cfg.TranscodeQuality, mediaRepo, streamClient, store, cfg.SyncSegments(),
+		cfg.RTMPInternalURL, cfg.RTSPInternalURL, cfg.HLSOutputDir, log,
+	)
+
+	secret, requireSecret, allowInternal := cfg.HookAuth()
+	hookAuth := internalauth.Config{
+		Secret: secret, RequireSecret: requireSecret, AllowInternal: allowInternal,
+	}
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer)
-	router.Mount("/", httphandler.NewHookHandler(mgr, log).Routes())
+	router.Mount("/", httphandler.NewHookHandler(mgr, log, hookAuth).Routes())
 
 	server := &http.Server{
 		Addr: cfg.HTTPAddr, Handler: router,
@@ -52,7 +95,13 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	}
 	go func() {
-		log.Info("media-orchestrator started", zap.String("addr", cfg.HTTPAddr))
+		log.Info("media-orchestrator started",
+			zap.String("addr", cfg.HTTPAddr),
+			zap.String("storage", store.Backend()),
+			zap.String("encoder", cfg.FFmpegVideoEncoder),
+			zap.String("transcode_mode", cfg.TranscodeMode),
+			zap.String("transcode_quality", cfg.TranscodeQuality),
+		)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("http failed", zap.Error(err))
 		}

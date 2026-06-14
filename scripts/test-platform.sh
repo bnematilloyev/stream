@@ -65,6 +65,7 @@ if ! echo "${STREAM}" | python3 -c "import sys,json; json.load(sys.stdin)['id']"
   exit 1
 fi
 STREAM_ID=$(echo "${STREAM}" | json_get id)
+export TOKEN STREAM_ID
 echo "${STREAM}" | python3 -m json.tool
 
 echo "==> Start stream"
@@ -72,5 +73,26 @@ curl -s -X POST "${API}/v1/streams/${STREAM_ID}/start" -H "${AUTH}" | python3 -m
 
 echo "==> List live streams"
 curl -s "${API}/v1/streams/live" | python3 -m json.tool
+
+echo "==> Chat history"
+curl -s "${API}/v1/chat/${STREAM_ID}/history" | python3 -m json.tool
+
+echo "==> Chat message (WebSocket)"
+python3 - <<PY
+import json, os, sys
+try:
+    import websocket
+except ImportError:
+    print("websocket-client not installed — skip WS chat smoke")
+    sys.exit(0)
+
+token = os.environ["TOKEN"]
+stream_id = os.environ["STREAM_ID"]
+ws_url = f"ws://localhost:8080/v1/chat/{stream_id}?token={token}"
+ws = websocket.create_connection(ws_url, timeout=5)
+ws.send(json.dumps({"type": "message", "content": "smoke test hello"}))
+print(ws.recv())
+ws.close()
+PY
 
 echo "OK - platform flow works"

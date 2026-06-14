@@ -91,6 +91,10 @@ func RateLimited() *AppError {
 	return New(CodeRateLimited, "too many requests", http.StatusTooManyRequests)
 }
 
+func ServiceUnavailable(message string) *AppError {
+	return New(CodeInternal, message, http.StatusServiceUnavailable)
+}
+
 func IsAppError(err error) (*AppError, bool) {
 	var appErr *AppError
 	if errors.As(err, &appErr) {

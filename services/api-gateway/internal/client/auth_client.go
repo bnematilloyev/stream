@@ -29,6 +29,10 @@ func (c *AuthClient) Close() error {
 	return c.conn.Close()
 }
 
+func (c *AuthClient) Conn() *grpc.ClientConn {
+	return c.conn
+}
+
 func (c *AuthClient) Register(ctx context.Context, req *authv1.RegisterRequest) (*authv1.AuthResponse, error) {
 	return c.client.Register(ctx, req)
 }

@@ -6,19 +6,19 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/sahiy/sahiy-stream/pkg/database"
 	"github.com/sahiy/sahiy-stream/services/stream-service/internal/domain"
 )
 
-type PostgresStreamMediaRepository struct{ pool *pgxpool.Pool }
+type PostgresStreamMediaRepository struct{ db *database.Router }
 
-func NewPostgresStreamMediaRepository(pool *pgxpool.Pool) *PostgresStreamMediaRepository {
-	return &PostgresStreamMediaRepository{pool: pool}
+func NewPostgresStreamMediaRepository(db *database.Router) *PostgresStreamMediaRepository {
+	return &PostgresStreamMediaRepository{db: db}
 }
 
 func (r *PostgresStreamMediaRepository) GetByStreamID(ctx context.Context, streamID uuid.UUID) (*domain.StreamMedia, error) {
 	var m domain.StreamMedia
-	err := r.pool.QueryRow(ctx, `
+	err := r.db.Read().QueryRow(ctx, `
 		SELECT stream_id, status, hls_path, playback_url, ingest_name, started_at, stopped_at, updated_at
 		FROM stream_media WHERE stream_id = $1
 	`, streamID).Scan(&m.StreamID, &m.Status, &m.HLSPath, &m.PlaybackURL, &m.IngestName, &m.StartedAt, &m.StoppedAt, &m.UpdatedAt)
@@ -29,7 +29,7 @@ func (r *PostgresStreamMediaRepository) GetByStreamID(ctx context.Context, strea
 }
 
 func (r *PostgresStreamMediaRepository) Upsert(ctx context.Context, m *domain.StreamMedia) error {
-	_, err := r.pool.Exec(ctx, `
+	_, err := r.db.Write().Exec(ctx, `
 		INSERT INTO stream_media (stream_id, status, hls_path, playback_url, ingest_name, started_at, stopped_at, updated_at)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
 		ON CONFLICT (stream_id) DO UPDATE SET

@@ -8,15 +8,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/sahiy/sahiy-stream/pkg/database"
 	"github.com/sahiy/sahiy-stream/pkg/pagination"
 	"github.com/sahiy/sahiy-stream/services/stream-service/internal/domain"
 )
 
-type PostgresStreamRepository struct{ pool *pgxpool.Pool }
+type PostgresStreamRepository struct{ db *database.Router }
 
-func NewPostgresStreamRepository(pool *pgxpool.Pool) *PostgresStreamRepository {
-	return &PostgresStreamRepository{pool: pool}
+func NewPostgresStreamRepository(db *database.Router) *PostgresStreamRepository {
+	return &PostgresStreamRepository{db: db}
 }
 
 const streamSelect = `
@@ -32,7 +32,7 @@ func (r *PostgresStreamRepository) Create(ctx context.Context, s *domain.Stream)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
 		RETURNING id, viewer_count, peak_viewers, created_at, updated_at
 	`
-	return r.pool.QueryRow(ctx, query,
+	return r.db.Write().QueryRow(ctx, query,
 		s.ChannelID, s.Title, s.Description, s.IngestProtocol, s.LatencyMode, s.Visibility, s.CategoryID, s.Tags, s.ScheduledAt, s.Status,
 	).Scan(&s.ID, &s.ViewerCount, &s.PeakViewers, &s.CreatedAt, &s.UpdatedAt)
 }
@@ -53,7 +53,7 @@ func (r *PostgresStreamRepository) Update(ctx context.Context, id, userID uuid.U
 		FROM channels c
 		WHERE s.id = $1 AND s.channel_id = c.id AND c.user_id = $2
 	`
-	tag, err := r.pool.Exec(ctx, query, id, userID, title, description, visibility, categoryID, tags)
+	tag, err := r.db.Write().Exec(ctx, query, id, userID, title, description, visibility, categoryID, tags)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (r *PostgresStreamRepository) Update(ctx context.Context, id, userID uuid.U
 }
 
 func (r *PostgresStreamRepository) Delete(ctx context.Context, id, userID uuid.UUID) error {
-	tag, err := r.pool.Exec(ctx, `
+	tag, err := r.db.Write().Exec(ctx, `
 		DELETE FROM streams s USING channels c
 		WHERE s.id = $1 AND s.channel_id = c.id AND c.user_id = $2 AND s.status IN ('scheduled','ended')
 	`, id, userID)
@@ -85,10 +85,10 @@ const liveWithIngest = `
 
 func (r *PostgresStreamRepository) ListLive(ctx context.Context, p pagination.Params) ([]domain.Stream, int, error) {
 	var total int
-	if err := r.pool.QueryRow(ctx, `SELECT COUNT(*) `+liveWithIngest+` WHERE s.status = 'live' AND s.visibility = 'public'`).Scan(&total); err != nil {
+	if err := r.db.Read().QueryRow(ctx, `SELECT COUNT(*) `+liveWithIngest+` WHERE s.status = 'live' AND s.visibility = 'public'`).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	rows, err := r.pool.Query(ctx, `
+	rows, err := r.db.Read().Query(ctx, `
 		SELECT s.id, s.channel_id, c.slug, c.title, s.title, s.description, s.thumbnail_url,
 		       s.status, s.ingest_protocol, s.latency_mode, s.visibility, s.category_id, s.tags,
 		       s.scheduled_at, s.started_at, s.ended_at, s.viewer_count, s.peak_viewers, s.created_at, s.updated_at
@@ -102,7 +102,7 @@ func (r *PostgresStreamRepository) ListLive(ctx context.Context, p pagination.Pa
 }
 
 func (r *PostgresStreamRepository) EndStaleLive(ctx context.Context) error {
-	_, err := r.pool.Exec(ctx, `
+	_, err := r.db.Write().Exec(ctx, `
 		WITH stale AS (
 			SELECT s.id, s.channel_id
 			FROM streams s
@@ -133,7 +133,7 @@ func (r *PostgresStreamRepository) EndStaleLive(ctx context.Context) error {
 }
 
 func (r *PostgresStreamRepository) ReconcileLiveStream(ctx context.Context, id uuid.UUID) error {
-	_, err := r.pool.Exec(ctx, `
+	_, err := r.db.Write().Exec(ctx, `
 		WITH ended AS (
 			UPDATE streams s
 			SET status = 'ended', ended_at = NOW(), updated_at = NOW()
@@ -168,12 +168,12 @@ func (r *PostgresStreamRepository) ListByChannel(ctx context.Context, channelID 
 	}
 	var total int
 	countQ := `SELECT COUNT(*) FROM streams s` + where
-	if err := r.pool.QueryRow(ctx, countQ, args...).Scan(&total); err != nil {
+	if err := r.db.Read().QueryRow(ctx, countQ, args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 	args = append(args, p.Limit, p.Offset())
 	listQ := streamSelect + where + fmt.Sprintf(` ORDER BY s.created_at DESC LIMIT $%d OFFSET $%d`, len(args)-1, len(args))
-	rows, err := r.pool.Query(ctx, listQ, args...)
+	rows, err := r.db.Read().Query(ctx, listQ, args...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -182,7 +182,7 @@ func (r *PostgresStreamRepository) ListByChannel(ctx context.Context, channelID 
 }
 
 func (r *PostgresStreamRepository) SetStatus(ctx context.Context, id uuid.UUID, status string, startedAt, endedAt *time.Time) error {
-	_, err := r.pool.Exec(ctx, `
+	_, err := r.db.Write().Exec(ctx, `
 		UPDATE streams SET status = $2, started_at = COALESCE($3, started_at), ended_at = COALESCE($4, ended_at), updated_at = NOW()
 		WHERE id = $1
 	`, id, status, startedAt, endedAt)
@@ -199,12 +199,40 @@ func (r *PostgresStreamRepository) GetLatestScheduledByChannel(ctx context.Conte
 
 func (r *PostgresStreamRepository) CountLiveByChannel(ctx context.Context, channelID uuid.UUID) (int, error) {
 	var n int
-	err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM streams WHERE channel_id = $1 AND status = 'live'`, channelID).Scan(&n)
+	err := r.db.Read().QueryRow(ctx, `SELECT COUNT(*) FROM streams WHERE channel_id = $1 AND status = 'live'`, channelID).Scan(&n)
 	return n, err
 }
 
+func (r *PostgresStreamRepository) UpdateViewerStats(ctx context.Context, id uuid.UUID, concurrent, unique int) error {
+	_, err := r.db.Write().Exec(ctx, `
+		UPDATE streams
+		SET viewer_count = $2,
+		    peak_viewers = GREATEST(peak_viewers, $2, $3),
+		    updated_at = NOW()
+		WHERE id = $1
+	`, id, concurrent, unique)
+	return err
+}
+
+func (r *PostgresStreamRepository) ListLiveStreamIDs(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := r.db.Read().Query(ctx, `SELECT id FROM streams WHERE status = 'live'`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 func (r *PostgresStreamRepository) scanOne(ctx context.Context, query string, arg any) (*domain.Stream, error) {
-	rows, err := r.pool.Query(ctx, query, arg)
+	rows, err := r.db.Read().Query(ctx, query, arg)
 	if err != nil {
 		return nil, err
 	}
@@ -235,15 +263,15 @@ func (r *PostgresStreamRepository) scanRows(rows pgx.Rows, total int) ([]domain.
 	return list, total, rows.Err()
 }
 
-type PostgresChannelRepository struct{ pool *pgxpool.Pool }
+type PostgresChannelRepository struct{ db *database.Router }
 
-func NewPostgresChannelRepository(pool *pgxpool.Pool) *PostgresChannelRepository {
-	return &PostgresChannelRepository{pool: pool}
+func NewPostgresChannelRepository(db *database.Router) *PostgresChannelRepository {
+	return &PostgresChannelRepository{db: db}
 }
 
 func (r *PostgresChannelRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Channel, error) {
 	var c domain.Channel
-	err := r.pool.QueryRow(ctx, `SELECT id, user_id, slug, title FROM channels WHERE id = $1`, id).Scan(&c.ID, &c.UserID, &c.Slug, &c.Title)
+	err := r.db.Read().QueryRow(ctx, `SELECT id, user_id, slug, title FROM channels WHERE id = $1`, id).Scan(&c.ID, &c.UserID, &c.Slug, &c.Title)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -252,7 +280,7 @@ func (r *PostgresChannelRepository) GetByID(ctx context.Context, id uuid.UUID) (
 
 func (r *PostgresChannelRepository) GetBySlug(ctx context.Context, slug string) (*domain.Channel, error) {
 	var c domain.Channel
-	err := r.pool.QueryRow(ctx, `SELECT id, user_id, slug, title FROM channels WHERE slug = $1`, slug).Scan(&c.ID, &c.UserID, &c.Slug, &c.Title)
+	err := r.db.Read().QueryRow(ctx, `SELECT id, user_id, slug, title FROM channels WHERE slug = $1`, slug).Scan(&c.ID, &c.UserID, &c.Slug, &c.Title)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -260,19 +288,19 @@ func (r *PostgresChannelRepository) GetBySlug(ctx context.Context, slug string) 
 }
 
 func (r *PostgresChannelRepository) SetLive(ctx context.Context, channelID uuid.UUID, live bool) error {
-	_, err := r.pool.Exec(ctx, `UPDATE channels SET is_live = $2, updated_at = NOW() WHERE id = $1`, channelID, live)
+	_, err := r.db.Write().Exec(ctx, `UPDATE channels SET is_live = $2, updated_at = NOW() WHERE id = $1`, channelID, live)
 	return err
 }
 
-type PostgresStreamKeyRepository struct{ pool *pgxpool.Pool }
+type PostgresStreamKeyRepository struct{ db *database.Router }
 
-func NewPostgresStreamKeyRepository(pool *pgxpool.Pool) *PostgresStreamKeyRepository {
-	return &PostgresStreamKeyRepository{pool: pool}
+func NewPostgresStreamKeyRepository(db *database.Router) *PostgresStreamKeyRepository {
+	return &PostgresStreamKeyRepository{db: db}
 }
 
 func (r *PostgresStreamKeyRepository) GetByLookup(ctx context.Context, lookup string) (*domain.StreamKey, error) {
 	var k domain.StreamKey
-	err := r.pool.QueryRow(ctx, `
+	err := r.db.Read().QueryRow(ctx, `
 		SELECT id, channel_id, key_lookup FROM stream_keys WHERE key_lookup = $1 AND is_active = TRUE
 	`, lookup).Scan(&k.ID, &k.ChannelID, &k.KeyLookup)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -282,7 +310,7 @@ func (r *PostgresStreamKeyRepository) GetByLookup(ctx context.Context, lookup st
 }
 
 func (r *PostgresStreamKeyRepository) UpdateLastUsed(ctx context.Context, id uuid.UUID) error {
-	_, err := r.pool.Exec(ctx, `UPDATE stream_keys SET last_used_at = NOW() WHERE id = $1`, id)
+	_, err := r.db.Write().Exec(ctx, `UPDATE stream_keys SET last_used_at = NOW() WHERE id = $1`, id)
 	return err
 }
 

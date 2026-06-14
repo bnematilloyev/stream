@@ -1,11 +1,13 @@
-go 1.22.7
+go 1.24.1
 
 use (
 	./pkg
 	./proto
 	./services/api-gateway
 	./services/auth-service
+	./services/chat-service
 	./services/media-orchestrator
 	./services/stream-service
+	./services/transcode-worker
 	./services/user-service
 )

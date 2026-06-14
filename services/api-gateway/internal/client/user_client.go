@@ -25,3 +25,5 @@ func NewUserClient(addr string) (*UserClient, error) {
 }
 
 func (c *UserClient) Close() error { return c.conn.Close() }
+
+func (c *UserClient) Conn() *grpc.ClientConn { return c.conn }

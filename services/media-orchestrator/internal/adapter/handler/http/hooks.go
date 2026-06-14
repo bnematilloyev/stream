@@ -4,7 +4,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/sahiy/sahiy-stream/pkg/health"
 	"github.com/sahiy/sahiy-stream/pkg/httputil"
+	"github.com/sahiy/sahiy-stream/pkg/security/internalauth"
 	"github.com/sahiy/sahiy-stream/services/media-orchestrator/internal/pipeline"
 	"go.uber.org/zap"
 )
@@ -12,22 +14,28 @@ import (
 type HookHandler struct {
 	pipeline *pipeline.Manager
 	log      *zap.Logger
+	auth     internalauth.Config
 }
 
-func NewHookHandler(p *pipeline.Manager, log *zap.Logger) *HookHandler {
-	return &HookHandler{pipeline: p, log: log}
+func NewHookHandler(p *pipeline.Manager, log *zap.Logger, auth internalauth.Config) *HookHandler {
+	return &HookHandler{pipeline: p, log: log, auth: auth}
 }
 
 func (h *HookHandler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Post("/hooks/publish", h.onPublish)
-	r.Post("/hooks/publish_done", h.onPublishDone)
 	r.Get("/health", h.health)
+
+	r.Group(func(protected chi.Router) {
+		protected.Use(internalauth.Middleware(h.auth))
+		protected.Post("/hooks/publish", h.onPublish)
+		protected.Post("/hooks/publish_done", h.onPublishDone)
+	})
+
 	return r
 }
 
-func (h *HookHandler) health(w http.ResponseWriter, r *http.Request) {
-	httputil.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+func (h *HookHandler) health(w http.ResponseWriter, _ *http.Request) {
+	health.Liveness(w, "media-orchestrator")
 }
 
 func (h *HookHandler) onPublish(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +59,7 @@ func (h *HookHandler) onPublish(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "rejected", http.StatusForbidden)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	httputil.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *HookHandler) onPublishDone(w http.ResponseWriter, r *http.Request) {
@@ -64,5 +72,5 @@ func (h *HookHandler) onPublishDone(w http.ResponseWriter, r *http.Request) {
 			h.log.Warn("publish_done error", zap.String("name", name), zap.Error(err))
 		}
 	}
-	w.WriteHeader(http.StatusOK)
+	httputil.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

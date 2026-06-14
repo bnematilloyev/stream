@@ -49,7 +49,9 @@ if [[ "${SKIP_BUILD:-}" != "1" ]]; then
   (cd "${ROOT}/services/auth-service" && go build -o "${ROOT}/bin/auth-service" ./cmd/server)
   (cd "${ROOT}/services/user-service" && go build -o "${ROOT}/bin/user-service" ./cmd/server)
   (cd "${ROOT}/services/stream-service" && go build -o "${ROOT}/bin/stream-service" ./cmd/server)
+  (cd "${ROOT}/services/chat-service" && go build -o "${ROOT}/bin/chat-service" ./cmd/server)
   (cd "${ROOT}/services/media-orchestrator" && go build -o "${ROOT}/bin/media-orchestrator" ./cmd/server)
+  (cd "${ROOT}/services/transcode-worker" && go build -o "${ROOT}/bin/transcode-worker" ./cmd/server)
   (cd "${ROOT}/services/api-gateway" && go build -o "${ROOT}/bin/api-gateway" ./cmd/server)
 else
   echo "==> SKIP_BUILD=1 — Go build o'tkazib yuborildi"
@@ -141,6 +143,16 @@ fi
 sed -i 's/host.docker.internal:9084/172.17.0.1:9084/g' "\${REMOTE_DIR}/infra/docker/nginx-rtmp/nginx.conf" 2>/dev/null || true
 sed -i 's/host.docker.internal:9084/172.17.0.1:9084/g' "\${REMOTE_DIR}/infra/docker/mediamtx/mediamtx.yml" 2>/dev/null || true
 
+JWT_ACCESS_SECRET=\$(openssl rand -hex 32)
+JWT_REFRESH_SECRET=\$(openssl rand -hex 32)
+MEDIA_HOOK_SECRET=\$(openssl rand -hex 32)
+PLAYBACK_SIGNING_SECRET=\$(openssl rand -hex 32)
+
+sed -i "s|/hooks/publish_done;|/hooks/publish_done?internal_secret=\${MEDIA_HOOK_SECRET};|g" "\${REMOTE_DIR}/infra/docker/nginx-rtmp/nginx.conf" 2>/dev/null || true
+sed -i "s|/hooks/publish;|/hooks/publish?internal_secret=\${MEDIA_HOOK_SECRET};|g" "\${REMOTE_DIR}/infra/docker/nginx-rtmp/nginx.conf" 2>/dev/null || true
+sed -i "s|/hooks/publish_done\"|/hooks/publish_done?internal_secret=\${MEDIA_HOOK_SECRET}\"|g" "\${REMOTE_DIR}/infra/docker/mediamtx/mediamtx.yml" 2>/dev/null || true
+sed -i "s|/hooks/publish\"|/hooks/publish?internal_secret=\${MEDIA_HOOK_SECRET}\"|g" "\${REMOTE_DIR}/infra/docker/mediamtx/mediamtx.yml" 2>/dev/null || true
+
 cd "\${REMOTE_DIR}/infra/docker"
 docker compose -f docker-compose.prod.yml down 2>/dev/null || true
 docker rm -f sahiy-redis sahiy-postgres sahiy-minio 2>/dev/null || true
@@ -160,7 +172,7 @@ docker exec sahiy-postgres psql -U sahiy -d sahiy_stream -c "
 
 # Faqat Sahiy Stream (Shopla 3000 ga tegmaslik)
 pkill -f "\${REMOTE_DIR}/bin/" 2>/dev/null || true
-for port in 50051 50052 50053 8080 9084 "\${FRONTEND_PORT}"; do
+for port in 50051 50052 50053 50054 8080 9084 9085 9086 "\${FRONTEND_PORT}"; do
   fuser -k "\${port}/tcp" 2>/dev/null || true
 done
 sleep 2
@@ -170,9 +182,22 @@ APP_ENV=production
 LOG_LEVEL=info
 DATABASE_URL=postgres://sahiy:sahiy_secret@127.0.0.1:15433/sahiy_stream?sslmode=disable
 REDIS_URL=redis://127.0.0.1:16379/0
+NATS_URL=nats://127.0.0.1:14222
+JWT_ACCESS_SECRET=\${JWT_ACCESS_SECRET}
+JWT_REFRESH_SECRET=\${JWT_REFRESH_SECRET}
+MEDIA_HOOK_SECRET=\${MEDIA_HOOK_SECRET}
+PLAYBACK_SIGNING_SECRET=\${PLAYBACK_SIGNING_SECRET}
+PLAYBACK_BASE_URL=\${PUBLIC_URL}
+HLS_STORAGE_BACKEND=local
+FFMPEG_VIDEO_ENCODER=libx264
+TRANSCODE_QUALITY=production
+TRANSCODE_MODE=local
+WORKER_MAX_JOBS=1
 AUTH_SERVICE_ADDR=localhost:50051
 USER_SERVICE_ADDR=localhost:50052
 STREAM_SERVICE_ADDR=localhost:50053
+CHAT_SERVICE_ADDR=localhost:50054
+CHAT_HTTP_ADDR=localhost:9085
 GATEWAY_HTTP_ADDR=:8080
 GATEWAY_CORS_ORIGINS=\${PUBLIC_URL},http://\${HOST_IP}:\${FRONTEND_PORT},http://\${HOST_IP}:3000,http://\${HOST_IP}
 WHIP_BASE_URL=\${PUBLIC_URL}
@@ -181,6 +206,7 @@ HLS_OUTPUT_DIR=\${REMOTE_DIR}/data/hls
 RTMP_INTERNAL_URL=rtmp://127.0.0.1:1935/live
 RTSP_INTERNAL_URL=rtsp://127.0.0.1:8554
 MEDIA_HTTP_ADDR=:9084
+GATEWAY_RATE_LIMIT_RPM=500
 ENVFILE
 
 LOG="\${REMOTE_DIR}/.logs"
@@ -194,6 +220,8 @@ sleep 2
 start_svc user-service
 sleep 2
 start_svc stream-service
+sleep 2
+start_svc chat-service
 sleep 2
 start_svc media-orchestrator
 sleep 2

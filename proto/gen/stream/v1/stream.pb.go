@@ -1229,6 +1229,162 @@ func (x *GetScheduledForChannelRequest) GetChannelId() string {
 	return ""
 }
 
+type RecordViewerHeartbeatRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StreamId      string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecordViewerHeartbeatRequest) Reset() {
+	*x = RecordViewerHeartbeatRequest{}
+	mi := &file_stream_v1_stream_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecordViewerHeartbeatRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecordViewerHeartbeatRequest) ProtoMessage() {}
+
+func (x *RecordViewerHeartbeatRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_stream_v1_stream_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecordViewerHeartbeatRequest.ProtoReflect.Descriptor instead.
+func (*RecordViewerHeartbeatRequest) Descriptor() ([]byte, []int) {
+	return file_stream_v1_stream_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *RecordViewerHeartbeatRequest) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *RecordViewerHeartbeatRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+type GetViewerStatsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StreamId      string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetViewerStatsRequest) Reset() {
+	*x = GetViewerStatsRequest{}
+	mi := &file_stream_v1_stream_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetViewerStatsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetViewerStatsRequest) ProtoMessage() {}
+
+func (x *GetViewerStatsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_stream_v1_stream_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetViewerStatsRequest.ProtoReflect.Descriptor instead.
+func (*GetViewerStatsRequest) Descriptor() ([]byte, []int) {
+	return file_stream_v1_stream_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GetViewerStatsRequest) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+type ViewerStatsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StreamId      string                 `protobuf:"bytes,1,opt,name=stream_id,json=streamId,proto3" json:"stream_id,omitempty"`
+	Concurrent    int64                  `protobuf:"varint,2,opt,name=concurrent,proto3" json:"concurrent,omitempty"`
+	Unique        int64                  `protobuf:"varint,3,opt,name=unique,proto3" json:"unique,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ViewerStatsResponse) Reset() {
+	*x = ViewerStatsResponse{}
+	mi := &file_stream_v1_stream_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ViewerStatsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ViewerStatsResponse) ProtoMessage() {}
+
+func (x *ViewerStatsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_stream_v1_stream_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ViewerStatsResponse.ProtoReflect.Descriptor instead.
+func (*ViewerStatsResponse) Descriptor() ([]byte, []int) {
+	return file_stream_v1_stream_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ViewerStatsResponse) GetStreamId() string {
+	if x != nil {
+		return x.StreamId
+	}
+	return ""
+}
+
+func (x *ViewerStatsResponse) GetConcurrent() int64 {
+	if x != nil {
+		return x.Concurrent
+	}
+	return 0
+}
+
+func (x *ViewerStatsResponse) GetUnique() int64 {
+	if x != nil {
+		return x.Unique
+	}
+	return 0
+}
+
 var File_stream_v1_stream_proto protoreflect.FileDescriptor
 
 const file_stream_v1_stream_proto_rawDesc = "" +
@@ -1342,7 +1498,19 @@ const file_stream_v1_stream_proto_rawDesc = "" +
 	"\tstream_id\x18\x01 \x01(\tR\bstreamId\">\n" +
 	"\x1dGetScheduledForChannelRequest\x12\x1d\n" +
 	"\n" +
-	"channel_id\x18\x01 \x01(\tR\tchannelId2\xd3\a\n" +
+	"channel_id\x18\x01 \x01(\tR\tchannelId\"Z\n" +
+	"\x1cRecordViewerHeartbeatRequest\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\"4\n" +
+	"\x15GetViewerStatsRequest\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\"j\n" +
+	"\x13ViewerStatsResponse\x12\x1b\n" +
+	"\tstream_id\x18\x01 \x01(\tR\bstreamId\x12\x1e\n" +
+	"\n" +
+	"concurrent\x18\x02 \x01(\x03R\n" +
+	"concurrent\x12\x16\n" +
+	"\x06unique\x18\x03 \x01(\x03R\x06unique2\x89\t\n" +
 	"\rStreamService\x12A\n" +
 	"\fCreateStream\x12\x1e.stream.v1.CreateStreamRequest\x1a\x11.stream.v1.Stream\x12;\n" +
 	"\tGetStream\x12\x1b.stream.v1.GetStreamRequest\x1a\x11.stream.v1.Stream\x12A\n" +
@@ -1356,7 +1524,9 @@ const file_stream_v1_stream_proto_rawDesc = "" +
 	"\vGetPlayback\x12\x1d.stream.v1.GetPlaybackRequest\x1a\x1b.stream.v1.PlaybackResponse\x12?\n" +
 	"\vStartIngest\x12\x1d.stream.v1.StartIngestRequest\x1a\x11.stream.v1.Stream\x12;\n" +
 	"\tEndIngest\x12\x1b.stream.v1.EndIngestRequest\x1a\x11.stream.v1.Stream\x12U\n" +
-	"\x16GetScheduledForChannel\x12(.stream.v1.GetScheduledForChannelRequest\x1a\x11.stream.v1.StreamB<Z:github.com/sahiy/sahiy-stream/proto/gen/stream/v1;streamv1b\x06proto3"
+	"\x16GetScheduledForChannel\x12(.stream.v1.GetScheduledForChannelRequest\x1a\x11.stream.v1.Stream\x12`\n" +
+	"\x15RecordViewerHeartbeat\x12'.stream.v1.RecordViewerHeartbeatRequest\x1a\x1e.stream.v1.ViewerStatsResponse\x12R\n" +
+	"\x0eGetViewerStats\x12 .stream.v1.GetViewerStatsRequest\x1a\x1e.stream.v1.ViewerStatsResponseB<Z:github.com/sahiy/sahiy-stream/proto/gen/stream/v1;streamv1b\x06proto3"
 
 var (
 	file_stream_v1_stream_proto_rawDescOnce sync.Once
@@ -1370,7 +1540,7 @@ func file_stream_v1_stream_proto_rawDescGZIP() []byte {
 	return file_stream_v1_stream_proto_rawDescData
 }
 
-var file_stream_v1_stream_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_stream_v1_stream_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_stream_v1_stream_proto_goTypes = []any{
 	(*Stream)(nil),                        // 0: stream.v1.Stream
 	(*CreateStreamRequest)(nil),           // 1: stream.v1.CreateStreamRequest
@@ -1390,6 +1560,9 @@ var file_stream_v1_stream_proto_goTypes = []any{
 	(*StartIngestRequest)(nil),            // 15: stream.v1.StartIngestRequest
 	(*EndIngestRequest)(nil),              // 16: stream.v1.EndIngestRequest
 	(*GetScheduledForChannelRequest)(nil), // 17: stream.v1.GetScheduledForChannelRequest
+	(*RecordViewerHeartbeatRequest)(nil),  // 18: stream.v1.RecordViewerHeartbeatRequest
+	(*GetViewerStatsRequest)(nil),         // 19: stream.v1.GetViewerStatsRequest
+	(*ViewerStatsResponse)(nil),           // 20: stream.v1.ViewerStatsResponse
 }
 var file_stream_v1_stream_proto_depIdxs = []int32{
 	0,  // 0: stream.v1.ListStreamsResponse.streams:type_name -> stream.v1.Stream
@@ -1406,21 +1579,25 @@ var file_stream_v1_stream_proto_depIdxs = []int32{
 	15, // 11: stream.v1.StreamService.StartIngest:input_type -> stream.v1.StartIngestRequest
 	16, // 12: stream.v1.StreamService.EndIngest:input_type -> stream.v1.EndIngestRequest
 	17, // 13: stream.v1.StreamService.GetScheduledForChannel:input_type -> stream.v1.GetScheduledForChannelRequest
-	0,  // 14: stream.v1.StreamService.CreateStream:output_type -> stream.v1.Stream
-	0,  // 15: stream.v1.StreamService.GetStream:output_type -> stream.v1.Stream
-	0,  // 16: stream.v1.StreamService.UpdateStream:output_type -> stream.v1.Stream
-	5,  // 17: stream.v1.StreamService.DeleteStream:output_type -> stream.v1.DeleteStreamResponse
-	8,  // 18: stream.v1.StreamService.ListLiveStreams:output_type -> stream.v1.ListStreamsResponse
-	8,  // 19: stream.v1.StreamService.ListChannelStreams:output_type -> stream.v1.ListStreamsResponse
-	0,  // 20: stream.v1.StreamService.StartStream:output_type -> stream.v1.Stream
-	0,  // 21: stream.v1.StreamService.EndStream:output_type -> stream.v1.Stream
-	12, // 22: stream.v1.StreamService.ValidateStreamKey:output_type -> stream.v1.ValidateStreamKeyResponse
-	14, // 23: stream.v1.StreamService.GetPlayback:output_type -> stream.v1.PlaybackResponse
-	0,  // 24: stream.v1.StreamService.StartIngest:output_type -> stream.v1.Stream
-	0,  // 25: stream.v1.StreamService.EndIngest:output_type -> stream.v1.Stream
-	0,  // 26: stream.v1.StreamService.GetScheduledForChannel:output_type -> stream.v1.Stream
-	14, // [14:27] is the sub-list for method output_type
-	1,  // [1:14] is the sub-list for method input_type
+	18, // 14: stream.v1.StreamService.RecordViewerHeartbeat:input_type -> stream.v1.RecordViewerHeartbeatRequest
+	19, // 15: stream.v1.StreamService.GetViewerStats:input_type -> stream.v1.GetViewerStatsRequest
+	0,  // 16: stream.v1.StreamService.CreateStream:output_type -> stream.v1.Stream
+	0,  // 17: stream.v1.StreamService.GetStream:output_type -> stream.v1.Stream
+	0,  // 18: stream.v1.StreamService.UpdateStream:output_type -> stream.v1.Stream
+	5,  // 19: stream.v1.StreamService.DeleteStream:output_type -> stream.v1.DeleteStreamResponse
+	8,  // 20: stream.v1.StreamService.ListLiveStreams:output_type -> stream.v1.ListStreamsResponse
+	8,  // 21: stream.v1.StreamService.ListChannelStreams:output_type -> stream.v1.ListStreamsResponse
+	0,  // 22: stream.v1.StreamService.StartStream:output_type -> stream.v1.Stream
+	0,  // 23: stream.v1.StreamService.EndStream:output_type -> stream.v1.Stream
+	12, // 24: stream.v1.StreamService.ValidateStreamKey:output_type -> stream.v1.ValidateStreamKeyResponse
+	14, // 25: stream.v1.StreamService.GetPlayback:output_type -> stream.v1.PlaybackResponse
+	0,  // 26: stream.v1.StreamService.StartIngest:output_type -> stream.v1.Stream
+	0,  // 27: stream.v1.StreamService.EndIngest:output_type -> stream.v1.Stream
+	0,  // 28: stream.v1.StreamService.GetScheduledForChannel:output_type -> stream.v1.Stream
+	20, // 29: stream.v1.StreamService.RecordViewerHeartbeat:output_type -> stream.v1.ViewerStatsResponse
+	20, // 30: stream.v1.StreamService.GetViewerStats:output_type -> stream.v1.ViewerStatsResponse
+	16, // [16:31] is the sub-list for method output_type
+	1,  // [1:16] is the sub-list for method input_type
 	1,  // [1:1] is the sub-list for extension type_name
 	1,  // [1:1] is the sub-list for extension extendee
 	0,  // [0:1] is the sub-list for field type_name
@@ -1438,7 +1615,7 @@ func file_stream_v1_stream_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_stream_v1_stream_proto_rawDesc), len(file_stream_v1_stream_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -20,3 +20,5 @@ func NewStreamClient(addr string) (*StreamClient, error) {
 }
 
 func (c *StreamClient) Close() error { return c.conn.Close() }
+
+func (c *StreamClient) Conn() *grpc.ClientConn { return c.conn }

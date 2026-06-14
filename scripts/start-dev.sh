@@ -24,7 +24,11 @@ start user-service    "./services/user-service/cmd/server"
 sleep 2
 start stream-service       "./services/stream-service/cmd/server"
 sleep 2
+start chat-service         "./services/chat-service/cmd/server"
+sleep 2
 start media-orchestrator   "./services/media-orchestrator/cmd/server"
+sleep 2
+start transcode-worker     "./services/transcode-worker/cmd/server"
 sleep 2
 start api-gateway          "./services/api-gateway/cmd/server"
 
