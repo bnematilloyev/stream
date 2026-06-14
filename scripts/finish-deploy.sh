@@ -45,11 +45,32 @@ if ! command -v sshpass >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "==> Yangilangan skriptlarni yuklash..."
-ssh_cmd "mkdir -p /opt/sahiy-stream/scripts /opt/sahiy-stream/bin"
-if [[ -d "${ROOT}/bin" ]]; then
-  scp_cmd "${ROOT}/bin/"* "${USER}@${HOST}:/opt/sahiy-stream/bin/"
+echo "==> Binarylarni yuklash (staging)..."
+STAGING="/opt/sahiy-stream/bin-upload"
+ssh_cmd "mkdir -p /opt/sahiy-stream/scripts ${STAGING}"
+if [[ -d "${ROOT}/bin" ]] && compgen -G "${ROOT}/bin/"* >/dev/null; then
+  scp_cmd "${ROOT}/bin/"* "${USER}@${HOST}:${STAGING}/"
+  ssh_cmd bash -s <<REMOTE
+set -euo pipefail
+REMOTE_DIR="/opt/sahiy-stream"
+STAGING="${STAGING}"
+read_port() { grep -E "^\${1}:" "\${REMOTE_DIR}/for-deploy.txt" 2>/dev/null | cut -d: -f2- | xargs || true; }
+FP=\$(read_port "Frontend port"); FP=\${FP:-3010}
+GP=\$(read_port "Gateway port"); GP=\${GP:-18080}
+pkill -f "\${REMOTE_DIR}/bin/" 2>/dev/null || true
+pkill -f "next start -p \${FP}" 2>/dev/null || true
+for port in 50051 50052 50053 50054 "\${GP}" 9084 9085 "\${FP}"; do
+  fuser -k "\${port}/tcp" 2>/dev/null || true
+done
+sleep 2
+mkdir -p "\${REMOTE_DIR}/bin"
+install -m 755 "\${STAGING}/"* "\${REMOTE_DIR}/bin/"
+rm -rf "\${STAGING}"
+REMOTE
+else
+  echo "    bin/ bo'sh — faqat skriptlar yangilanadi"
 fi
+echo "==> Skriptlar va konfiguratsiya..."
 scp_cmd "${ROOT}/scripts/deploy-remote-only.sh" "${USER}@${HOST}:/opt/sahiy-stream/scripts/"
 scp_cmd "${ROOT}/scripts/setup-nginx-ssl.sh" "${USER}@${HOST}:/opt/sahiy-stream/scripts/"
 scp_cmd "${ROOT}/infra/nginx/api.stream.vibrant.uz.conf" "${USER}@${HOST}:/opt/sahiy-stream/infra/nginx/"
