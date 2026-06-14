@@ -31,7 +31,7 @@ FRONTEND_DOMAIN="${FRONTEND_DOMAIN:-stream.vibrant.uz}"
 API_DOMAIN="${API_DOMAIN:-api.stream.vibrant.uz}"
 CERTBOT_EMAIL="${CERTBOT_EMAIL:-admin@vibrant.uz}"
 
-SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15"
+SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4"
 ssh_cmd() {
   sshpass -p "${PASS}" ssh ${SSH_OPTS} "${USER}@${HOST}" "$@"
 }
@@ -49,23 +49,31 @@ echo "==> Binarylarni yuklash (staging)..."
 STAGING="/opt/sahiy-stream/bin-upload"
 ssh_cmd "mkdir -p /opt/sahiy-stream/scripts ${STAGING}"
 if [[ -d "${ROOT}/bin" ]] && compgen -G "${ROOT}/bin/"* >/dev/null; then
+  echo "    Yuklanmoqda (6 ta binary, 1-3 daqiqa)..."
   scp_cmd "${ROOT}/bin/"* "${USER}@${HOST}:${STAGING}/"
-  ssh_cmd bash -s <<REMOTE
+  echo "    Yuklandi. Serverda almashtirilmoqda..."
+  ssh_cmd bash -s "${FRONTEND_PORT}" "${GATEWAY_PORT}" <<'REMOTE'
 set -euo pipefail
+FRONTEND_PORT="$1"
+GATEWAY_PORT="$2"
 REMOTE_DIR="/opt/sahiy-stream"
-STAGING="${STAGING}"
-read_port() { grep -E "^\${1}:" "\${REMOTE_DIR}/for-deploy.txt" 2>/dev/null | cut -d: -f2- | xargs || true; }
-FP=\$(read_port "Frontend port"); FP=\${FP:-3010}
-GP=\$(read_port "Gateway port"); GP=\${GP:-18080}
-pkill -f "\${REMOTE_DIR}/bin/" 2>/dev/null || true
-pkill -f "next start -p \${FP}" 2>/dev/null || true
-for port in 50051 50052 50053 50054 "\${GP}" 9084 9085 "\${FP}"; do
-  fuser -k "\${port}/tcp" 2>/dev/null || true
+STAGING="/opt/sahiy-stream/bin-upload"
+
+echo "  servislarni to'xtatish..."
+pkill -f "${REMOTE_DIR}/bin/" 2>/dev/null || true
+pkill -f "next start -p ${FRONTEND_PORT}" 2>/dev/null || true
+pkill -f "${REMOTE_DIR}/frontend/node_modules/.bin/next start" 2>/dev/null || true
+sleep 3
+
+echo "  binarylarni o'rnatish..."
+mkdir -p "${REMOTE_DIR}/bin"
+for f in "${STAGING}"/*; do
+  name="$(basename "$f")"
+  install -m 755 "$f" "${REMOTE_DIR}/bin/${name}.new"
+  mv -f "${REMOTE_DIR}/bin/${name}.new" "${REMOTE_DIR}/bin/${name}"
 done
-sleep 2
-mkdir -p "\${REMOTE_DIR}/bin"
-install -m 755 "\${STAGING}/"* "\${REMOTE_DIR}/bin/"
-rm -rf "\${STAGING}"
+rm -rf "${STAGING}"
+echo "  binarylar yangilandi"
 REMOTE
 else
   echo "    bin/ bo'sh — faqat skriptlar yangilanadi"

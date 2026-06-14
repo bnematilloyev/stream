@@ -90,6 +90,12 @@ frontend-clean:
 frontend-build:
 	cd frontend && npm ci && npm run build
 
+build-linux:
+	GOOS=linux GOARCH=amd64 $(MAKE) build
+
+finish-deploy:
+	@bash scripts/finish-deploy.sh
+
 deploy:
 	@bash scripts/deploy.sh
 
