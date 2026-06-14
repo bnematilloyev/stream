@@ -37,7 +37,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.24.1"
 
       - name: Install protoc plugins
         run: |
@@ -63,7 +63,7 @@ jobs:
         run: make build
 
       - name: Test
-        run: go test ./...
+        run: bash scripts/test-all.sh
         env:
           DATABASE_URL: postgres://sahiy:sahiy_secret@localhost:5432/sahiy_stream?sslmode=disable
           REDIS_URL: redis://localhost:6379/0

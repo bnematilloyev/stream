@@ -54,8 +54,7 @@ build:
 	cd services/api-gateway && go build -o ../../bin/api-gateway ./cmd/server
 
 test:
-	go work sync
-	go test ./...
+	@bash scripts/test-all.sh
 
 lint:
 	golangci-lint run ./...
