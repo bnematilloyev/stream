@@ -42,7 +42,7 @@ func (h *HookHandler) health(w http.ResponseWriter, _ *http.Request) {
 
 // rtmpIngestDelay waits for nginx-rtmp to accept the publisher after on_publish returns 200.
 // FFmpeg must not pull the stream while the hook is still blocking publish acceptance.
-const rtmpIngestDelay = 2 * time.Second
+const rtmpIngestDelay = 3 * time.Second
 
 func (h *HookHandler) onPublish(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")

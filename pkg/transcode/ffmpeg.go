@@ -58,9 +58,6 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 			"-rw_timeout", "30000000",
 			"-probesize", "5000000",
 			"-analyzeduration", "5000000",
-			"-reconnect", "1",
-			"-reconnect_streamed", "1",
-			"-reconnect_delay_max", "5",
 		)
 	}
 

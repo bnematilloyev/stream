@@ -99,6 +99,13 @@ func (m *Manager) OnPublish(ctx context.Context, ingestName, source string) erro
 	}
 
 	inputURL, latencyMode := m.buildInputURL(ingestName, source, latencyMode)
+	if source == "rtmp" {
+		readyURL, err := waitForRTMPPublisher(ctx, m.rtmpBase, ingestName, m.log)
+		if err != nil {
+			return err
+		}
+		inputURL = readyURL
+	}
 	outDir := filepath.Join(m.hlsDir, sid.String())
 
 	var job *transcode.RunningJob

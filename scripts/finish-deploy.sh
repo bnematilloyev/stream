@@ -77,6 +77,14 @@ if ! command -v sshpass >/dev/null 2>&1; then
   exit 1
 fi
 
+echo "==> Go binarylarni build qilish (linux/amd64)..."
+export GOOS=linux GOARCH=amd64
+mkdir -p "${ROOT}/bin"
+for svc in auth-service user-service stream-service chat-service media-orchestrator transcode-worker api-gateway; do
+  echo "    ${svc}..."
+  (cd "${ROOT}/services/${svc}" && go build -o "${ROOT}/bin/${svc}" ./cmd/server)
+done
+
 prime_ssh
 
 echo "==> Binarylarni yuklash (staging)..."
@@ -121,6 +129,7 @@ tar -czf "${AUX_ARCHIVE}" \
   scripts/sync-hook-secrets.sh \
   infra/nginx/api.stream.vibrant.uz.conf \
   infra/nginx/stream.vibrant.uz.conf \
+  infra/docker/nginx-rtmp/nginx.conf \
   frontend/next.config.mjs
 retry_cmd scp_cmd "${AUX_ARCHIVE}" "${USER}@${HOST}:/tmp/sahiy-deploy-aux.tar.gz"
 rm -f "${AUX_ARCHIVE}"
@@ -132,6 +141,7 @@ rm -f /tmp/sahiy-deploy-aux.tar.gz
 chmod +x "${REMOTE_DIR}/scripts/deploy-remote-only.sh" \
   "${REMOTE_DIR}/scripts/setup-nginx-ssl.sh" \
   "${REMOTE_DIR}/scripts/sync-hook-secrets.sh"
+REMOTE_DIR="${REMOTE_DIR}" bash "${REMOTE_DIR}/scripts/sync-hook-secrets.sh"
 REMOTE
 
 echo "==> Serverda servislarni ishga tushirish..."
