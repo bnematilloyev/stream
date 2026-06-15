@@ -54,7 +54,14 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 		args = append(args, "-rtsp_transport", "tcp", "-timeout", "5000000", "-probesize", "32", "-analyzeduration", "0")
 	}
 	if strings.HasPrefix(inputURL, "rtmp://") {
-		args = append(args, "-rw_timeout", "15000000", "-probesize", "5000000", "-analyzeduration", "5000000")
+		args = append(args,
+			"-rw_timeout", "30000000",
+			"-probesize", "5000000",
+			"-analyzeduration", "5000000",
+			"-reconnect", "1",
+			"-reconnect_streamed", "1",
+			"-reconnect_delay_max", "5",
+		)
 	}
 
 	args = append(args, "-i", inputURL, "-filter_complex", filter)

@@ -1,7 +1,9 @@
 package http
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sahiy/sahiy-stream/pkg/health"
@@ -38,6 +40,10 @@ func (h *HookHandler) health(w http.ResponseWriter, _ *http.Request) {
 	health.Liveness(w, "media-orchestrator")
 }
 
+// rtmpIngestDelay waits for nginx-rtmp to accept the publisher after on_publish returns 200.
+// FFmpeg must not pull the stream while the hook is still blocking publish acceptance.
+const rtmpIngestDelay = 2 * time.Second
+
 func (h *HookHandler) onPublish(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
 	if name == "" {
@@ -54,12 +60,26 @@ func (h *HookHandler) onPublish(w http.ResponseWriter, r *http.Request) {
 	if source == "" {
 		source = "rtmp"
 	}
+	if source == "rtmp" {
+		httputil.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		go h.startRTMPIngest(name)
+		return
+	}
 	if err := h.pipeline.OnPublish(r.Context(), name, source); err != nil {
 		h.log.Warn("publish rejected", zap.String("name", name), zap.Error(err))
 		http.Error(w, "rejected", http.StatusForbidden)
 		return
 	}
 	httputil.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *HookHandler) startRTMPIngest(name string) {
+	time.Sleep(rtmpIngestDelay)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	if err := h.pipeline.OnPublish(ctx, name, "rtmp"); err != nil {
+		h.log.Warn("rtmp ingest failed", zap.String("name", name), zap.Error(err))
+	}
 }
 
 func (h *HookHandler) onPublishDone(w http.ResponseWriter, r *http.Request) {
