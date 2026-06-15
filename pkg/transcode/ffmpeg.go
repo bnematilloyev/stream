@@ -119,9 +119,9 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 }
 
 func buildScaleFilter(n int, ladder []Tier, highQuality bool) string {
-	scaleFlags := ""
+	scaleFlags := ":force_divisible_by=2"
 	if highQuality {
-		scaleFlags = ":flags=lanczos"
+		scaleFlags += ":flags=lanczos"
 	}
 	if n == 1 {
 		t := ladder[0]
