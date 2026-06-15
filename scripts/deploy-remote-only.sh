@@ -84,6 +84,13 @@ for port in 50051 50052 50053 50054 "${GATEWAY_PORT}" 9084 9085 "${FRONTEND_PORT
 done
 sleep 1
 
+if ! command -v ffmpeg >/dev/null 2>&1; then
+  echo "==> FFmpeg o'rnatish..."
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update -qq
+  apt-get install -y -qq ffmpeg
+fi
+
 cd "${REMOTE_DIR}/infra/docker"
 docker compose -f docker-compose.prod.yml up -d
 sleep 8

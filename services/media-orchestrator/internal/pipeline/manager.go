@@ -101,18 +101,29 @@ func (m *Manager) OnPublish(ctx context.Context, ingestName, source string) erro
 	inputURL, latencyMode := m.buildInputURL(ingestName, source, latencyMode)
 	outDir := filepath.Join(m.hlsDir, sid.String())
 
-	job, err := m.backend.Start(ctx, transcode.StartRequest{
+	var job *transcode.RunningJob
+	var uploaderCancel context.CancelFunc
+	job, err = m.backend.Start(ctx, transcode.StartRequest{
 		StreamID: sid.String(), IngestName: ingestName, InputURL: inputURL,
 		OutputDir: outDir, LatencyMode: latencyMode, Quality: m.quality,
 		Encoder: m.encoder, Storage: m.storageBackend,
 	})
 	if err != nil {
-		return err
+		// WHIP ultra-low can play via WHEP without HLS when FFmpeg is unavailable.
+		if source == "whip" {
+			m.log.Warn("ffmpeg unavailable, whip-only ingest (no HLS)",
+				zap.String("stream_id", sid.String()),
+				zap.Error(err),
+			)
+			job = &transcode.RunningJob{JobID: sid.String(), StreamID: sid.String()}
+		} else {
+			return err
+		}
 	}
 
-	uploaderCtx, uploaderCancel := context.WithCancel(context.Background())
-	// S3 sync runs where FFmpeg writes segments (local backend; queue mode uses worker).
-	if m.syncSegments && job.Cmd != nil && m.storage != nil && m.storage.Backend() == storage.BackendS3 {
+	if job.Cmd != nil && m.syncSegments && m.storage != nil && m.storage.Backend() == storage.BackendS3 {
+		var uploaderCtx context.Context
+		uploaderCtx, uploaderCancel = context.WithCancel(context.Background())
 		go hlssync.NewSegmentUploader(m.storage, outDir, sid, 2*time.Second, m.log).Run(uploaderCtx)
 	}
 
@@ -126,11 +137,15 @@ func (m *Manager) OnPublish(ctx context.Context, ingestName, source string) erro
 		HLSPath: &hlsPath, PlaybackURL: &playbackResource, IngestName: &ingestName,
 		FFmpegPID: &pid, StartedAt: &now,
 	}); err != nil {
-		uploaderCancel()
+		if uploaderCancel != nil {
+			uploaderCancel()
+		}
 		if job.Cmd != nil {
 			_ = transcode.StopCmd(job.Cmd)
 		}
-		_ = m.backend.Stop(ctx, sid.String(), "rollback")
+		if job.Cmd != nil {
+			_ = m.backend.Stop(ctx, sid.String(), "rollback")
+		}
 		return err
 	}
 
