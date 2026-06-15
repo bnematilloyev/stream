@@ -47,6 +47,8 @@ export default function GoLivePage() {
     setLoading(true);
     setError("");
     try {
+      await rotateIngestKey(channel.slug);
+      await ingestQuery.refetch();
       const stream = await createStream({
         channel_slug: channel.slug,
         title,
@@ -162,6 +164,19 @@ export default function GoLivePage() {
         <CardContent className="space-y-4">
           {ingest ? (
             <>
+              {!ingest.stream_key && (
+                <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                  To&apos;liq Stream Key ko&apos;rinmayapti. OBS ishlamaydi — avval{" "}
+                  <button
+                    type="button"
+                    className="font-medium underline"
+                    onClick={handleRotateKey}
+                  >
+                    Key yangilash
+                  </button>{" "}
+                  tugmasini bosing va chiqgan keyni nusxalang.
+                </p>
+              )}
               <CopyField
                 label="Server (RTMP URL)"
                 value={ingest.rtmp_url}
