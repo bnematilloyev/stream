@@ -22,20 +22,11 @@ func NewDeliveryHandler(store storage.ObjectStorage, signer *playback.Signer) *D
 
 func (h *DeliveryHandler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Options("/{streamID}/*", h.corsPreflight)
 	r.Get("/{streamID}/*", h.serve)
 	return r
 }
 
-func (h *DeliveryHandler) corsPreflight(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "*")
-	w.WriteHeader(http.StatusNoContent)
-}
-
 func (h *DeliveryHandler) serve(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	streamID := chi.URLParam(r, "streamID")
 	resource := chi.URLParam(r, "*")
 	if streamID == "" || resource == "" {
