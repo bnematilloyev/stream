@@ -88,8 +88,8 @@ func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 	if token := extractToken(r); token != "" {
 		principal, err = h.validator.ValidateAccess(r.Context(), token)
 		if err != nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
+			// Invalid/expired token: allow read-only chat; sending still requires auth.
+			principal = nil
 		}
 	}
 

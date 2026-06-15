@@ -20,7 +20,7 @@ func (e VideoEncoder) BaseArgs(profile Profile) []string {
 			"-bf", "0",
 		}
 	default:
-		x264 := "nal-hrd=cbr:force-cfr=1"
+		x264 := "force-cfr=1"
 		if profile.HighQuality {
 			x264 += ":aq-mode=3:psy-rd=1.0,0.15:deblock=1,1"
 		}
