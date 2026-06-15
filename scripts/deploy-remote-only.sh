@@ -69,6 +69,7 @@ GATEWAY_CORS_ORIGINS=${FRONTEND_URL},https://${FRONTEND_DOMAIN}
 WHIP_BASE_URL=${API_URL}
 HLS_BASE_URL=${API_URL}/hls
 HLS_OUTPUT_DIR=${REMOTE_DIR}/data/hls
+RTMP_BASE_URL=rtmp://${HOST_IP}:1935/live
 RTMP_INTERNAL_URL=rtmp://127.0.0.1:1935/live
 RTSP_INTERNAL_URL=rtsp://127.0.0.1:8554
 MEDIA_HTTP_ADDR=:9084
@@ -77,6 +78,11 @@ ENVFILE
 }
 
 ensure_env
+
+if command -v ufw >/dev/null 2>&1; then
+  ufw allow 1935/tcp comment "RTMP ingest" 2>/dev/null || true
+  ufw reload 2>/dev/null || true
+fi
 
 pkill -f "${REMOTE_DIR}/bin/" 2>/dev/null || true
 for port in 50051 50052 50053 50054 "${GATEWAY_PORT}" 9084 9085 "${FRONTEND_PORT}"; do

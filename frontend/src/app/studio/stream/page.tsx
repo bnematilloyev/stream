@@ -164,10 +164,7 @@ export default function GoLivePage() {
             <>
               <CopyField
                 label="Server (RTMP URL)"
-                value={ingest.rtmp_url.replace(
-                  "ingest.sahiy.stream",
-                  "127.0.0.1:1935",
-                )}
+                value={ingest.rtmp_url}
                 fieldKey="rtmp"
                 copied={copied}
                 onCopy={copy}

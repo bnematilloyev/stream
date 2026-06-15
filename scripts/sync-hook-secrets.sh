@@ -26,22 +26,16 @@ ESCAPED="$(escape_sed "${SECRET}")"
 patch_file() {
   local f="$1"
   [[ -f "${f}" ]] || return 0
+  sed -i "s|__MEDIA_HOOK_SECRET__|${ESCAPED}|g" "${f}"
   sed -i "s|host.docker.internal:9084|172.17.0.1:9084|g" "${f}"
-  # MediaMTX: .../hooks/publish -d  yoki .../hooks/publish?internal_secret=OLD -d
-  sed -i "s|9084/hooks/publish?internal_secret=[^ \"&]*|9084/hooks/publish?internal_secret=${ESCAPED}|g" "${f}"
-  sed -i "s|9084/hooks/publish_done?internal_secret=[^ \"&]*|9084/hooks/publish_done?internal_secret=${ESCAPED}|g" "${f}"
-  sed -i "s|9084/hooks/publish -d|9084/hooks/publish?internal_secret=${ESCAPED} -d|g" "${f}"
-  sed -i "s|9084/hooks/publish_done -d|9084/hooks/publish_done?internal_secret=${ESCAPED} -d|g" "${f}"
-  # nginx-rtmp: .../hooks/publish; yoki .../hooks/publish?internal_secret=...
-  sed -i "s|9084/hooks/publish;|9084/hooks/publish?internal_secret=${ESCAPED};|g" "${f}"
-  sed -i "s|9084/hooks/publish_done;|9084/hooks/publish_done?internal_secret=${ESCAPED};|g" "${f}"
 }
 
 patch_file "${MTX}"
 patch_file "${RTMP}"
 
 echo "sync-hook-secrets: OK"
-grep -E 'runOn|hooks/publish' "${MTX}" 2>/dev/null | head -3 || true
+grep -E 'runOn|on_publish' "${MTX}" 2>/dev/null | head -2 || true
+grep -E 'on_publish' "${RTMP}" 2>/dev/null | head -2 || true
 
 if command -v docker >/dev/null 2>&1 && [[ -d "${REMOTE_DIR}/infra/docker" ]]; then
   cd "${REMOTE_DIR}/infra/docker"

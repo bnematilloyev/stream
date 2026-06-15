@@ -165,16 +165,16 @@ if ! command -v migrate >/dev/null 2>&1; then
 fi
 
 mkdir -p "\${REMOTE_DIR}/data/hls" "\${REMOTE_DIR}/.logs"
+echo "\${HOST_IP}" >"\${REMOTE_DIR}/deploy-host.txt"
 
 if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
   ufw allow 80/tcp comment "HTTP certbot" 2>/dev/null || true
   ufw allow 443/tcp comment "HTTPS" 2>/dev/null || true
+  ufw allow 1935/tcp comment "RTMP ingest" 2>/dev/null || true
   ufw allow "\${FRONTEND_PORT}/tcp" comment "Next.js" 2>/dev/null || true
   ufw allow from 172.16.0.0/12 to any port 9084 proto tcp 2>/dev/null || true
 fi
 
-sed -i 's/host.docker.internal:9084/172.17.0.1:9084/g' "\${REMOTE_DIR}/infra/docker/nginx-rtmp/nginx.conf" 2>/dev/null || true
-sed -i 's/host.docker.internal:9084/172.17.0.1:9084/g' "\${REMOTE_DIR}/infra/docker/mediamtx/mediamtx.yml" 2>/dev/null || true
 sed -i "s/__SERVER_IP__/\${HOST_IP}/g" "\${REMOTE_DIR}/infra/docker/mediamtx/mediamtx.yml"
 sed -i "s/\"8090:8090\"/\"\${HLS_PORT}:8090\"/" "\${REMOTE_DIR}/infra/docker/docker-compose.prod.yml"
 
@@ -182,25 +182,6 @@ JWT_ACCESS_SECRET=\$(openssl rand -hex 32)
 JWT_REFRESH_SECRET=\$(openssl rand -hex 32)
 MEDIA_HOOK_SECRET=\$(openssl rand -hex 32)
 PLAYBACK_SIGNING_SECRET=\$(openssl rand -hex 32)
-
-sed -i "s|/hooks/publish_done;|/hooks/publish_done?internal_secret=\${MEDIA_HOOK_SECRET};|g" "\${REMOTE_DIR}/infra/docker/nginx-rtmp/nginx.conf" 2>/dev/null || true
-sed -i "s|/hooks/publish;|/hooks/publish?internal_secret=\${MEDIA_HOOK_SECRET};|g" "\${REMOTE_DIR}/infra/docker/nginx-rtmp/nginx.conf" 2>/dev/null || true
-sed -i "s|/hooks/publish_done\"|/hooks/publish_done?internal_secret=\${MEDIA_HOOK_SECRET}\"|g" "\${REMOTE_DIR}/infra/docker/mediamtx/mediamtx.yml" 2>/dev/null || true
-sed -i "s|/hooks/publish\"|/hooks/publish?internal_secret=\${MEDIA_HOOK_SECRET}\"|g" "\${REMOTE_DIR}/infra/docker/mediamtx/mediamtx.yml" 2>/dev/null || true
-
-cd "\${REMOTE_DIR}/infra/docker"
-docker compose -f docker-compose.prod.yml down 2>/dev/null || true
-docker compose -f docker-compose.prod.yml up -d --build
-sleep 12
-
-export DATABASE_URL="postgres://sahiy:sahiy_secret@127.0.0.1:15433/sahiy_stream?sslmode=disable"
-migrate -path "\${REMOTE_DIR}/migrations" -database "\${DATABASE_URL}" up 2>/dev/null || true
-
-pkill -f "\${REMOTE_DIR}/bin/" 2>/dev/null || true
-for port in 50051 50052 50053 50054 "\${GATEWAY_PORT}" 9084 9085 "\${FRONTEND_PORT}"; do
-  fuser -k "\${port}/tcp" 2>/dev/null || true
-done
-sleep 2
 
 cat >"\${REMOTE_DIR}/.env" <<ENVFILE
 APP_ENV=production
@@ -228,11 +209,30 @@ GATEWAY_CORS_ORIGINS=\${FRONTEND_URL},https://\${FRONTEND_DOMAIN}
 WHIP_BASE_URL=\${API_URL}
 HLS_BASE_URL=\${API_URL}/hls
 HLS_OUTPUT_DIR=\${REMOTE_DIR}/data/hls
+RTMP_BASE_URL=rtmp://\${HOST_IP}:1935/live
 RTMP_INTERNAL_URL=rtmp://127.0.0.1:1935/live
 RTSP_INTERNAL_URL=rtsp://127.0.0.1:8554
 MEDIA_HTTP_ADDR=:9084
 GATEWAY_RATE_LIMIT_RPM=500
 ENVFILE
+
+bash "\${REMOTE_DIR}/scripts/sync-hook-secrets.sh" 2>/dev/null || true
+
+cd "\${REMOTE_DIR}/infra/docker"
+docker compose -f docker-compose.prod.yml down 2>/dev/null || true
+docker compose -f docker-compose.prod.yml up -d --build
+sleep 12
+
+export DATABASE_URL="postgres://sahiy:sahiy_secret@127.0.0.1:15433/sahiy_stream?sslmode=disable"
+migrate -path "\${REMOTE_DIR}/migrations" -database "\${DATABASE_URL}" up 2>/dev/null || true
+
+pkill -f "\${REMOTE_DIR}/bin/" 2>/dev/null || true
+for port in 50051 50052 50053 50054 "\${GATEWAY_PORT}" 9084 9085 "\${FRONTEND_PORT}"; do
+  fuser -k "\${port}/tcp" 2>/dev/null || true
+done
+sleep 2
+
+# .env allaqachon yozilgan (sync-hook-secrets uchun)
 
 LOG="\${REMOTE_DIR}/.logs"
 start_svc() {
