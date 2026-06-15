@@ -7,8 +7,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sahiy/sahiy-stream/pkg/httputil"
-	"github.com/sahiy/sahiy-stream/services/api-gateway/internal/client"
 	streamv1 "github.com/sahiy/sahiy-stream/proto/gen/stream/v1"
+	"github.com/sahiy/sahiy-stream/services/api-gateway/internal/client"
 )
 
 type StreamHandler struct {
@@ -143,8 +143,23 @@ func (h *StreamHandler) Start(w http.ResponseWriter, r *http.Request) {
 
 func (h *StreamHandler) Playback(w http.ResponseWriter, r *http.Request) {
 	streamID := chi.URLParam(r, "id")
+	st, stErr := h.stream.Stream.GetStream(r.Context(), &streamv1.GetStreamRequest{StreamId: streamID})
+
 	resp, err := h.stream.Stream.GetPlayback(r.Context(), &streamv1.GetPlaybackRequest{StreamId: streamID})
 	if err != nil {
+		// Ultra-low WHIP: WHEP works via MediaMTX before HLS/transcode is ready.
+		if stErr == nil && st != nil && st.Status == "live" && st.LatencyMode == "ultra-low" && h.whipBase != "" {
+			httputil.JSON(w, http.StatusOK, map[string]any{
+				"stream_id":       streamID,
+				"whep_url":        h.whipBase + "/" + streamID + "/whep",
+				"format":          "webrtc",
+				"playback_mode":   "whep",
+				"status":          "live",
+				"latency_mode":    st.LatencyMode,
+				"expires_at_unix": 0,
+			})
+			return
+		}
 		httputil.Error(w, grpcError(err))
 		return
 	}
@@ -152,8 +167,7 @@ func (h *StreamHandler) Playback(w http.ResponseWriter, r *http.Request) {
 		"stream_id": resp.StreamId, "url": resp.Url, "format": "ll-hls",
 		"status": resp.Status, "expires_at_unix": resp.ExpiresAtUnix,
 	}
-	st, err := h.stream.Stream.GetStream(r.Context(), &streamv1.GetStreamRequest{StreamId: streamID})
-	if err == nil {
+	if stErr == nil && st != nil {
 		out["latency_mode"] = st.LatencyMode
 		if st.LatencyMode == "ultra-low" && h.whipBase != "" {
 			out["whep_url"] = h.whipBase + "/" + streamID + "/whep"
