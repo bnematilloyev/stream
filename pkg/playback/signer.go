@@ -43,11 +43,13 @@ func (s *Signer) Validate(streamID, resource string, exp int64, sig string) erro
 	if exp <= time.Now().Unix() {
 		return fmt.Errorf("playback token expired")
 	}
-	expected := s.compute(streamID, resource, exp)
-	if !hmac.Equal([]byte(expected), []byte(sig)) {
-		return fmt.Errorf("invalid playback signature")
+	for _, candidate := range []string{resource, "master.m3u8", "*"} {
+		expected := s.compute(streamID, candidate, exp)
+		if hmac.Equal([]byte(expected), []byte(sig)) {
+			return nil
+		}
 	}
-	return nil
+	return fmt.Errorf("invalid playback signature")
 }
 
 func (s *Signer) compute(streamID, resource string, exp int64) string {

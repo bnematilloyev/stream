@@ -37,6 +37,21 @@ func TestSignerSignAndValidate(t *testing.T) {
 	}
 }
 
+func TestSignerAcceptsMasterSignatureForVariantPlaylist(t *testing.T) {
+	signer := playback.NewSigner("playback-signing-secret-min-32-chars!", time.Hour)
+	streamID := "4dc38c78-112c-4e17-ba0b-dbe8f4e3c7e9"
+	exp := time.Now().Add(time.Hour).Unix()
+	signed, _ := signer.Sign("http://localhost:9083/playback/"+streamID, streamID, "master.m3u8")
+	parsed, err := url.Parse(signed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig := parsed.Query().Get("sig")
+	if err := signer.Validate(streamID, "480p/playlist.m3u8", exp, sig); err != nil {
+		t.Fatalf("master signature should authorize variant playlist: %v", err)
+	}
+}
+
 func TestSignerRejectsTamperedSignature(t *testing.T) {
 	signer := playback.NewSigner("playback-signing-secret-min-32-chars!", time.Hour)
 	err := signer.Validate("stream-id", "master.m3u8", time.Now().Add(time.Hour).Unix(), "bad-signature")

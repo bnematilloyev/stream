@@ -130,6 +130,7 @@ tar -czf "${AUX_ARCHIVE}" \
   infra/nginx/api.stream.vibrant.uz.conf \
   infra/nginx/stream.vibrant.uz.conf \
   infra/docker/nginx-rtmp/nginx.conf \
+  scripts/debug-playback.sh \
   frontend/next.config.mjs
 retry_cmd scp_cmd "${AUX_ARCHIVE}" "${USER}@${HOST}:/tmp/sahiy-deploy-aux.tar.gz"
 rm -f "${AUX_ARCHIVE}"
@@ -140,7 +141,8 @@ tar -xzf /tmp/sahiy-deploy-aux.tar.gz -C "${REMOTE_DIR}"
 rm -f /tmp/sahiy-deploy-aux.tar.gz
 chmod +x "${REMOTE_DIR}/scripts/deploy-remote-only.sh" \
   "${REMOTE_DIR}/scripts/setup-nginx-ssl.sh" \
-  "${REMOTE_DIR}/scripts/sync-hook-secrets.sh"
+  "${REMOTE_DIR}/scripts/sync-hook-secrets.sh" \
+  "${REMOTE_DIR}/scripts/debug-playback.sh"
 REMOTE_DIR="${REMOTE_DIR}" bash "${REMOTE_DIR}/scripts/sync-hook-secrets.sh"
 REMOTE
 

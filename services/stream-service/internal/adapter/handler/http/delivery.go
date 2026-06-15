@@ -67,8 +67,8 @@ func (h *DeliveryHandler) serve(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		queryFor := func(res string) string {
-			return h.signer.QueryForResource(streamID, res, exp)
+		queryFor := func(_ string) string {
+			return h.signer.QueryForResource(streamID, "master.m3u8", exp)
 		}
 		body = playback.RewriteManifest(body, resource, queryFor)
 		_, _ = w.Write(body)
