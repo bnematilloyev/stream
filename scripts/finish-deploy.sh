@@ -31,7 +31,17 @@ FRONTEND_DOMAIN="${FRONTEND_DOMAIN:-stream.vibrant.uz}"
 API_DOMAIN="${API_DOMAIN:-api.stream.vibrant.uz}"
 CERTBOT_EMAIL="${CERTBOT_EMAIL:-admin@vibrant.uz}"
 
-SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4"
+CTRL_DIR="${TMPDIR:-/tmp}/sahiy-ssh-$$"
+mkdir -p "${CTRL_DIR}"
+CTRL_SOCK="${CTRL_DIR}/ctrl.sock"
+SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o ControlMaster=auto -o ControlPath=${CTRL_SOCK} -o ControlPersist=120"
+
+cleanup_ssh() {
+  sshpass -p "${PASS}" ssh ${SSH_OPTS} -O exit "${USER}@${HOST}" 2>/dev/null || true
+  rm -rf "${CTRL_DIR}"
+}
+trap cleanup_ssh EXIT
+
 ssh_cmd() {
   sshpass -p "${PASS}" ssh ${SSH_OPTS} "${USER}@${HOST}" "$@"
 }
@@ -40,10 +50,34 @@ scp_cmd() {
   sshpass -p "${PASS}" scp ${SSH_OPTS} "$@"
 }
 
+retry_cmd() {
+  local attempt=1
+  local max=3
+  local delay=3
+  while true; do
+    if "$@"; then
+      return 0
+    fi
+    if (( attempt >= max )); then
+      return 1
+    fi
+    echo "    qayta urinish (${attempt}/${max})..."
+    sleep "${delay}"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
+}
+
+prime_ssh() {
+  retry_cmd ssh_cmd "true"
+}
+
 if ! command -v sshpass >/dev/null 2>&1; then
   echo "sshpass kerak: brew install hudochenkov/sshpass/sshpass"
   exit 1
 fi
+
+prime_ssh
 
 echo "==> Binarylarni yuklash (staging)..."
 STAGING="/opt/sahiy-stream/bin-upload"
@@ -79,13 +113,26 @@ else
   echo "    bin/ bo'sh — faqat skriptlar yangilanadi"
 fi
 echo "==> Skriptlar va konfiguratsiya..."
-scp_cmd "${ROOT}/scripts/deploy-remote-only.sh" "${USER}@${HOST}:/opt/sahiy-stream/scripts/"
-scp_cmd "${ROOT}/scripts/setup-nginx-ssl.sh" "${USER}@${HOST}:/opt/sahiy-stream/scripts/"
-scp_cmd "${ROOT}/scripts/sync-hook-secrets.sh" "${USER}@${HOST}:/opt/sahiy-stream/scripts/"
-scp_cmd "${ROOT}/infra/nginx/api.stream.vibrant.uz.conf" "${USER}@${HOST}:/opt/sahiy-stream/infra/nginx/"
-scp_cmd "${ROOT}/infra/nginx/stream.vibrant.uz.conf" "${USER}@${HOST}:/opt/sahiy-stream/infra/nginx/"
-scp_cmd "${ROOT}/frontend/next.config.mjs" "${USER}@${HOST}:/opt/sahiy-stream/frontend/"
-ssh_cmd "chmod +x /opt/sahiy-stream/scripts/deploy-remote-only.sh /opt/sahiy-stream/scripts/setup-nginx-ssl.sh /opt/sahiy-stream/scripts/sync-hook-secrets.sh"
+AUX_ARCHIVE="$(mktemp /tmp/sahiy-deploy-aux.XXXXXX.tar.gz)"
+tar -czf "${AUX_ARCHIVE}" \
+  -C "${ROOT}" \
+  scripts/deploy-remote-only.sh \
+  scripts/setup-nginx-ssl.sh \
+  scripts/sync-hook-secrets.sh \
+  infra/nginx/api.stream.vibrant.uz.conf \
+  infra/nginx/stream.vibrant.uz.conf \
+  frontend/next.config.mjs
+retry_cmd scp_cmd "${AUX_ARCHIVE}" "${USER}@${HOST}:/tmp/sahiy-deploy-aux.tar.gz"
+rm -f "${AUX_ARCHIVE}"
+ssh_cmd bash -s <<'REMOTE'
+set -euo pipefail
+REMOTE_DIR="/opt/sahiy-stream"
+tar -xzf /tmp/sahiy-deploy-aux.tar.gz -C "${REMOTE_DIR}"
+rm -f /tmp/sahiy-deploy-aux.tar.gz
+chmod +x "${REMOTE_DIR}/scripts/deploy-remote-only.sh" \
+  "${REMOTE_DIR}/scripts/setup-nginx-ssl.sh" \
+  "${REMOTE_DIR}/scripts/sync-hook-secrets.sh"
+REMOTE
 
 echo "==> Serverda servislarni ishga tushirish..."
 ssh_cmd bash -s <<REMOTE
