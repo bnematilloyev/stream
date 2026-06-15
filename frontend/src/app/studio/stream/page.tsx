@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMyChannel, getIngestKey, rotateIngestKey } from "@/lib/api/channels";
 import { createStream, startStream, endStream } from "@/lib/api/streams";
@@ -21,6 +21,7 @@ export default function GoLivePage() {
   const [copied, setCopied] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [revealedStreamKey, setRevealedStreamKey] = useState("");
 
   const channelQuery = useQuery({
     queryKey: ["my-channel"],
@@ -35,6 +36,21 @@ export default function GoLivePage() {
 
   const ingest = ingestQuery.data;
   const channel = channelQuery.data;
+  const streamKey =
+    revealedStreamKey || ingest?.stream_key || "";
+
+  useEffect(() => {
+    if (!channel?.slug) return;
+    const saved = sessionStorage.getItem(`ingest-key:${channel.slug}`);
+    if (saved) setRevealedStreamKey(saved);
+  }, [channel?.slug]);
+
+  function rememberStreamKey(key: string) {
+    setRevealedStreamKey(key);
+    if (channel?.slug) {
+      sessionStorage.setItem(`ingest-key:${channel.slug}`, key);
+    }
+  }
 
   async function copy(text: string, key: string) {
     await navigator.clipboard.writeText(text);
@@ -47,7 +63,10 @@ export default function GoLivePage() {
     setLoading(true);
     setError("");
     try {
-      await rotateIngestKey(channel.slug);
+      const keyRes = await rotateIngestKey(channel.slug);
+      if (keyRes.stream_key) {
+        rememberStreamKey(keyRes.stream_key);
+      }
       await ingestQuery.refetch();
       const stream = await createStream({
         channel_slug: channel.slug,
@@ -80,7 +99,10 @@ export default function GoLivePage() {
 
   async function handleRotateKey() {
     if (!channel) return;
-    await rotateIngestKey(channel.slug);
+    const keyRes = await rotateIngestKey(channel.slug);
+    if (keyRes.stream_key) {
+      rememberStreamKey(keyRes.stream_key);
+    }
     await ingestQuery.refetch();
   }
 
@@ -164,9 +186,9 @@ export default function GoLivePage() {
         <CardContent className="space-y-4">
           {ingest ? (
             <>
-              {!ingest.stream_key && (
+              {!streamKey && (
                 <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-                  To&apos;liq Stream Key ko&apos;rinmayapti. OBS ishlamaydi — avval{" "}
+                  To&apos;liq Stream Key ko&apos;rinmayapti. OBS ishlamaydi —{" "}
                   <button
                     type="button"
                     className="font-medium underline"
@@ -174,7 +196,14 @@ export default function GoLivePage() {
                   >
                     Key yangilash
                   </button>{" "}
-                  tugmasini bosing va chiqgan keyni nusxalang.
+                  tugmasini bosing. Key uzunligi taxminan 32 belgi (
+                  <code>sk_live_...</code>).
+                </p>
+              )}
+              {streamKey && streamKey.length < 24 && (
+                <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                  OBS&apos;dagi key juda qisqa — to&apos;liq keyni paneldan nusxalang (kamida 24
+                  belgi).
                 </p>
               )}
               <CopyField
@@ -186,11 +215,11 @@ export default function GoLivePage() {
               />
               <CopyField
                 label="Stream Key"
-                value={ingest.stream_key || ingest.key_prefix + " (mavjud key)"}
+                value={streamKey || ingest.key_prefix + " (mavjud key — yangilang)"}
                 fieldKey="key"
                 copied={copied}
                 onCopy={copy}
-                masked={!!ingest.stream_key}
+                copyDisabled={!streamKey}
               />
               <div className="rounded-xl border border-border bg-surface-2 p-4 text-sm text-muted">
                 <p className="font-medium text-foreground mb-2">Qo&apos;llanma:</p>
@@ -221,29 +250,25 @@ function CopyField({
   fieldKey,
   copied,
   onCopy,
-  masked,
+  copyDisabled,
 }: {
   label: string;
   value: string;
   fieldKey: string;
   copied: string | null;
   onCopy: (text: string, key: string) => void;
-  masked?: boolean;
+  copyDisabled?: boolean;
 }) {
   return (
     <div>
       <label className="mb-1.5 block text-sm font-medium">{label}</label>
       <div className="flex gap-2">
-        <Input
-          readOnly
-          value={masked ? value : value}
-          className="font-mono text-xs"
-        />
+        <Input readOnly value={value} className="font-mono text-xs" />
         <Button
           variant="secondary"
           size="icon"
           onClick={() => onCopy(value, fieldKey)}
-          disabled={!value || value.includes("mavjud")}
+          disabled={copyDisabled || !value || value.includes("mavjud")}
         >
           {copied === fieldKey ? (
             <Check className="h-4 w-4 text-green-400" />
