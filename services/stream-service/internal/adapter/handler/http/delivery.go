@@ -61,5 +61,19 @@ func (h *DeliveryHandler) serve(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "public, max-age=2")
 	}
 	w.WriteHeader(http.StatusOK)
+
+	if storage.IsPlaylist(resource) {
+		body, err := io.ReadAll(reader)
+		if err != nil {
+			return
+		}
+		queryFor := func(res string) string {
+			return h.signer.QueryForResource(streamID, res, exp)
+		}
+		body = playback.RewriteManifest(body, resource, queryFor)
+		_, _ = w.Write(body)
+		return
+	}
+
 	_, _ = io.Copy(w, reader)
 }
