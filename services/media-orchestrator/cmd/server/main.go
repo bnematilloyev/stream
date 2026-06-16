@@ -58,6 +58,9 @@ func main() {
 
 	var backend transcode.Backend
 	switch cfg.TranscodeMode {
+	case "passthrough", "remux":
+		backend = transcode.NewPassthroughBackend(cfg.FFmpegPath)
+		log.Info("transcode mode: passthrough (OBS H.264/AAC remux to HLS, no GPU/CPU encode)")
 	case "queue":
 		bus, err := pkgnats.NewTranscodeBus(pkgnats.DefaultConfig(cfg.NATSURL))
 		if err != nil {

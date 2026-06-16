@@ -32,6 +32,57 @@ func (r *Runner) StartForLatency(inputURL, outputDir, latencyMode string) (*exec
 	return r.StartABR(inputURL, outputDir, profile, ladder)
 }
 
+// StartPassthroughHLS remuxes a good OBS H.264/AAC input into HLS without video transcoding.
+func (r *Runner) StartPassthroughHLS(inputURL, outputDir, latencyMode string) (*exec.Cmd, error) {
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return nil, err
+	}
+	args := r.passthroughArgs(inputURL, outputDir, latencyMode)
+
+	cmd := exec.Command(r.bin, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("ffmpeg: %w", err)
+	}
+	return cmd, nil
+}
+
+func (r *Runner) passthroughArgs(inputURL, outputDir, latencyMode string) []string {
+	profile := profileForLatency(latencyMode)
+	args := []string{"-hide_banner", "-loglevel", "warning", "-fflags", "+genpts+discardcorrupt"}
+	args = appendInputOptions(args, inputURL)
+	args = append(args,
+		"-i", inputURL,
+		"-map", "0:v:0",
+		"-map", "0:a?",
+		"-c:v", "copy",
+		"-c:a", "aac",
+		"-b:a", "128k",
+		"-ar", strconv.Itoa(profile.AudioRate),
+		"-f", "hls",
+		"-hls_time", fmt.Sprintf("%.2f", profile.SegmentSec),
+		"-hls_list_size", "12",
+		"-hls_delete_threshold", "6",
+		"-max_interleave_delta", "0",
+		"-muxdelay", "0",
+		"-muxpreload", "0",
+		"-hls_flags", "delete_segments+append_list+program_date_time+independent_segments+temp_file",
+	)
+
+	if profile.UseFMP4 {
+		args = append(args,
+			"-hls_segment_type", "fmp4",
+			"-hls_fmp4_init_filename", "init.mp4",
+			"-hls_segment_filename", filepath.Join(outputDir, "seg_%05d.m4s"),
+		)
+	} else {
+		args = append(args, "-hls_segment_filename", filepath.Join(outputDir, "seg_%05d.ts"))
+	}
+	args = append(args, filepath.Join(outputDir, "master.m3u8"))
+	return args
+}
+
 // StartABR launches multi-bitrate LL-HLS (or standard HLS) transcoding.
 func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []Tier) (*exec.Cmd, error) {
 	if len(ladder) == 0 {
@@ -53,20 +104,7 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 		"-fflags", "+genpts+discardcorrupt",
 	}
 
-	if strings.HasPrefix(inputURL, "rtsp://") {
-		args = append(args,
-			"-use_wallclock_as_timestamps", "1",
-			"-rtsp_transport", "tcp", "-timeout", "5000000",
-			"-probesize", "32", "-analyzeduration", "0",
-		)
-	}
-	if strings.HasPrefix(inputURL, "rtmp://") {
-		args = append(args,
-			"-rw_timeout", "45000000",
-			"-probesize", "10000000",
-			"-analyzeduration", "10000000",
-		)
-	}
+	args = appendInputOptions(args, inputURL)
 
 	args = append(args, "-i", inputURL, "-filter_complex", filter)
 
@@ -130,6 +168,26 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 		return nil, fmt.Errorf("ffmpeg: %w", err)
 	}
 	return cmd, nil
+}
+
+func appendInputOptions(args []string, inputURL string) []string {
+	if strings.HasPrefix(inputURL, "rtsp://") {
+		return append(args,
+			"-use_wallclock_as_timestamps", "1",
+			"-rtsp_transport", "tcp",
+			"-timeout", "5000000",
+			"-probesize", "32",
+			"-analyzeduration", "0",
+		)
+	}
+	if strings.HasPrefix(inputURL, "rtmp://") {
+		return append(args,
+			"-rw_timeout", "45000000",
+			"-probesize", "10000000",
+			"-analyzeduration", "10000000",
+		)
+	}
+	return args
 }
 
 func buildScaleFilter(n int, ladder []Tier, highQuality bool) string {

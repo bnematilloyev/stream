@@ -2,6 +2,18 @@
 
 These settings are tuned for Sahiy Stream RTMP ingest and HLS playback stability.
 
+## Recommended Server Mode
+
+For OBS-quality streams, use passthrough/remux mode first:
+
+```env
+TRANSCODE_MODE=passthrough
+FFMPEG_VIDEO_ENCODER=libx264
+TRANSCODE_QUALITY=production
+```
+
+This does not transcode video. It copies the OBS H.264 stream into HLS segments and only normalizes audio to AAC, so CPU/GPU load is much lower. Use `TRANSCODE_MODE=local` or `queue` only when you need multiple qualities such as 1080p/720p/480p.
+
 ## Recommended OBS Output
 
 Open `Settings -> Output -> Output Mode: Advanced -> Streaming`.
