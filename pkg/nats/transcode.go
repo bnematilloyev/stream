@@ -103,10 +103,12 @@ func (b *TranscodeBus) publishJSON(ctx context.Context, subject string, payload 
 // CommandHandler receives start/stop commands.
 type CommandHandler func(subject string, data []byte) error
 
-// SubscribeCommands binds a queue group consumer for transcode commands.
+// SubscribeCommands binds a queue group consumer for start/stop transcode commands.
+// A single wildcard subscription avoids JetStream "subject does not match consumer"
+// when start and stop share the same queue group on one stream.
 func (b *TranscodeBus) SubscribeCommands(handler CommandHandler) (*nats.Subscription, error) {
 	return b.js.QueueSubscribe(
-		transcode.CmdStartSubject,
+		transcode.CmdAllSubject,
 		TranscodeWorkersQ,
 		func(msg *nats.Msg) { b.handleCommand(msg, handler) },
 		nats.ManualAck(),
@@ -114,14 +116,9 @@ func (b *TranscodeBus) SubscribeCommands(handler CommandHandler) (*nats.Subscrip
 	)
 }
 
+// SubscribeStopCommands is deprecated; use SubscribeCommands (wildcard covers stop).
 func (b *TranscodeBus) SubscribeStopCommands(handler CommandHandler) (*nats.Subscription, error) {
-	return b.js.QueueSubscribe(
-		transcode.CmdStopSubject,
-		TranscodeWorkersQ,
-		func(msg *nats.Msg) { b.handleCommand(msg, handler) },
-		nats.ManualAck(),
-		nats.BindStream(TranscodeCmdStream),
-	)
+	return b.SubscribeCommands(handler)
 }
 
 func (b *TranscodeBus) handleCommand(msg *nats.Msg, handler CommandHandler) {

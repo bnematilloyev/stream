@@ -45,11 +45,7 @@ func NewPool(workerID, ffmpeg, encoder, quality string, maxJobs int, bus *pkgnat
 }
 
 func (p *Pool) Run(ctx context.Context) error {
-	startSub, err := p.bus.SubscribeCommands(p.handleCommand)
-	if err != nil {
-		return err
-	}
-	stopSub, err := p.bus.SubscribeStopCommands(p.handleCommand)
+	cmdSub, err := p.bus.SubscribeCommands(p.handleCommand)
 	if err != nil {
 		return err
 	}
@@ -57,8 +53,7 @@ func (p *Pool) Run(ctx context.Context) error {
 	go p.heartbeatLoop(ctx)
 
 	<-ctx.Done()
-	_ = startSub.Unsubscribe()
-	_ = stopSub.Unsubscribe()
+	_ = cmdSub.Unsubscribe()
 	p.stopAll()
 	return nil
 }

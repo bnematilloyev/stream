@@ -91,7 +91,7 @@ chmod +x "\${REMOTE_DIR}/bin/transcode-worker" "\${REMOTE_DIR}/scripts/init-mini
 
 cd "\${REMOTE_DIR}/infra/docker"
 sed -i 's|"127.0.0.1:14222:4222"|"14222:4222"|g' docker-compose.prod.yml
-docker compose -f docker-compose.prod.yml -f docker-compose.gpu-worker.yml down nats minio 2>/dev/null || true
+docker compose -f docker-compose.prod.yml -f docker-compose.gpu-worker.yml down nats 2>/dev/null || true
 docker compose -f docker-compose.prod.yml -f docker-compose.gpu-worker.yml up -d
 sleep 10
 

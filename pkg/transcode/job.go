@@ -3,8 +3,9 @@ package transcode
 import "time"
 
 const (
-	CmdStartSubject = "transcode.cmd.start"
-	CmdStopSubject  = "transcode.cmd.stop"
+	CmdStartSubject  = "transcode.cmd.start"
+	CmdStopSubject   = "transcode.cmd.stop"
+	CmdAllSubject    = "transcode.cmd.>"
 	EvtSubjectPrefix = "transcode.evt."
 )
 
