@@ -21,6 +21,10 @@ func toGRPCError(err error) error {
 	case http.StatusNotFound:
 		return status.Error(codes.NotFound, appErr.Message)
 	default:
-		return status.Error(codes.Internal, appErr.Message)
+		msg := appErr.Message
+		if appErr.Err != nil {
+			msg = appErr.Err.Error()
+		}
+		return status.Error(codes.Internal, msg)
 	}
 }
