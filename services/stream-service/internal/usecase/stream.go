@@ -174,7 +174,10 @@ func (uc *StreamUseCase) Start(ctx context.Context, userID, streamID uuid.UUID) 
 		return nil, apperrors.Internal(err)
 	}
 	_ = uc.channels.SetLive(ctx, s.ChannelID, true)
-	return uc.streams.GetByID(ctx, streamID)
+	s.Status = domain.StatusLive
+	s.StartedAt = &now
+	s.EndedAt = nil
+	return s, nil
 }
 
 func normalizeIngestProtocol(value string) (string, error) {
