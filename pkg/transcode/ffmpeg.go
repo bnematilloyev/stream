@@ -48,16 +48,20 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 
 	n := len(ladder)
 	filter := buildScaleFilter(n, ladder, profile.HighQuality)
-	args := []string{"-hide_banner", "-loglevel", "warning", "-fflags", "+genpts+discardcorrupt"}
+	args := []string{
+		"-hide_banner", "-loglevel", "warning",
+		"-fflags", "+genpts+discardcorrupt",
+		"-use_wallclock_as_timestamps", "1",
+	}
 
 	if strings.HasPrefix(inputURL, "rtsp://") {
 		args = append(args, "-rtsp_transport", "tcp", "-timeout", "5000000", "-probesize", "32", "-analyzeduration", "0")
 	}
 	if strings.HasPrefix(inputURL, "rtmp://") {
 		args = append(args,
-			"-rw_timeout", "30000000",
-			"-probesize", "5000000",
-			"-analyzeduration", "5000000",
+			"-rw_timeout", "45000000",
+			"-probesize", "10000000",
+			"-analyzeduration", "10000000",
 		)
 	}
 
@@ -81,8 +85,10 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 
 	args = append(args, "-f", "hls")
 	args = append(args, "-hls_time", fmt.Sprintf("%.2f", profile.SegmentSec))
-	args = append(args, "-hls_list_size", "10")
-	args = append(args, "-hls_delete_threshold", "4")
+	args = append(args, "-hls_list_size", "12")
+	args = append(args, "-hls_delete_threshold", "6")
+	args = append(args, "-max_interleave_delta", "0")
+	args = append(args, "-muxdelay", "0", "-muxpreload", "0")
 
 	hlsFlags := []string{
 		"delete_segments", "append_list", "program_date_time",

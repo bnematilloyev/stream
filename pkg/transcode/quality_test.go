@@ -17,8 +17,11 @@ func TestResolvePipelineProduction(t *testing.T) {
 	if len(ladder) != 3 {
 		t.Fatalf("production ladder want 3 tiers got %d", len(ladder))
 	}
-	if ladder[0].Bitrate != "6500k" {
+	if ladder[0].Bitrate != "4500k" {
 		t.Fatalf("1080p bitrate got %s", ladder[0].Bitrate)
+	}
+	if profile.PartSec != 0 {
+		t.Fatalf("OBS-stable LL-HLS should not emit partial segment hints, got %f", profile.PartSec)
 	}
 }
 

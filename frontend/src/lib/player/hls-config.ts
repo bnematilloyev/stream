@@ -1,36 +1,35 @@
 import type Hls from "hls.js";
 
-/** Production LL-HLS — quality-first ABR for VPS origin (few viewers, high bitrate ladder). */
+/** Production LL-HLS — stability-first ABR for OBS ingest and VPS origin. */
 export function createHlsConfig(): Partial<Hls["config"]> {
   return {
     enableWorker: true,
     lowLatencyMode: true,
 
-    liveSyncDurationCount: 2,
-    liveMaxLatencyDurationCount: 6,
+    liveSyncDurationCount: 3,
+    liveMaxLatencyDurationCount: 8,
     maxLiveSyncPlaybackRate: 1.1,
     liveDurationInfinity: true,
 
-    backBufferLength: 0,
-    liveBackBufferLength: 0,
-    maxBufferLength: 12,
-    maxMaxBufferLength: 24,
-    maxBufferSize: 32 * 1000 * 1000,
-    maxBufferHole: 0.5,
+    backBufferLength: 30,
+    liveBackBufferLength: 30,
+    maxBufferLength: 20,
+    maxMaxBufferLength: 40,
+    maxBufferSize: 48 * 1000 * 1000,
+    maxBufferHole: 1.0,
 
-    // Prefer higher renditions when bandwidth allows
     startLevel: -1,
-    capLevelToPlayerSize: false,
-    abrEwmaDefaultEstimate: 12_000_000,
-    abrBandWidthFactor: 0.95,
-    abrBandWidthUpFactor: 0.85,
+    capLevelToPlayerSize: true,
+    abrEwmaDefaultEstimate: 4_000_000,
+    abrBandWidthFactor: 0.8,
+    abrBandWidthUpFactor: 0.7,
     abrMaxWithRealBitrate: true,
-    minAutoBitrate: 2_500_000,
+    minAutoBitrate: 600_000,
 
-    fragLoadingMaxRetry: 8,
-    fragLoadingRetryDelay: 500,
-    manifestLoadingMaxRetry: 6,
-    levelLoadingMaxRetry: 6,
+    fragLoadingMaxRetry: 12,
+    fragLoadingRetryDelay: 700,
+    manifestLoadingMaxRetry: 10,
+    levelLoadingMaxRetry: 10,
     startFragPrefetch: true,
     testBandwidth: true,
 

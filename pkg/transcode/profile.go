@@ -15,7 +15,7 @@ type Profile struct {
 func LLHLSProfile() Profile {
 	return Profile{
 		SegmentSec: 2.0,
-		PartSec:    0.33,
+		PartSec:    0,
 		UseLLHLS:   true,
 		UseFMP4:    true,
 		Preset:     "veryfast",
