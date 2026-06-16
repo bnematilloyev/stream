@@ -117,8 +117,8 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 	args = append(args, "-master_pl_name", "master.m3u8")
 	varStream := make([]string, n)
 	for i := range ladder {
-		// Paired -map video,audio per variant → output streams v:0,a:1 / v:2,a:3 / ...
-		varStream[i] = fmt.Sprintf("v:%d,a:%d", i*2, i*2+1)
+		// FFmpeg var_stream_map uses per-type indices (v:0 = first video, a:0 = first audio).
+		varStream[i] = fmt.Sprintf("v:%d,a:%d", i, i)
 	}
 	args = append(args, "-var_stream_map", strings.Join(varStream, " "))
 	args = append(args, filepath.Join(outputDir, "%v/playlist.m3u8"))
