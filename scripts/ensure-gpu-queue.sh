@@ -43,6 +43,15 @@ patch_env RTSP_WORKER_URL "rtsp://${HOST_IP}:8554"
 
 touch "${REMOTE_DIR}/.gpu-transcode"
 
+echo "==> NATS va MinIO portlarini RunPod uchun ochish..."
+COMPOSE_DIR="${REMOTE_DIR}/infra/docker"
+if [[ -f "${COMPOSE_DIR}/docker-compose.prod.yml" ]]; then
+  sed -i 's|"127.0.0.1:14222:4222"|"14222:4222"|g' "${COMPOSE_DIR}/docker-compose.prod.yml"
+  cd "${COMPOSE_DIR}"
+  docker compose -f docker-compose.prod.yml -f docker-compose.gpu-worker.yml up -d nats minio
+  sleep 3
+fi
+
 echo "==> media-orchestrator qayta ishga tushirish..."
 mkdir -p "${LOG}"
 pkill -f "${REMOTE_DIR}/bin/media-orchestrator" 2>/dev/null || true
@@ -68,6 +77,16 @@ if grep -q "transcode mode: queue" "${LOG}/media-orchestrator.log" 2>/dev/null; 
 else
   echo "  ⚠️  orchestrator logda 'queue (NATS)' ko'rinmadi:"
   tail -5 "${LOG}/media-orchestrator.log" 2>/dev/null || true
+fi
+
+if ss -tlnp 2>/dev/null | grep -q ':14222'; then
+  bind=$(ss -tlnp | grep ':14222' | head -1)
+  if echo "${bind}" | grep -q '127.0.0.1:14222'; then
+    echo "  ❌ NATS faqat localhost da — RunPod ulanmaydi!"
+    echo "     bash ${REMOTE_DIR}/scripts/ensure-gpu-queue.sh qayta ishga tushiring"
+  else
+    echo "  ✅ NATS :14222 ochiq (RunPod ulanishi mumkin)"
+  fi
 fi
 
 echo ""

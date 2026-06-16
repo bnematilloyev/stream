@@ -1,6 +1,8 @@
-# GPU worker overlay — MinIO ni RunPod dan ko'rinishi uchun ochadi.
-# NATS porti setup skripti docker-compose.prod.yml da 14222:4222 ga o'zgartiriladi.
+# GPU worker overlay — RunPod dan NATS va MinIO ga ulanish uchun portlar ochiladi.
 services:
+  nats:
+    ports:
+      - "14222:4222"
   minio:
     ports:
       - "19000:9000"
