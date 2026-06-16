@@ -48,12 +48,15 @@ echo "==> transcode-worker build (linux/amd64)..."
 export GOOS=linux GOARCH=amd64
 mkdir -p "${ROOT}/bin"
 (cd "${ROOT}/services/transcode-worker" && go build -o "${ROOT}/bin/transcode-worker" ./cmd/server)
+(cd "${ROOT}/services/media-orchestrator" && go build -o "${ROOT}/bin/media-orchestrator" ./cmd/server)
 
 echo "==> VPS ga yuklash..."
 ssh_cmd "mkdir -p ${REMOTE_DIR}/bin ${REMOTE_DIR}/infra/docker ${REMOTE_DIR}/scripts"
 scp_cmd "${ROOT}/bin/transcode-worker" "${USER}@${HOST}:${REMOTE_DIR}/bin/transcode-worker"
+scp_cmd "${ROOT}/bin/media-orchestrator" "${USER}@${HOST}:${REMOTE_DIR}/bin/media-orchestrator"
 scp_cmd "${ROOT}/infra/docker/docker-compose.gpu-worker.yml" "${USER}@${HOST}:${REMOTE_DIR}/infra/docker/"
 scp_cmd "${ROOT}/scripts/init-minio.sh" "${USER}@${HOST}:${REMOTE_DIR}/scripts/"
+scp_cmd "${ROOT}/scripts/ensure-gpu-queue.sh" "${USER}@${HOST}:${REMOTE_DIR}/scripts/"
 
 echo "==> VPS sozlash (queue mode + NATS/MinIO)..."
 ssh_cmd bash -s <<REMOTE
@@ -93,6 +96,9 @@ fi
 patch_env RTSP_INTERNAL_URL "rtsp://127.0.0.1:8554"
 patch_env RTSP_WORKER_URL "rtsp://\${HOST_IP}:8554"
 patch_env NATS_URL nats://127.0.0.1:14222
+
+touch "\${REMOTE_DIR}/.gpu-transcode"
+chmod +x "\${REMOTE_DIR}/scripts/ensure-gpu-queue.sh" 2>/dev/null || true
 
 chmod +x "\${REMOTE_DIR}/bin/transcode-worker" "\${REMOTE_DIR}/scripts/init-minio.sh"
 

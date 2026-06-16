@@ -31,6 +31,11 @@ FRONTEND_URL="https://${FRONTEND_DOMAIN:-stream.vibrant.uz}"
 
 ensure_env() {
   local env_file="${REMOTE_DIR}/.env"
+  if [[ -f "${REMOTE_DIR}/.gpu-transcode" ]] || grep -q '^TRANSCODE_MODE=queue' "${env_file}" 2>/dev/null; then
+    echo "GPU queue mode — transcode sozlamalari saqlanadi (.env transcode qismi o'zgartirilmaydi)"
+    touch "${REMOTE_DIR}/.gpu-transcode"
+    return 0
+  fi
   local jwt_access jwt_refresh media_hook playback_signing
   if [[ -f "${env_file}" ]]; then
     jwt_access="$(grep -E '^JWT_ACCESS_SECRET=' "${env_file}" | cut -d= -f2- || true)"
@@ -85,6 +90,8 @@ if command -v ufw >/dev/null 2>&1; then
 fi
 
 pkill -f "${REMOTE_DIR}/bin/" 2>/dev/null || true
+# VPS da transcode ffmpeg bo'lmasligi kerak (GPU worker da)
+pkill -9 -f "ffmpeg -hide_banner" 2>/dev/null || true
 for port in 50051 50052 50053 50054 "${GATEWAY_PORT}" 9084 9085 "${FRONTEND_PORT}"; do
   fuser -k "${port}/tcp" 2>/dev/null || true
 done

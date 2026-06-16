@@ -3,6 +3,8 @@ IP-manzil: YOUR_SERVER_IP
 Foydalanuvchi nomi: root
 Parol: YOUR_SSH_PASSWORD
 # Band portlarni tekshiring: bash scripts/check-server-ports.sh
+# GPU transcode (RunPod): yes — deploy queue mode ishlatadi
+GPU transcode: yes
 Frontend port: 3010
 Gateway port: 18080
 HLS port: 18090

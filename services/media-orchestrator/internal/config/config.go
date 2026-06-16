@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+
 	pkgconfig "github.com/sahiy/sahiy-stream/pkg/config"
 	"github.com/sahiy/sahiy-stream/pkg/storage"
 )
@@ -62,9 +64,20 @@ func Load() Config {
 }
 
 func (c Config) Validate() error {
-	return pkgconfig.ValidateProductionSecrets(c.AppEnv, map[string]string{
+	if err := pkgconfig.ValidateProductionSecrets(c.AppEnv, map[string]string{
 		"MEDIA_HOOK_SECRET": c.HookSecret,
-	})
+	}); err != nil {
+		return err
+	}
+	if c.TranscodeMode == "queue" {
+		if c.NATSURL == "" {
+			return fmt.Errorf("TRANSCODE_MODE=queue requires NATS_URL")
+		}
+		if c.Storage.Backend != storage.BackendS3 {
+			return fmt.Errorf("TRANSCODE_MODE=queue requires HLS_STORAGE_BACKEND=s3 (worker uploads segments)")
+		}
+	}
+	return nil
 }
 
 func (c Config) HookAuth() (secret string, requireSecret bool, allowInternal bool) {

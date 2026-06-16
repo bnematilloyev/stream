@@ -69,10 +69,13 @@ func main() {
 		if _, err := bus.SubscribeEvents(listener.Handle); err != nil {
 			log.Fatal("transcode event subscribe failed", zap.Error(err))
 		}
-		log.Info("transcode mode: queue (NATS)")
+		log.Info("transcode mode: queue (NATS)",
+			zap.String("worker_rtmp", cfg.RTMPWorkerURL),
+			zap.String("note", "FFmpeg runs on GPU workers only, not this host"),
+		)
 	default:
 		backend = transcode.NewLocalBackend(cfg.FFmpegPath, cfg.FFmpegVideoEncoder, cfg.TranscodeQuality)
-		log.Info("transcode mode: local (embedded FFmpeg)")
+		log.Info("transcode mode: local (embedded FFmpeg on this host)")
 	}
 
 	mgr := pipeline.NewManager(

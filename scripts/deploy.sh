@@ -31,6 +31,8 @@ if [[ -z "${FRONTEND_DOMAIN}" ]]; then
 fi
 FRONTEND_DOMAIN="${FRONTEND_DOMAIN:-stream.vibrant.uz}"
 API_DOMAIN="${API_DOMAIN:-api.stream.vibrant.uz}"
+GPU_TRANSCODE=$(read_deploy "GPU transcode")
+GPU_TRANSCODE="${GPU_TRANSCODE:-no}"
 
 CERTBOT_EMAIL="${CERTBOT_EMAIL:-admin@vibrant.uz}"
 API_URL="https://${API_DOMAIN}"
@@ -109,6 +111,7 @@ tar -czf "${ARCHIVE}" -C "${ROOT}" \
   scripts/deploy-remote-only.sh \
   scripts/setup-nginx-ssl.sh \
   scripts/check-server-ports.sh \
+  scripts/ensure-gpu-queue.sh \
   for-deploy.txt.example \
   services/auth-service/migrations \
   frontend/.next \
@@ -135,6 +138,7 @@ FRONTEND_DOMAIN="${FRONTEND_DOMAIN}"
 API_URL="${API_URL}"
 FRONTEND_URL="${FRONTEND_URL}"
 CERTBOT_EMAIL="${CERTBOT_EMAIL}"
+GPU_TRANSCODE="${GPU_TRANSCODE}"
 
 cd "\${REMOTE_DIR}"
 tar -xzf deploy.tar.gz
@@ -265,6 +269,17 @@ for i in \$(seq 1 30); do
   fi
   sleep 1
 done
+
+chmod +x "\${REMOTE_DIR}/scripts/ensure-gpu-queue.sh" 2>/dev/null || true
+use_gpu=0
+case "\$(echo "\${GPU_TRANSCODE}" | tr '[:upper:]' '[:lower:]')" in
+  yes|ha|true|1) use_gpu=1 ;;
+esac
+[[ -f "\${REMOTE_DIR}/.gpu-transcode" ]] && use_gpu=1
+if [[ "\${use_gpu}" -eq 1 ]]; then
+  echo "==> GPU queue mode (transcode RunPod da, VPS da emas)..."
+  bash "\${REMOTE_DIR}/scripts/ensure-gpu-queue.sh"
+fi
 
 if [[ "\${SETUP_SSL:-1}" == "1" ]]; then
   echo "==> Nginx + SSL..."
