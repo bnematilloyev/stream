@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,7 +37,9 @@ type Manager struct {
 	storage        storage.ObjectStorage
 	syncSegments   bool
 	rtmpBase       string
+	rtmpWorkerBase string
 	rtspBase       string
+	rtspWorkerBase string
 	hlsDir         string
 	log            *zap.Logger
 }
@@ -57,7 +60,7 @@ func NewManager(
 	stream StreamClient,
 	store storage.ObjectStorage,
 	syncSegments bool,
-	rtmpBase, rtspBase, hlsDir string,
+	rtmpBase, rtmpWorkerBase, rtspBase, rtspWorkerBase, hlsDir string,
 	log *zap.Logger,
 ) *Manager {
 	storageBackend := storage.BackendLocal
@@ -75,7 +78,9 @@ func NewManager(
 		storage:        store,
 		syncSegments:   syncSegments,
 		rtmpBase:       rtmpBase,
+		rtmpWorkerBase: rtmpWorkerBase,
 		rtspBase:       rtspBase,
+		rtspWorkerBase: rtspWorkerBase,
 		hlsDir:         hlsDir,
 		log:            log,
 	}
@@ -106,11 +111,10 @@ func (m *Manager) OnPublish(ctx context.Context, ingestName, source string) erro
 
 	inputURL, latencyMode := m.buildInputURL(ingestName, source, latencyMode)
 	if source == "rtmp" {
-		readyURL, err := waitForRTMPPublisher(ctx, m.rtmpBase, ingestName, m.log)
-		if err != nil {
+		if _, err := waitForRTMPPublisher(ctx, m.rtmpBase, ingestName, m.log); err != nil {
 			return err
 		}
-		inputURL = readyURL
+		inputURL = m.streamInputURL(m.rtmpWorkerBase, ingestName)
 	}
 	outDir := filepath.Join(m.hlsDir, sid.String())
 
@@ -261,10 +265,14 @@ func (m *Manager) buildInputURL(ingestName, source, latencyMode string) (string,
 		if latencyMode == "" || latencyMode == "ultra-low" {
 			latencyMode = "ultra-low"
 		}
-		return fmt.Sprintf("%s/%s", m.rtspBase, ingestName), latencyMode
+		return m.streamInputURL(m.rtspWorkerBase, ingestName), latencyMode
 	}
 	if latencyMode == "" {
 		latencyMode = "standard"
 	}
-	return fmt.Sprintf("%s/%s", m.rtmpBase, ingestName), latencyMode
+	return m.streamInputURL(m.rtmpWorkerBase, ingestName), latencyMode
+}
+
+func (m *Manager) streamInputURL(base, ingestName string) string {
+	return fmt.Sprintf("%s/%s", strings.TrimRight(base, "/"), ingestName)
 }

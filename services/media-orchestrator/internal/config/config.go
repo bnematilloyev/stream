@@ -6,15 +6,17 @@ import (
 )
 
 type Config struct {
-	AppEnv            string
-	LogLevel          string
-	HTTPAddr          string
-	DatabaseURL       string
-	StreamServiceAddr string
-	RTMPInternalURL   string
-	RTSPInternalURL   string
-	HLSOutputDir      string
-	HLSBaseURL        string
+	AppEnv             string
+	LogLevel           string
+	HTTPAddr           string
+	DatabaseURL        string
+	StreamServiceAddr  string
+	RTMPInternalURL    string
+	RTMPWorkerURL      string
+	RTSPInternalURL    string
+	RTSPWorkerURL      string
+	HLSOutputDir       string
+	HLSBaseURL         string
 	FFmpegPath         string
 	FFmpegVideoEncoder string
 	TranscodeQuality   string
@@ -33,7 +35,9 @@ func Load() Config {
 		DatabaseURL:        pkgconfig.Get("DATABASE_URL", "postgres://sahiy:sahiy_secret@localhost:5433/sahiy_stream?sslmode=disable"),
 		StreamServiceAddr:  pkgconfig.Get("STREAM_SERVICE_ADDR", "localhost:50053"),
 		RTMPInternalURL:    pkgconfig.Get("RTMP_INTERNAL_URL", "rtmp://127.0.0.1:1935/live"),
+		RTMPWorkerURL:      pkgconfig.Get("RTMP_BASE_URL", pkgconfig.Get("RTMP_INTERNAL_URL", "rtmp://127.0.0.1:1935/live")),
 		RTSPInternalURL:    pkgconfig.Get("RTSP_INTERNAL_URL", "rtsp://127.0.0.1:8554"),
+		RTSPWorkerURL:      pkgconfig.Get("RTSP_WORKER_URL", pkgconfig.Get("RTSP_INTERNAL_URL", "rtsp://127.0.0.1:8554")),
 		HLSOutputDir:       hlsDir,
 		HLSBaseURL:         pkgconfig.Get("HLS_BASE_URL", "http://localhost:8090/hls"),
 		FFmpegPath:         pkgconfig.Get("FFMPEG_PATH", "ffmpeg"),

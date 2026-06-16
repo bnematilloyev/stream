@@ -77,7 +77,7 @@ func main() {
 
 	mgr := pipeline.NewManager(
 		backend, cfg.FFmpegVideoEncoder, cfg.TranscodeQuality, mediaRepo, streamClient, store, cfg.SyncSegments(),
-		cfg.RTMPInternalURL, cfg.RTSPInternalURL, cfg.HLSOutputDir, log,
+		cfg.RTMPInternalURL, cfg.RTMPWorkerURL, cfg.RTSPInternalURL, cfg.RTSPWorkerURL, cfg.HLSOutputDir, log,
 	)
 
 	secret, requireSecret, allowInternal := cfg.HookAuth()

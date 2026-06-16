@@ -83,8 +83,15 @@ patch_env MINIO_ACCESS_KEY sahiy_minio
 patch_env MINIO_SECRET_KEY sahiy_minio_secret
 patch_env MINIO_BUCKET sahiy-media
 patch_env MINIO_USE_SSL false
-patch_env RTMP_INTERNAL_URL "rtmp://\${HOST_IP}:1935/live"
-patch_env RTSP_INTERNAL_URL "rtsp://\${HOST_IP}:8554"
+patch_env RTMP_INTERNAL_URL "rtmp://127.0.0.1:1935/live"
+RTMP_BASE_URL_VAL="rtmp://\${HOST_IP}:1935/live"
+if grep -q '^RTMP_BASE_URL=' "\${ENV_FILE}"; then
+  sed -i "s|^RTMP_BASE_URL=.*|RTMP_BASE_URL=\${RTMP_BASE_URL_VAL}|" "\${ENV_FILE}"
+else
+  echo "RTMP_BASE_URL=\${RTMP_BASE_URL_VAL}" >>"\${ENV_FILE}"
+fi
+patch_env RTSP_INTERNAL_URL "rtsp://127.0.0.1:8554"
+patch_env RTSP_WORKER_URL "rtsp://\${HOST_IP}:8554"
 patch_env NATS_URL nats://127.0.0.1:14222
 
 chmod +x "\${REMOTE_DIR}/bin/transcode-worker" "\${REMOTE_DIR}/scripts/init-minio.sh"
