@@ -72,24 +72,19 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 
 	videoBase := r.encoder.BaseArgs(profile)
 	for i := range ladder {
-		args = append(args, "-map", fmt.Sprintf("[v%dout]", i+1))
+		args = append(args, "-map", fmt.Sprintf("[v%dout]", i+1), "-map", "0:a?")
 	}
-	args = append(args, "-map", "0:a?")
 	args = append(args, videoBase...)
 	for i, t := range ladder {
 		args = append(args,
 			fmt.Sprintf("-b:v:%d", i), t.Bitrate,
 			fmt.Sprintf("-maxrate:v:%d", i), t.Maxrate,
 			fmt.Sprintf("-bufsize:v:%d", i), t.Bufsize,
+			fmt.Sprintf("-c:a:%d", i), "aac",
+			fmt.Sprintf("-b:a:%d", i), t.AudioBR,
 		)
 	}
-	// One AAC encode shared by all variants — avoids timestamp drift per ladder rung.
-	args = append(args,
-		"-af", "aresample=async=1:first_pts=0",
-		"-c:a", "aac",
-		"-b:a", ladder[0].AudioBR,
-		"-ar", strconv.Itoa(profile.AudioRate),
-	)
+	args = append(args, "-ar", strconv.Itoa(profile.AudioRate))
 
 	args = append(args, "-f", "hls")
 	args = append(args, "-hls_time", fmt.Sprintf("%.2f", profile.SegmentSec))
@@ -120,10 +115,10 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 	}
 
 	args = append(args, "-master_pl_name", "master.m3u8")
-	audioIdx := n
 	varStream := make([]string, n)
 	for i := range ladder {
-		varStream[i] = fmt.Sprintf("v:%d,a:%d", i, audioIdx)
+		// Paired -map video,audio per variant → output streams v:0,a:1 / v:2,a:3 / ...
+		varStream[i] = fmt.Sprintf("v:%d,a:%d", i*2, i*2+1)
 	}
 	args = append(args, "-var_stream_map", strings.Join(varStream, " "))
 	args = append(args, filepath.Join(outputDir, "%v/playlist.m3u8"))
