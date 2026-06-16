@@ -83,6 +83,10 @@ func (u *SegmentUploader) syncOnce(ctx context.Context) {
 }
 
 func (u *SegmentUploader) upload(ctx context.Context, key, path, name string) error {
+	info, err := os.Stat(path)
+	if err != nil || info.Size() == 0 {
+		return nil
+	}
 	if err := u.storage.UploadFile(ctx, key, path, storage.ContentType(name)); err != nil {
 		u.log.Warn("segment upload failed", zap.String("key", key), zap.Error(err))
 		return err

@@ -54,29 +54,31 @@ func (h *DeliveryHandler) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = reader.Close() }()
 
-	w.Header().Set("Content-Type", storage.ContentType(resource))
-	switch {
-	case storage.IsPlaylist(resource):
-		w.Header().Set("Cache-Control", "public, max-age=1, stale-while-revalidate=2")
-	case storage.IsSegment(resource):
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-	default:
-		w.Header().Set("Cache-Control", "public, max-age=60")
-	}
-	w.WriteHeader(http.StatusOK)
-
 	if storage.IsPlaylist(resource) {
 		body, err := io.ReadAll(reader)
-		if err != nil {
+		if err != nil || len(body) == 0 {
+			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
 		queryFor := func(resource string) string {
 			return h.signer.QueryForResource(streamID, resource, exp)
 		}
 		body = playback.RewriteManifest(body, resource, queryFor)
+
+		w.Header().Set("Content-Type", storage.ContentType(resource))
+		w.Header().Set("Cache-Control", "public, max-age=1, stale-while-revalidate=2")
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
 		return
 	}
 
+	w.Header().Set("Content-Type", storage.ContentType(resource))
+	switch {
+	case storage.IsSegment(resource):
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	default:
+		w.Header().Set("Cache-Control", "public, max-age=60")
+	}
+	w.WriteHeader(http.StatusOK)
 	_, _ = io.Copy(w, reader)
 }
