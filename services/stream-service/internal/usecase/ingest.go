@@ -43,6 +43,28 @@ func (uc *StreamUseCase) StartIngest(ctx context.Context, channelID uuid.UUID) (
 	return uc.streams.GetByID(ctx, st.ID)
 }
 
+func (uc *StreamUseCase) StartIngestStream(ctx context.Context, streamID uuid.UUID) (*domain.Stream, error) {
+	st, err := uc.streams.GetByID(ctx, streamID)
+	if err != nil {
+		return nil, apperrors.Internal(err)
+	}
+	if st == nil {
+		return nil, apperrors.NotFound("stream not found")
+	}
+	if st.Status == domain.StatusLive {
+		return st, nil
+	}
+	if st.Status != domain.StatusScheduled {
+		return nil, apperrors.Validation("stream not publishable", nil)
+	}
+	now := time.Now()
+	if err := uc.streams.SetStatus(ctx, streamID, domain.StatusLive, &now, nil); err != nil {
+		return nil, apperrors.Internal(err)
+	}
+	_ = uc.channels.SetLive(ctx, st.ChannelID, true)
+	return uc.streams.GetByID(ctx, streamID)
+}
+
 func (uc *StreamUseCase) EndIngest(ctx context.Context, streamID uuid.UUID) (*domain.Stream, error) {
 	st, err := uc.streams.GetByID(ctx, streamID)
 	if err != nil {
@@ -64,6 +86,9 @@ func (uc *StreamUseCase) EndIngest(ctx context.Context, streamID uuid.UUID) (*do
 	}
 	if count == 0 {
 		_ = uc.channels.SetLive(ctx, st.ChannelID, false)
+	}
+	if uc.viewers != nil {
+		uc.viewers.ClearStream(ctx, streamID)
 	}
 	return uc.streams.GetByID(ctx, streamID)
 }

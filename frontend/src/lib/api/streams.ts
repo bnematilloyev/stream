@@ -15,6 +15,16 @@ export async function getPlayback(id: string) {
   return apiFetch<Playback>(`/v1/streams/${id}/playback`);
 }
 
+export async function recordViewerHeartbeat(streamId: string, sessionId: string) {
+  return apiFetch<{ stream_id: string; concurrent: number; unique: number }>(
+    `/v1/streams/${streamId}/heartbeat`,
+    {
+      method: "POST",
+      body: JSON.stringify({ session_id: sessionId }),
+    },
+  );
+}
+
 export async function getChannelStreams(
   slug: string,
   page = 1,

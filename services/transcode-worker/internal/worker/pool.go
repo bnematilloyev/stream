@@ -88,10 +88,11 @@ func (p *Pool) startJob(ctx context.Context, job transcode.StartJob) error {
 	defer p.mu.Unlock()
 
 	if len(p.jobs) >= p.maxJobs {
-		return p.runner.publish(ctx, transcode.JobEvent{
+		_ = p.runner.publish(ctx, transcode.JobEvent{
 			JobID: job.JobID, StreamID: job.StreamID, Type: transcode.EventRejected,
 			WorkerID: p.workerID, Error: "worker at capacity", At: time.Now().UTC(),
 		})
+		return fmt.Errorf("worker at capacity")
 	}
 	if _, exists := p.jobs[job.StreamID]; exists {
 		return nil

@@ -112,6 +112,7 @@ func (h *StreamHandler) ListLive(w http.ResponseWriter, r *http.Request) {
 		httputil.Error(w, grpcError(err))
 		return
 	}
+	w.Header().Set("Cache-Control", "public, max-age=2, stale-while-revalidate=5")
 	httputil.JSON(w, http.StatusOK, streamsListToJSON(resp))
 }
 
@@ -149,6 +150,7 @@ func (h *StreamHandler) Playback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Ultra-low WHIP: WHEP works via MediaMTX before HLS/transcode is ready.
 		if stErr == nil && st != nil && st.Status == "live" && st.LatencyMode == "ultra-low" && h.whipBase != "" {
+			w.Header().Set("Cache-Control", "public, max-age=2, stale-while-revalidate=5")
 			httputil.JSON(w, http.StatusOK, map[string]any{
 				"stream_id":       streamID,
 				"whep_url":        h.whipBase + "/" + streamID + "/whep",
@@ -163,6 +165,7 @@ func (h *StreamHandler) Playback(w http.ResponseWriter, r *http.Request) {
 		httputil.Error(w, grpcError(err))
 		return
 	}
+	w.Header().Set("Cache-Control", "public, max-age=5, stale-while-revalidate=30")
 	out := map[string]any{
 		"stream_id": resp.StreamId, "url": resp.Url, "format": "ll-hls",
 		"status": resp.Status, "expires_at_unix": resp.ExpiresAtUnix,

@@ -183,7 +183,11 @@ func (r *PostgresStreamRepository) ListByChannel(ctx context.Context, channelID 
 
 func (r *PostgresStreamRepository) SetStatus(ctx context.Context, id uuid.UUID, status string, startedAt, endedAt *time.Time) error {
 	_, err := r.db.Write().Exec(ctx, `
-		UPDATE streams SET status = $2, started_at = COALESCE($3, started_at), ended_at = COALESCE($4, ended_at), updated_at = NOW()
+		UPDATE streams
+		SET status = $2,
+		    started_at = CASE WHEN $2 = 'live' THEN COALESCE($3, NOW()) ELSE COALESCE($3, started_at) END,
+		    ended_at = CASE WHEN $2 = 'live' THEN NULL ELSE COALESCE($4, ended_at) END,
+		    updated_at = NOW()
 		WHERE id = $1
 	`, id, status, startedAt, endedAt)
 	return err
@@ -313,4 +317,3 @@ func (r *PostgresStreamKeyRepository) UpdateLastUsed(ctx context.Context, id uui
 	_, err := r.db.Write().Exec(ctx, `UPDATE stream_keys SET last_used_at = NOW() WHERE id = $1`, id)
 	return err
 }
-

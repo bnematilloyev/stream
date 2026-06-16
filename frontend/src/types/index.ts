@@ -80,7 +80,7 @@ export interface Playback {
   status: string;
   expires_at_unix: number;
   latency_mode?: string;
-  playback_mode?: "ll-hls" | "dual";
+  playback_mode?: "ll-hls" | "dual" | "whep";
   whep_url?: string;
 }
 

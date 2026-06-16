@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	apperrors "github.com/sahiy/sahiy-stream/pkg/errors"
 	"github.com/sahiy/sahiy-stream/pkg/crypto"
+	apperrors "github.com/sahiy/sahiy-stream/pkg/errors"
 	"github.com/sahiy/sahiy-stream/pkg/pagination"
 	"github.com/sahiy/sahiy-stream/services/stream-service/internal/domain"
 )
@@ -32,17 +32,24 @@ func (uc *StreamUseCase) Create(ctx context.Context, userID uuid.UUID, channelSl
 	if len(title) < 3 || len(title) > 200 {
 		return nil, apperrors.Validation("title must be 3-200 characters", nil)
 	}
-	if ingestProtocol == "" {
-		ingestProtocol = "rtmp"
+	ingestProtocol, err = normalizeIngestProtocol(ingestProtocol)
+	if err != nil {
+		return nil, err
 	}
-	if latencyMode == "" {
-		latencyMode = "standard"
+	latencyMode, err = normalizeLatencyMode(latencyMode)
+	if err != nil {
+		return nil, err
 	}
-	if visibility == "" {
-		visibility = "public"
+	visibility, err = normalizeVisibility(visibility)
+	if err != nil {
+		return nil, err
 	}
 	if tags == nil {
 		tags = []string{}
+	}
+	tags, err = normalizeTags(tags)
+	if err != nil {
+		return nil, err
 	}
 	s := &domain.Stream{
 		ChannelID: ch.ID, Title: title, IngestProtocol: ingestProtocol,
@@ -82,6 +89,31 @@ func (uc *StreamUseCase) Get(ctx context.Context, streamID uuid.UUID) (*domain.S
 }
 
 func (uc *StreamUseCase) Update(ctx context.Context, userID, streamID uuid.UUID, title, description, visibility *string, categoryID *uuid.UUID, tags []string) (*domain.Stream, error) {
+	if title != nil {
+		t := strings.TrimSpace(*title)
+		if len(t) < 3 || len(t) > 200 {
+			return nil, apperrors.Validation("title must be 3-200 characters", nil)
+		}
+		title = &t
+	}
+	if description != nil {
+		d := strings.TrimSpace(*description)
+		description = &d
+	}
+	if visibility != nil {
+		v, err := normalizeVisibility(*visibility)
+		if err != nil {
+			return nil, err
+		}
+		visibility = &v
+	}
+	if tags != nil {
+		var err error
+		tags, err = normalizeTags(tags)
+		if err != nil {
+			return nil, err
+		}
+	}
 	s, err := uc.streams.Update(ctx, streamID, userID, title, description, visibility, categoryID, tags)
 	if err != nil {
 		return nil, apperrors.Internal(err)
@@ -134,7 +166,7 @@ func (uc *StreamUseCase) Start(ctx context.Context, userID, streamID uuid.UUID) 
 	if s.Status == domain.StatusLive {
 		return s, nil
 	}
-	if s.Status != domain.StatusScheduled && s.Status != domain.StatusEnded {
+	if s.Status != domain.StatusScheduled {
 		return nil, apperrors.Validation("stream cannot be started", nil)
 	}
 	now := time.Now()
@@ -143,6 +175,68 @@ func (uc *StreamUseCase) Start(ctx context.Context, userID, streamID uuid.UUID) 
 	}
 	_ = uc.channels.SetLive(ctx, s.ChannelID, true)
 	return uc.streams.GetByID(ctx, streamID)
+}
+
+func normalizeIngestProtocol(value string) (string, error) {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "" {
+		return "rtmp", nil
+	}
+	switch value {
+	case "rtmp", "srt", "whip":
+		return value, nil
+	default:
+		return "", apperrors.Validation("invalid ingest_protocol", map[string]any{"allowed": []string{"rtmp", "srt", "whip"}})
+	}
+}
+
+func normalizeLatencyMode(value string) (string, error) {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "" {
+		return "standard", nil
+	}
+	switch value {
+	case "standard", "ultra-low":
+		return value, nil
+	default:
+		return "", apperrors.Validation("invalid latency_mode", map[string]any{"allowed": []string{"standard", "ultra-low"}})
+	}
+}
+
+func normalizeVisibility(value string) (string, error) {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "" {
+		return "public", nil
+	}
+	switch value {
+	case "public", "unlisted", "private":
+		return value, nil
+	default:
+		return "", apperrors.Validation("invalid visibility", map[string]any{"allowed": []string{"public", "unlisted", "private"}})
+	}
+}
+
+func normalizeTags(tags []string) ([]string, error) {
+	if len(tags) > 20 {
+		return nil, apperrors.Validation("too many tags", map[string]any{"max": 20})
+	}
+	out := make([]string, 0, len(tags))
+	seen := make(map[string]struct{}, len(tags))
+	for _, tag := range tags {
+		tag = strings.ToLower(strings.TrimSpace(tag))
+		if tag == "" {
+			continue
+		}
+		if len(tag) > 50 {
+			return nil, apperrors.Validation("tag is too long", map[string]any{"max": 50})
+		}
+		if _, ok := seen[tag]; ok {
+			continue
+		}
+		seen[tag] = struct{}{}
+		out = append(out, tag)
+	}
+	return out, nil
 }
 
 func (uc *StreamUseCase) End(ctx context.Context, userID, streamID uuid.UUID) (*domain.Stream, error) {

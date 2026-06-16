@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { getPlayback, getStream } from "@/lib/api/streams";
+import { getPlayback, getStream, recordViewerHeartbeat } from "@/lib/api/streams";
 import { getChannel } from "@/lib/api/channels";
 import { WatchPlayer } from "@/components/player/WatchPlayer";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,30 @@ export default function WatchPage() {
   const [ultraLow, setUltraLow] = useState(false);
   const stream = streamQuery.data;
   const playback = playbackQuery.data;
+  const playbackReady = !!(playback?.url || playback?.whep_url);
+
+  useEffect(() => {
+    if (!id || stream?.status !== "live" || !playbackReady) return;
+
+    const key = "sahiy-viewer-session";
+    let sessionID = localStorage.getItem(key);
+    if (!sessionID) {
+      sessionID =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem(key, sessionID);
+    }
+
+    const send = () => {
+      if (document.visibilityState === "hidden") return;
+      void recordViewerHeartbeat(id, sessionID).catch(() => undefined);
+    };
+
+    send();
+    const timer = setInterval(send, 25_000);
+    return () => clearInterval(timer);
+  }, [id, stream?.status, playbackReady]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -91,7 +115,7 @@ export default function WatchPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl font-bold sm:text-2xl">{stream.title}</h1>
                   {stream.status === "live" &&
-                    (playback?.url || playback?.whep_url) && (
+                    playbackReady && (
                       <Badge variant="live">Live</Badge>
                     )}
                 </div>
@@ -143,7 +167,7 @@ export default function WatchPage() {
 
             <ChatPanel
               streamId={id}
-              live={stream?.status === "live" && !!(playback?.url || playback?.whep_url)}
+              live={stream?.status === "live" && playbackReady}
             />
           </aside>
         </div>

@@ -63,7 +63,7 @@ func (uc *PlaybackUseCase) GetPlayback(ctx context.Context, streamID uuid.UUID) 
 	if st.Status != domain.StatusLive {
 		return nil, apperrors.NotFound("playback not available")
 	}
-	if m == nil || m.Status != domain.MediaStatusIngesting {
+	if m == nil || (m.Status != domain.MediaStatusIngesting && m.Status != domain.MediaStatusReady) {
 		return nil, apperrors.NotFound("playback not available")
 	}
 

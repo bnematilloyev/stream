@@ -61,6 +61,13 @@ func (h *HookHandler) onPublish(w http.ResponseWriter, r *http.Request) {
 		source = "rtmp"
 	}
 	if source == "rtmp" {
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		defer cancel()
+		if err := h.pipeline.PreparePublish(ctx, name); err != nil {
+			h.log.Warn("publish rejected", zap.String("name", name), zap.Error(err))
+			http.Error(w, "rejected", http.StatusForbidden)
+			return
+		}
 		httputil.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 		go h.startRTMPIngest(name)
 		return

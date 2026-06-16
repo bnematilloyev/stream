@@ -19,8 +19,9 @@ import (
 type StreamClient interface {
 	ValidateStreamKey(ctx context.Context, key string) (valid bool, channelID, streamID string, err error)
 	StartIngest(ctx context.Context, channelID string) (streamID string, err error)
+	StartIngestStream(ctx context.Context, streamID string) (startedStreamID string, err error)
 	EndIngest(ctx context.Context, streamID string) error
-	GetStream(ctx context.Context, streamID string) (latencyMode, status string, err error)
+	GetStream(ctx context.Context, streamID string) (channelID, latencyMode, status string, err error)
 }
 
 type Manager struct {
@@ -78,6 +79,11 @@ func NewManager(
 		hlsDir:         hlsDir,
 		log:            log,
 	}
+}
+
+func (m *Manager) PreparePublish(ctx context.Context, ingestName string) error {
+	_, _, err := m.resolveStream(ctx, ingestName)
+	return err
 }
 
 func (m *Manager) OnPublish(ctx context.Context, ingestName, source string) error {
@@ -207,14 +213,25 @@ func (m *Manager) OnPublishDone(ctx context.Context, ingestName string) error {
 
 func (m *Manager) resolveStream(ctx context.Context, ingestName string) (streamID, latencyMode string, err error) {
 	if sid, parseErr := uuid.Parse(ingestName); parseErr == nil {
-		lm, st, getErr := m.stream.GetStream(ctx, sid.String())
+		_, lm, st, getErr := m.stream.GetStream(ctx, sid.String())
 		if getErr != nil {
 			return "", "", getErr
 		}
-		if st != "live" && st != "scheduled" {
+		switch st {
+		case "live":
+			return sid.String(), lm, nil
+		case "scheduled":
+			startedID, startErr := m.stream.StartIngestStream(ctx, sid.String())
+			if startErr != nil {
+				return "", "", startErr
+			}
+			if startedID != sid.String() {
+				return "", "", fmt.Errorf("scheduled stream is not the active ingest target")
+			}
+			return sid.String(), lm, nil
+		default:
 			return "", "", fmt.Errorf("stream not publishable")
 		}
-		return sid.String(), lm, nil
 	}
 
 	valid, channelID, existingStreamID, err := m.stream.ValidateStreamKey(ctx, ingestName)
@@ -232,7 +249,7 @@ func (m *Manager) resolveStream(ctx context.Context, ingestName string) (streamI
 			return "", "", err
 		}
 	}
-	if lm, _, err := m.stream.GetStream(ctx, streamID); err == nil {
+	if _, lm, _, err := m.stream.GetStream(ctx, streamID); err == nil {
 		latencyMode = lm
 	}
 	return streamID, latencyMode, nil

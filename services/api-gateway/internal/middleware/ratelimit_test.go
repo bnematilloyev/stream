@@ -42,3 +42,36 @@ func TestRateLimitRulesUsesPathSpecificLimit(t *testing.T) {
 		t.Fatalf("expected 429, got %d", rec.Code)
 	}
 }
+
+func TestRateLimitRulesMatchesWildcardPath(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mr.Close()
+
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	handler := middleware.RateLimitRules(redisClient, 100, map[string]int{
+		"/v1/streams/*/heartbeat": 2,
+	})(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	for i := 0; i < 2; i++ {
+		req := httptest.NewRequest(http.MethodPost, "/v1/streams/11111111-1111-1111-1111-111111111111/heartbeat", nil)
+		req.RemoteAddr = "127.0.0.1:1234"
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("request %d expected 200, got %d", i+1, rec.Code)
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/streams/22222222-2222-2222-2222-222222222222/heartbeat", nil)
+	req.RemoteAddr = "127.0.0.1:1234"
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected wildcard route to share limit and return 429, got %d", rec.Code)
+	}
+}

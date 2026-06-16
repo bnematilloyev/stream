@@ -9,6 +9,8 @@ import (
 	streamv1 "github.com/sahiy/sahiy-stream/proto/gen/stream/v1"
 	"github.com/sahiy/sahiy-stream/services/stream-service/internal/domain"
 	"github.com/sahiy/sahiy-stream/services/stream-service/internal/usecase"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type StreamServer struct {
@@ -23,9 +25,9 @@ func NewStreamServer(uc *usecase.StreamUseCase, playback *usecase.PlaybackUseCas
 }
 
 func (s *StreamServer) CreateStream(ctx context.Context, req *streamv1.CreateStreamRequest) (*streamv1.Stream, error) {
-	userID, err := uuid.Parse(req.GetUserId())
+	userID, err := parseUUIDField(req.GetUserId(), "user_id")
 	if err != nil {
-		return nil, toGRPCError(err)
+		return nil, err
 	}
 	var scheduled *time.Time
 	if req.GetScheduledAtUnix() > 0 {
@@ -41,9 +43,9 @@ func (s *StreamServer) CreateStream(ctx context.Context, req *streamv1.CreateStr
 }
 
 func (s *StreamServer) GetStream(ctx context.Context, req *streamv1.GetStreamRequest) (*streamv1.Stream, error) {
-	id, err := uuid.Parse(req.GetStreamId())
+	id, err := parseUUIDField(req.GetStreamId(), "stream_id")
 	if err != nil {
-		return nil, toGRPCError(err)
+		return nil, err
 	}
 	st, err := s.uc.Get(ctx, id)
 	if err != nil {
@@ -53,19 +55,19 @@ func (s *StreamServer) GetStream(ctx context.Context, req *streamv1.GetStreamReq
 }
 
 func (s *StreamServer) UpdateStream(ctx context.Context, req *streamv1.UpdateStreamRequest) (*streamv1.Stream, error) {
-	userID, err := uuid.Parse(req.GetUserId())
+	userID, err := parseUUIDField(req.GetUserId(), "user_id")
 	if err != nil {
-		return nil, toGRPCError(err)
+		return nil, err
 	}
-	streamID, err := uuid.Parse(req.GetStreamId())
+	streamID, err := parseUUIDField(req.GetStreamId(), "stream_id")
 	if err != nil {
-		return nil, toGRPCError(err)
+		return nil, err
 	}
 	var catID *uuid.UUID
 	if req.CategoryId != nil && *req.CategoryId != "" {
-		id, err := uuid.Parse(*req.CategoryId)
+		id, err := parseUUIDField(*req.CategoryId, "category_id")
 		if err != nil {
-			return nil, toGRPCError(err)
+			return nil, err
 		}
 		catID = &id
 	}
@@ -77,8 +79,14 @@ func (s *StreamServer) UpdateStream(ctx context.Context, req *streamv1.UpdateStr
 }
 
 func (s *StreamServer) DeleteStream(ctx context.Context, req *streamv1.DeleteStreamRequest) (*streamv1.DeleteStreamResponse, error) {
-	userID, _ := uuid.Parse(req.GetUserId())
-	streamID, _ := uuid.Parse(req.GetStreamId())
+	userID, err := parseUUIDField(req.GetUserId(), "user_id")
+	if err != nil {
+		return nil, err
+	}
+	streamID, err := parseUUIDField(req.GetStreamId(), "stream_id")
+	if err != nil {
+		return nil, err
+	}
 	if err := s.uc.Delete(ctx, userID, streamID); err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -102,8 +110,14 @@ func (s *StreamServer) ListChannelStreams(ctx context.Context, req *streamv1.Lis
 }
 
 func (s *StreamServer) StartStream(ctx context.Context, req *streamv1.StartStreamRequest) (*streamv1.Stream, error) {
-	userID, _ := uuid.Parse(req.GetUserId())
-	streamID, _ := uuid.Parse(req.GetStreamId())
+	userID, err := parseUUIDField(req.GetUserId(), "user_id")
+	if err != nil {
+		return nil, err
+	}
+	streamID, err := parseUUIDField(req.GetStreamId(), "stream_id")
+	if err != nil {
+		return nil, err
+	}
 	st, err := s.uc.Start(ctx, userID, streamID)
 	if err != nil {
 		return nil, toGRPCError(err)
@@ -112,8 +126,14 @@ func (s *StreamServer) StartStream(ctx context.Context, req *streamv1.StartStrea
 }
 
 func (s *StreamServer) EndStream(ctx context.Context, req *streamv1.EndStreamRequest) (*streamv1.Stream, error) {
-	userID, _ := uuid.Parse(req.GetUserId())
-	streamID, _ := uuid.Parse(req.GetStreamId())
+	userID, err := parseUUIDField(req.GetUserId(), "user_id")
+	if err != nil {
+		return nil, err
+	}
+	streamID, err := parseUUIDField(req.GetStreamId(), "stream_id")
+	if err != nil {
+		return nil, err
+	}
 	st, err := s.uc.End(ctx, userID, streamID)
 	if err != nil {
 		return nil, toGRPCError(err)
@@ -135,9 +155,9 @@ func (s *StreamServer) ValidateStreamKey(ctx context.Context, req *streamv1.Vali
 }
 
 func (s *StreamServer) GetPlayback(ctx context.Context, req *streamv1.GetPlaybackRequest) (*streamv1.PlaybackResponse, error) {
-	streamID, err := uuid.Parse(req.GetStreamId())
+	streamID, err := parseUUIDField(req.GetStreamId(), "stream_id")
 	if err != nil {
-		return nil, toGRPCError(err)
+		return nil, err
 	}
 	res, err := s.playback.GetPlayback(ctx, streamID)
 	if err != nil {
@@ -150,9 +170,19 @@ func (s *StreamServer) GetPlayback(ctx context.Context, req *streamv1.GetPlaybac
 }
 
 func (s *StreamServer) StartIngest(ctx context.Context, req *streamv1.StartIngestRequest) (*streamv1.Stream, error) {
-	channelID, err := uuid.Parse(req.GetChannelId())
+	// stream_key is reused by internal ingest callers as an exact target stream ID.
+	if req.GetStreamKey() != "" {
+		if streamID, parseErr := uuid.Parse(req.GetStreamKey()); parseErr == nil {
+			st, err := s.uc.StartIngestStream(ctx, streamID)
+			if err != nil {
+				return nil, toGRPCError(err)
+			}
+			return toProto(st), nil
+		}
+	}
+	channelID, err := parseUUIDField(req.GetChannelId(), "channel_id")
 	if err != nil {
-		return nil, toGRPCError(err)
+		return nil, err
 	}
 	st, err := s.uc.StartIngest(ctx, channelID)
 	if err != nil {
@@ -162,9 +192,9 @@ func (s *StreamServer) StartIngest(ctx context.Context, req *streamv1.StartInges
 }
 
 func (s *StreamServer) EndIngest(ctx context.Context, req *streamv1.EndIngestRequest) (*streamv1.Stream, error) {
-	streamID, err := uuid.Parse(req.GetStreamId())
+	streamID, err := parseUUIDField(req.GetStreamId(), "stream_id")
 	if err != nil {
-		return nil, toGRPCError(err)
+		return nil, err
 	}
 	st, err := s.uc.EndIngest(ctx, streamID)
 	if err != nil {
@@ -174,9 +204,9 @@ func (s *StreamServer) EndIngest(ctx context.Context, req *streamv1.EndIngestReq
 }
 
 func (s *StreamServer) GetScheduledForChannel(ctx context.Context, req *streamv1.GetScheduledForChannelRequest) (*streamv1.Stream, error) {
-	channelID, err := uuid.Parse(req.GetChannelId())
+	channelID, err := parseUUIDField(req.GetChannelId(), "channel_id")
 	if err != nil {
-		return nil, toGRPCError(err)
+		return nil, err
 	}
 	st, err := s.uc.GetScheduledForChannel(ctx, channelID)
 	if err != nil {
@@ -186,9 +216,9 @@ func (s *StreamServer) GetScheduledForChannel(ctx context.Context, req *streamv1
 }
 
 func (s *StreamServer) RecordViewerHeartbeat(ctx context.Context, req *streamv1.RecordViewerHeartbeatRequest) (*streamv1.ViewerStatsResponse, error) {
-	streamID, err := uuid.Parse(req.GetStreamId())
+	streamID, err := parseUUIDField(req.GetStreamId(), "stream_id")
 	if err != nil {
-		return nil, toGRPCError(err)
+		return nil, err
 	}
 	stats, err := s.viewers.Heartbeat(ctx, streamID, req.GetSessionId())
 	if err != nil {
@@ -200,9 +230,9 @@ func (s *StreamServer) RecordViewerHeartbeat(ctx context.Context, req *streamv1.
 }
 
 func (s *StreamServer) GetViewerStats(ctx context.Context, req *streamv1.GetViewerStatsRequest) (*streamv1.ViewerStatsResponse, error) {
-	streamID, err := uuid.Parse(req.GetStreamId())
+	streamID, err := parseUUIDField(req.GetStreamId(), "stream_id")
 	if err != nil {
-		return nil, toGRPCError(err)
+		return nil, err
 	}
 	stats, err := s.viewers.Stats(ctx, streamID)
 	if err != nil {
@@ -211,6 +241,14 @@ func (s *StreamServer) GetViewerStats(ctx context.Context, req *streamv1.GetView
 	return &streamv1.ViewerStatsResponse{
 		StreamId: streamID.String(), Concurrent: stats.Concurrent, Unique: stats.Unique,
 	}, nil
+}
+
+func parseUUIDField(value, field string) (uuid.UUID, error) {
+	id, err := uuid.Parse(value)
+	if err != nil {
+		return uuid.Nil, status.Error(codes.InvalidArgument, "invalid "+field)
+	}
+	return id, nil
 }
 
 func toList(list []domain.Stream, meta pagination.Result) *streamv1.ListStreamsResponse {

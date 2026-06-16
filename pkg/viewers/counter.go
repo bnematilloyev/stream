@@ -50,11 +50,21 @@ func (c *Counter) Heartbeat(ctx context.Context, streamID, sessionID string) (St
 	pipe.PFAdd(ctx, uniqueKey, sessionID)
 	pipe.Expire(ctx, activeKey, c.window*3)
 	pipe.Expire(ctx, uniqueKey, 24*time.Hour)
+	concurrent := pipe.ZCard(ctx, activeKey)
+	unique := pipe.PFCount(ctx, uniqueKey)
 	if _, err := pipe.Exec(ctx); err != nil {
 		return Stats{}, err
 	}
 
-	return c.Count(ctx, streamID)
+	cc, err := concurrent.Result()
+	if err != nil {
+		return Stats{}, err
+	}
+	uc, err := unique.Result()
+	if err != nil {
+		return Stats{}, err
+	}
+	return Stats{Concurrent: cc, Unique: uc}, nil
 }
 
 // Count returns current concurrent and unique viewer stats.

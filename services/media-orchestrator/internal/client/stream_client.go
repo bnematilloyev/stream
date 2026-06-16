@@ -39,15 +39,23 @@ func (c *StreamClient) StartIngest(ctx context.Context, channelID string) (strin
 	return st.Id, nil
 }
 
+func (c *StreamClient) StartIngestStream(ctx context.Context, streamID string) (string, error) {
+	st, err := c.api.StartIngest(ctx, &streamv1.StartIngestRequest{StreamKey: streamID})
+	if err != nil {
+		return "", err
+	}
+	return st.Id, nil
+}
+
 func (c *StreamClient) EndIngest(ctx context.Context, streamID string) error {
 	_, err := c.api.EndIngest(ctx, &streamv1.EndIngestRequest{StreamId: streamID})
 	return err
 }
 
-func (c *StreamClient) GetStream(ctx context.Context, streamID string) (latencyMode, status string, err error) {
+func (c *StreamClient) GetStream(ctx context.Context, streamID string) (channelID, latencyMode, status string, err error) {
 	st, err := c.api.GetStream(ctx, &streamv1.GetStreamRequest{StreamId: streamID})
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
-	return st.LatencyMode, st.Status, nil
+	return st.ChannelId, st.LatencyMode, st.Status, nil
 }

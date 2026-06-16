@@ -55,10 +55,13 @@ func (h *DeliveryHandler) serve(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = reader.Close() }()
 
 	w.Header().Set("Content-Type", storage.ContentType(resource))
-	if storage.IsPlaylist(resource) {
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-	} else {
-		w.Header().Set("Cache-Control", "public, max-age=2")
+	switch {
+	case storage.IsPlaylist(resource):
+		w.Header().Set("Cache-Control", "public, max-age=1, stale-while-revalidate=2")
+	case storage.IsSegment(resource):
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	default:
+		w.Header().Set("Cache-Control", "public, max-age=60")
 	}
 	w.WriteHeader(http.StatusOK)
 
@@ -67,8 +70,8 @@ func (h *DeliveryHandler) serve(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		queryFor := func(_ string) string {
-			return h.signer.QueryForResource(streamID, "master.m3u8", exp)
+		queryFor := func(resource string) string {
+			return h.signer.QueryForResource(streamID, resource, exp)
 		}
 		body = playback.RewriteManifest(body, resource, queryFor)
 		_, _ = w.Write(body)
