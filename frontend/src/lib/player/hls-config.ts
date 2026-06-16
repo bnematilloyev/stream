@@ -19,12 +19,13 @@ export function createHlsConfig(): Partial<Hls["config"]> {
     maxBufferHole: 1.0,
 
     startLevel: -1,
-    capLevelToPlayerSize: true,
-    abrEwmaDefaultEstimate: 4_000_000,
-    abrBandWidthFactor: 0.8,
-    abrBandWidthUpFactor: 0.7,
+    // Don't cap by video tag size — sidebar layout made ABR stick to 480p.
+    capLevelToPlayerSize: false,
+    abrEwmaDefaultEstimate: 10_000_000,
+    abrBandWidthFactor: 0.85,
+    abrBandWidthUpFactor: 0.9,
     abrMaxWithRealBitrate: true,
-    minAutoBitrate: 600_000,
+    minAutoBitrate: 2_800_000,
 
     fragLoadingMaxRetry: 12,
     fragLoadingRetryDelay: 700,

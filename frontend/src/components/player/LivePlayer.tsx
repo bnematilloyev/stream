@@ -24,6 +24,38 @@ interface LivePlayerProps {
 
 type QualityLevel = { height: number; label: string; index: number };
 
+const QUALITY_STORAGE_KEY = "sahiy-quality";
+
+function readSavedQuality(): "auto" | number {
+  if (typeof window === "undefined") return "auto";
+  const saved = localStorage.getItem(QUALITY_STORAGE_KEY);
+  if (!saved || saved === "auto") return "auto";
+  const height = parseInt(saved, 10);
+  return Number.isFinite(height) && height > 0 ? height : "auto";
+}
+
+function persistQuality(choice: "auto" | number) {
+  localStorage.setItem(
+    QUALITY_STORAGE_KEY,
+    choice === "auto" ? "auto" : String(choice),
+  );
+}
+
+function applyQualityChoice(hls: Hls, levels: QualityLevel[]): "auto" | number {
+  const saved = readSavedQuality();
+  if (saved === "auto") {
+    hls.currentLevel = -1;
+    return "auto";
+  }
+  const match = levels.find((l) => l.height === saved);
+  if (match) {
+    hls.currentLevel = match.index;
+    return match.height;
+  }
+  hls.currentLevel = -1;
+  return "auto";
+}
+
 export function LivePlayer({
   src,
   title,
@@ -42,7 +74,7 @@ export function LivePlayer({
   const [buffering, setBuffering] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [qualities, setQualities] = useState<QualityLevel[]>([]);
-  const [currentQuality, setCurrentQuality] = useState(-1);
+  const [currentQuality, setCurrentQuality] = useState<"auto" | number>("auto");
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [latencySec, setLatencySec] = useState<number | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(null);
@@ -77,18 +109,26 @@ export function LivePlayer({
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        const levels = hls.levels.map((l, i) => ({
-          index: i,
-          height: l.height,
-          label: l.height ? `${l.height}p` : `Level ${i}`,
-        }));
+        const levels = hls.levels
+          .map((l, i) => ({
+            index: i,
+            height: l.height,
+            label: l.height ? `${l.height}p` : `Level ${i}`,
+          }))
+          .sort((a, b) => b.height - a.height);
         setQualities(levels);
-        setCurrentQuality(hls.currentLevel);
+        const choice = applyQualityChoice(hls, levels);
+        setCurrentQuality(choice === "auto" ? "auto" : choice);
         if (autoPlay) void video.play().catch(() => setPlaying(false));
       });
 
       hls.on(Hls.Events.LEVEL_SWITCHED, (_, data) => {
-        setCurrentQuality(data.level);
+        const level = hls.levels[data.level];
+        if (hls.currentLevel === -1) {
+          setCurrentQuality("auto");
+        } else if (level?.height) {
+          setCurrentQuality(level.height);
+        }
       });
 
       hls.on(Hls.Events.ERROR, (_, data) => {
@@ -167,11 +207,21 @@ export function LivePlayer({
     }
   }
 
-  function setQuality(index: number) {
+  function setQualityAuto() {
+    if (hlsRef.current) {
+      hlsRef.current.currentLevel = -1;
+    }
+    persistQuality("auto");
+    setCurrentQuality("auto");
+    setShowQualityMenu(false);
+  }
+
+  function setQualityHeight(height: number, index: number) {
     if (hlsRef.current) {
       hlsRef.current.currentLevel = index;
-      setCurrentQuality(index);
     }
+    persistQuality(height);
+    setCurrentQuality(height);
     setShowQualityMenu(false);
   }
 
@@ -327,17 +377,15 @@ export function LivePlayer({
                   className="flex items-center gap-1 rounded-lg px-2 py-2 text-sm text-white transition-colors hover:bg-white/10"
                 >
                   <Settings className="h-4 w-4" />
-                  {currentQuality === -1
-                    ? "Auto"
-                    : qualities.find((q) => q.index === currentQuality)?.label}
+                  {currentQuality === "auto" ? "Auto" : `${currentQuality}p`}
                 </button>
                 {showQualityMenu && (
                   <div className="absolute bottom-full right-0 mb-2 min-w-[100px] overflow-hidden rounded-xl border border-white/10 bg-black/90 py-1 backdrop-blur-xl">
                     <button
-                      onClick={() => setQuality(-1)}
+                      onClick={setQualityAuto}
                       className={cn(
                         "block w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10",
-                        currentQuality === -1 && "text-accent",
+                        currentQuality === "auto" && "text-accent",
                       )}
                     >
                       Auto
@@ -345,10 +393,10 @@ export function LivePlayer({
                     {qualities.map((q) => (
                       <button
                         key={q.index}
-                        onClick={() => setQuality(q.index)}
+                        onClick={() => setQualityHeight(q.height, q.index)}
                         className={cn(
                           "block w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10",
-                          currentQuality === q.index && "text-accent",
+                          currentQuality === q.height && "text-accent",
                         )}
                       >
                         {q.label}
