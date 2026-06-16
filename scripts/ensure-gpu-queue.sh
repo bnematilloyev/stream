@@ -52,12 +52,18 @@ if [[ -f "${COMPOSE_DIR}/docker-compose.prod.yml" ]]; then
   sleep 3
 fi
 
-echo "==> media-orchestrator qayta ishga tushirish..."
+restart_svc() {
+  local name="$1" port="$2"
+  pkill -f "${REMOTE_DIR}/bin/${name}" 2>/dev/null || true
+  fuser -k "${port}/tcp" 2>/dev/null || true
+  sleep 1
+  nohup env $(grep -v '^#' "${ENV_FILE}" | xargs) "${REMOTE_DIR}/bin/${name}" >"${LOG}/${name}.log" 2>&1 &
+}
+
+echo "==> media-orchestrator va stream-service qayta ishga tushirish..."
 mkdir -p "${LOG}"
-pkill -f "${REMOTE_DIR}/bin/media-orchestrator" 2>/dev/null || true
-fuser -k 9084/tcp 2>/dev/null || true
-sleep 1
-nohup env $(grep -v '^#' "${ENV_FILE}" | xargs) "${REMOTE_DIR}/bin/media-orchestrator" >"${LOG}/media-orchestrator.log" 2>&1 &
+restart_svc media-orchestrator 9084
+restart_svc stream-service 9083
 sleep 2
 
 echo ""

@@ -53,7 +53,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	pool := worker.NewPool(workerID, cfg.FFmpegPath, cfg.VideoEncoder, cfg.TranscodeQuality, cfg.MaxJobs, bus, store, log)
+	pool := worker.NewPool(workerID, cfg.FFmpegPath, cfg.VideoEncoder, cfg.TranscodeQuality, cfg.HLSOutputDir, cfg.MaxJobs, bus, store, log)
 	go func() {
 		if err := pool.Run(ctx); err != nil {
 			log.Error("worker pool stopped", zap.Error(err))

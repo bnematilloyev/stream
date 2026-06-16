@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,17 +14,23 @@ import (
 )
 
 type jobRunner struct {
-	ffmpeg   string
-	quality  string
-	workerID string
-	bus      *pkgnats.TranscodeBus
-	storage  storage.ObjectStorage
-	log      *zap.Logger
+	ffmpeg       string
+	quality      string
+	hlsOutputDir string
+	workerID     string
+	bus          *pkgnats.TranscodeBus
+	storage      storage.ObjectStorage
+	log          *zap.Logger
+}
+
+func (r *jobRunner) localOutputDir(streamID string) string {
+	return filepath.Join(r.hlsOutputDir, streamID)
 }
 
 func (r *jobRunner) start(ctx context.Context, job transcode.StartJob) (*activeJob, error) {
+	outputDir := r.localOutputDir(job.StreamID)
 	runner := transcode.NewRunnerWithQuality(r.ffmpeg, transcode.VideoEncoder{Codec: job.Encoder}, job.Quality)
-	cmd, err := runner.StartForLatency(job.InputURL, job.OutputDir, job.LatencyMode)
+	cmd, err := runner.StartForLatency(job.InputURL, outputDir, job.LatencyMode)
 	if err != nil {
 		_ = r.publish(ctx, transcode.JobEvent{
 			JobID: job.JobID, StreamID: job.StreamID, Type: transcode.EventFailed,
@@ -38,7 +45,7 @@ func (r *jobRunner) start(ctx context.Context, job transcode.StartJob) (*activeJ
 		if parseErr == nil {
 			uploaderCtx, cancel := context.WithCancel(context.Background())
 			active.uploaderCancel = cancel
-			go hlssync.NewSegmentUploader(r.storage, job.OutputDir, sid, 2*time.Second, r.log).Run(uploaderCtx)
+			go hlssync.NewSegmentUploader(r.storage, outputDir, sid, 2*time.Second, r.log).Run(uploaderCtx)
 		}
 	}
 

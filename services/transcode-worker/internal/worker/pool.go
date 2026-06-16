@@ -31,15 +31,19 @@ type activeJob struct {
 	uploaderCancel context.CancelFunc
 }
 
-func NewPool(workerID, ffmpeg, encoder, quality string, maxJobs int, bus *pkgnats.TranscodeBus, store storage.ObjectStorage, log *zap.Logger) *Pool {
+func NewPool(workerID, ffmpeg, encoder, quality, hlsOutputDir string, maxJobs int, bus *pkgnats.TranscodeBus, store storage.ObjectStorage, log *zap.Logger) *Pool {
 	if maxJobs <= 0 {
 		maxJobs = 4
+	}
+	if hlsOutputDir == "" {
+		hlsOutputDir = "/tmp/hls"
 	}
 	return &Pool{
 		jobs: make(map[string]*activeJob), maxJobs: maxJobs,
 		workerID: workerID, bus: bus, log: log,
 		runner: &jobRunner{
-			ffmpeg: ffmpeg, quality: quality, workerID: workerID, bus: bus, storage: store, log: log,
+			ffmpeg: ffmpeg, quality: quality, hlsOutputDir: hlsOutputDir,
+			workerID: workerID, bus: bus, storage: store, log: log,
 		},
 	}
 }
