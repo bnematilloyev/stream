@@ -10,10 +10,14 @@ type VideoEncoder struct {
 func (e VideoEncoder) BaseArgs(profile Profile) []string {
 	switch e.Codec {
 	case "h264_nvenc":
+		preset, tune := "p5", "hq"
+		if profile.UseLLHLS {
+			preset, tune = "p4", "ll"
+		}
 		return []string{
 			"-c:v", "h264_nvenc",
-			"-preset", "p4",
-			"-tune", "ll",
+			"-preset", preset,
+			"-tune", tune,
 			"-profile:v", "high",
 			"-pix_fmt", "yuv420p",
 			"-g", strconv.Itoa(profile.GOP),

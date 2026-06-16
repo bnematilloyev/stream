@@ -51,11 +51,14 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 	args := []string{
 		"-hide_banner", "-loglevel", "warning",
 		"-fflags", "+genpts+discardcorrupt",
-		"-use_wallclock_as_timestamps", "1",
 	}
 
 	if strings.HasPrefix(inputURL, "rtsp://") {
-		args = append(args, "-rtsp_transport", "tcp", "-timeout", "5000000", "-probesize", "32", "-analyzeduration", "0")
+		args = append(args,
+			"-use_wallclock_as_timestamps", "1",
+			"-rtsp_transport", "tcp", "-timeout", "5000000",
+			"-probesize", "32", "-analyzeduration", "0",
+		)
 	}
 	if strings.HasPrefix(inputURL, "rtmp://") {
 		args = append(args,
@@ -67,21 +70,26 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 
 	args = append(args, "-i", inputURL, "-filter_complex", filter)
 
-	x264Base := r.encoder.BaseArgs(profile)
-
+	videoBase := r.encoder.BaseArgs(profile)
+	for i := range ladder {
+		args = append(args, "-map", fmt.Sprintf("[v%dout]", i+1))
+	}
+	args = append(args, "-map", "0:a?")
+	args = append(args, videoBase...)
 	for i, t := range ladder {
-		label := fmt.Sprintf("v%dout", i+1)
-		args = append(args, "-map", fmt.Sprintf("[%s]", label), "-map", "0:a?")
-		args = append(args, x264Base...)
 		args = append(args,
 			fmt.Sprintf("-b:v:%d", i), t.Bitrate,
 			fmt.Sprintf("-maxrate:v:%d", i), t.Maxrate,
 			fmt.Sprintf("-bufsize:v:%d", i), t.Bufsize,
-			fmt.Sprintf("-c:a:%d", i), "aac",
-			fmt.Sprintf("-b:a:%d", i), t.AudioBR,
-			"-ar", strconv.Itoa(profile.AudioRate),
 		)
 	}
+	// One AAC encode shared by all variants — avoids timestamp drift per ladder rung.
+	args = append(args,
+		"-af", "aresample=async=1:first_pts=0",
+		"-c:a", "aac",
+		"-b:a", ladder[0].AudioBR,
+		"-ar", strconv.Itoa(profile.AudioRate),
+	)
 
 	args = append(args, "-f", "hls")
 	args = append(args, "-hls_time", fmt.Sprintf("%.2f", profile.SegmentSec))
@@ -112,9 +120,10 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 	}
 
 	args = append(args, "-master_pl_name", "master.m3u8")
+	audioIdx := n
 	varStream := make([]string, n)
 	for i := range ladder {
-		varStream[i] = fmt.Sprintf("v:%d,a:%d", i, i)
+		varStream[i] = fmt.Sprintf("v:%d,a:%d", i, audioIdx)
 	}
 	args = append(args, "-var_stream_map", strings.Join(varStream, " "))
 	args = append(args, filepath.Join(outputDir, "%v/playlist.m3u8"))

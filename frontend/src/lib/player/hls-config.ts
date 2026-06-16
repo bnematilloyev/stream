@@ -6,8 +6,8 @@ export function createHlsConfig(): Partial<Hls["config"]> {
     enableWorker: true,
     lowLatencyMode: true,
 
-    liveSyncDurationCount: 3,
-    liveMaxLatencyDurationCount: 8,
+    liveSyncDurationCount: 2,
+    liveMaxLatencyDurationCount: 5,
     maxLiveSyncPlaybackRate: 1.1,
     liveDurationInfinity: true,
 

@@ -26,12 +26,12 @@ func LLHLSProfile() Profile {
 
 func StandardProfile() Profile {
 	return Profile{
-		SegmentSec: 4.0,
+		SegmentSec: 2.0,
 		PartSec:    0,
 		UseLLHLS:   false,
 		UseFMP4:    false,
 		Preset:     "fast",
-		GOP:        120,
+		GOP:        60,
 		AudioRate:  48000,
 	}
 }
