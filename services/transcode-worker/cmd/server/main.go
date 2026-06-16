@@ -73,6 +73,7 @@ func main() {
 			zap.String("encoder", cfg.VideoEncoder),
 			zap.String("storage", store.Backend()),
 			zap.String("quality", cfg.TranscodeQuality),
+			zap.String("build", "2026-06-16-varmap-fix"),
 		)
 		_ = server.ListenAndServe()
 	}()

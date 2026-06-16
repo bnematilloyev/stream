@@ -70,21 +70,22 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 
 	args = append(args, "-i", inputURL, "-filter_complex", filter)
 
-	videoBase := r.encoder.BaseArgs(profile)
-	for i := range ladder {
-		args = append(args, "-map", fmt.Sprintf("[v%dout]", i+1), "-map", "0:a?")
-	}
-	args = append(args, videoBase...)
+	encBase := r.encoder.BaseArgs(profile)
 	for i, t := range ladder {
+		args = append(args,
+			"-map", fmt.Sprintf("[v%dout]", i+1),
+			"-map", "0:a?",
+		)
+		args = append(args, encBase...)
 		args = append(args,
 			fmt.Sprintf("-b:v:%d", i), t.Bitrate,
 			fmt.Sprintf("-maxrate:v:%d", i), t.Maxrate,
 			fmt.Sprintf("-bufsize:v:%d", i), t.Bufsize,
 			fmt.Sprintf("-c:a:%d", i), "aac",
 			fmt.Sprintf("-b:a:%d", i), t.AudioBR,
+			"-ar", strconv.Itoa(profile.AudioRate),
 		)
 	}
-	args = append(args, "-ar", strconv.Itoa(profile.AudioRate))
 
 	args = append(args, "-f", "hls")
 	args = append(args, "-hls_time", fmt.Sprintf("%.2f", profile.SegmentSec))
@@ -117,7 +118,6 @@ func (r *Runner) StartABR(inputURL, outputDir string, profile Profile, ladder []
 	args = append(args, "-master_pl_name", "master.m3u8")
 	varStream := make([]string, n)
 	for i := range ladder {
-		// FFmpeg var_stream_map uses per-type indices (v:0 = first video, a:0 = first audio).
 		varStream[i] = fmt.Sprintf("v:%d,a:%d", i, i)
 	}
 	args = append(args, "-var_stream_map", strings.Join(varStream, " "))
