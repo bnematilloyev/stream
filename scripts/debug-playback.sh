@@ -14,6 +14,13 @@ if [[ -z "${SID}" ]]; then
 fi
 
 echo "=== Playback debug: ${SID} ==="
+MODE="$(grep -E '^TRANSCODE_MODE=' "${REMOTE_DIR}/.env" 2>/dev/null | cut -d= -f2- | xargs || true)"
+STORAGE="$(grep -E '^HLS_STORAGE_BACKEND=' "${REMOTE_DIR}/.env" 2>/dev/null | cut -d= -f2- | xargs || true)"
+echo "  TRANSCODE_MODE=${MODE:-?}  HLS_STORAGE_BACKEND=${STORAGE:-?}"
+if [[ "${MODE}" == "queue" ]]; then
+  echo "  DIQQAT: queue mode — VPS da ffmpeg bo'lmaydi; RunPod GPU worker kerak."
+  echo "  CDN+passthrough uchun: TRANSCODE_MODE=passthrough HLS_STORAGE_BACKEND=local"
+fi
 echo ""
 
 echo "=== HLS fayl ==="

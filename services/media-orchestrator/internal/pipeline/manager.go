@@ -111,10 +111,13 @@ func (m *Manager) OnPublish(ctx context.Context, ingestName, source string) erro
 
 	inputURL, latencyMode := m.buildInputURL(ingestName, source, latencyMode)
 	if source == "rtmp" {
-		if _, err := waitForRTMPPublisher(ctx, m.rtmpBase, ingestName, m.log); err != nil {
+		readyURL, err := waitForRTMPPublisher(ctx, m.rtmpBase, ingestName, m.log)
+		if err != nil {
 			return err
 		}
-		inputURL = m.streamInputURL(m.rtmpWorkerBase, ingestName)
+		// Pull via the URL that passed ffprobe (usually 127.0.0.1), not the public
+		// RTMP_BASE_URL shown to OBS — hairpin to the VPS public IP often fails.
+		inputURL = readyURL
 	}
 	outDir := filepath.Join(m.hlsDir, sid.String())
 
