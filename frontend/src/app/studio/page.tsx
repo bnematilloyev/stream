@@ -46,6 +46,25 @@ export default function StudioDashboard() {
     return <Skeleton className="h-64 w-full rounded-2xl" />;
   }
 
+  if (channelQuery.isError) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <p className="text-red-400">
+            Kanal yuklanmadi:{" "}
+            {channelQuery.error instanceof Error
+              ? channelQuery.error.message
+              : "server xatosi"}
+          </p>
+          <p className="mt-2 text-sm text-muted">
+            Migration yoki user-service tekshiring (500 — odatda DB migration
+            qilinmagan).
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!channel) {
     return (
       <Card>

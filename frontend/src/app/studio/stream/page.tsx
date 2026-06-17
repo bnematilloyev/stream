@@ -26,6 +26,7 @@ export default function GoLivePage() {
   const channelQuery = useQuery({
     queryKey: ["my-channel"],
     queryFn: getMyChannel,
+    retry: false,
   });
 
   const ingestQuery = useQuery({
@@ -108,6 +109,26 @@ export default function GoLivePage() {
 
   if (channelQuery.isLoading) {
     return <Skeleton className="h-96 w-full rounded-2xl" />;
+  }
+
+  if (channelQuery.isError) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <p className="text-red-400">
+            Kanal yuklanmadi:{" "}
+            {channelQuery.error instanceof Error
+              ? channelQuery.error.message
+              : "server xatosi (500)"}
+          </p>
+          <p className="mt-2 text-sm text-muted">
+            Serverda:{" "}
+            <code className="text-xs">bash scripts/prod-migrate.sh up</code> va{" "}
+            <code className="text-xs">bash scripts/deploy-remote-only.sh</code>
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (!channel) {

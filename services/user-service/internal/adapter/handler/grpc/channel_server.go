@@ -8,6 +8,8 @@ import (
 	userv1 "github.com/sahiy/sahiy-stream/proto/gen/user/v1"
 	"github.com/sahiy/sahiy-stream/services/user-service/internal/domain"
 	"github.com/sahiy/sahiy-stream/services/user-service/internal/usecase"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type ChannelServer struct {
@@ -43,6 +45,9 @@ func (s *ChannelServer) GetChannel(ctx context.Context, req *userv1.GetChannelRe
 	ch, err := s.uc.GetBySlug(ctx, req.GetSlug())
 	if err != nil {
 		return nil, toGRPCError(err)
+	}
+	if ch == nil {
+		return nil, status.Error(codes.NotFound, "channel not found")
 	}
 	return toChannel(ch), nil
 }
