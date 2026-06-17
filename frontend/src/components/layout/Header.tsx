@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Radio, Search, User, LogOut, Clapperboard } from "lucide-react";
+import { Radio, Search, User, LogOut, Clapperboard, Shield } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { logout } from "@/lib/api/auth";
 import { Button } from "@/components/ui/button";
@@ -67,6 +67,14 @@ export function Header() {
 
           {user ? (
             <>
+              {user.role === "admin" && (
+                <Link href="/admin">
+                  <Button variant="secondary" size="sm">
+                    <Shield className="h-4 w-4" />
+                    <span className="hidden sm:inline">Admin</span>
+                  </Button>
+                </Link>
+              )}
               <Link href="/studio">
                 <Button variant="secondary" size="sm">
                   <Clapperboard className="h-4 w-4" />

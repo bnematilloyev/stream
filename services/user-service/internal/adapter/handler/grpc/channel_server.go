@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	apperrors "github.com/sahiy/sahiy-stream/pkg/errors"
 	userv1 "github.com/sahiy/sahiy-stream/proto/gen/user/v1"
 	"github.com/sahiy/sahiy-stream/services/user-service/internal/domain"
 	"github.com/sahiy/sahiy-stream/services/user-service/internal/usecase"
@@ -23,7 +24,15 @@ func (s *ChannelServer) CreateChannel(ctx context.Context, req *userv1.CreateCha
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
-	ch, err := s.uc.Create(ctx, userID, req.GetSlug(), req.GetTitle(), req.GetDescription(), req.GetCategoryId())
+	ch, err := s.uc.Create(ctx, userID, req.GetSlug(), req.GetTitle(), req.GetDescription(), req.GetCategoryId(), sellerIDPtr(req.GetMarketplaceSellerId()), shopIDPtr(req.GetMarketplaceShopId()))
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return toChannel(ch), nil
+}
+
+func (s *ChannelServer) GetChannelByMarketplaceSeller(ctx context.Context, req *userv1.GetChannelByMarketplaceSellerRequest) (*userv1.Channel, error) {
+	ch, err := s.uc.GetByMarketplaceSeller(ctx, req.GetMarketplaceSellerId())
 	if err != nil {
 		return nil, toGRPCError(err)
 	}
@@ -94,10 +103,10 @@ func (s *ChannelServer) ListFollowers(ctx context.Context, req *userv1.ListFollo
 	out := make([]*userv1.Follower, 0, len(list))
 	for _, f := range list {
 		out = append(out, &userv1.Follower{
-			UserId:          f.UserID.String(),
-			Username:        f.Username,
-			DisplayName:     f.DisplayName,
-			FollowedAtUnix:  f.FollowedAt.Unix(),
+			UserId:         f.UserID.String(),
+			Username:       f.Username,
+			DisplayName:    f.DisplayName,
+			FollowedAtUnix: f.FollowedAt.Unix(),
 		})
 	}
 	return &userv1.ListFollowersResponse{
@@ -144,6 +153,36 @@ func (s *ChannelServer) RotateIngestKey(ctx context.Context, req *userv1.RotateI
 	return toIngestKey(key), nil
 }
 
+func (s *ChannelServer) ListChannels(ctx context.Context, req *userv1.ListChannelsRequest) (*userv1.ListChannelsResponse, error) {
+	list, total, err := s.uc.List(ctx, req.GetSearch(), req.GetMarketplaceOnly(), int(req.GetPage()), int(req.GetLimit()))
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	out := make([]*userv1.Channel, 0, len(list))
+	for i := range list {
+		out = append(out, toChannel(&list[i]))
+	}
+	page, limit := int(req.GetPage()), int(req.GetLimit())
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	return &userv1.ListChannelsResponse{Channels: out, Total: int32(total), Page: int32(page), Limit: int32(limit)}, nil
+}
+
+func (s *ChannelServer) AdminUpdateChannel(ctx context.Context, req *userv1.AdminUpdateChannelRequest) (*userv1.Channel, error) {
+	if req.IsVerified == nil {
+		return nil, toGRPCError(apperrors.Validation("is_verified is required", nil))
+	}
+	ch, err := s.uc.SetVerified(ctx, req.GetSlug(), req.GetIsVerified())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return toChannel(ch), nil
+}
+
 func toChannel(ch *domain.Channel) *userv1.Channel {
 	out := &userv1.Channel{
 		Id:            ch.ID.String(),
@@ -171,7 +210,27 @@ func toChannel(ch *domain.Channel) *userv1.Channel {
 	if ch.CategorySlug != nil {
 		out.CategorySlug = *ch.CategorySlug
 	}
+	if ch.MarketplaceSellerID != nil {
+		out.MarketplaceSellerId = *ch.MarketplaceSellerID
+	}
+	if ch.MarketplaceShopID != nil {
+		out.MarketplaceShopId = *ch.MarketplaceShopID
+	}
 	return out
+}
+
+func sellerIDPtr(v int64) *int64 {
+	if v <= 0 {
+		return nil
+	}
+	return &v
+}
+
+func shopIDPtr(v int64) *int64 {
+	if v <= 0 {
+		return nil
+	}
+	return &v
 }
 
 func toIngestKey(k *usecase.IngestKeyResult) *userv1.IngestKeyResponse {

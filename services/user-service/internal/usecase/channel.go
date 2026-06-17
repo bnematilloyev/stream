@@ -41,7 +41,7 @@ func NewChannelUseCase(
 	}
 }
 
-func (uc *ChannelUseCase) Create(ctx context.Context, userID uuid.UUID, channelSlug, title, description, categoryID string) (*domain.Channel, error) {
+func (uc *ChannelUseCase) Create(ctx context.Context, userID uuid.UUID, channelSlug, title, description, categoryID string, marketplaceSellerID, marketplaceShopID *int64) (*domain.Channel, error) {
 	channelSlug = slug.Normalize(channelSlug)
 	if !slug.Validate(channelSlug) {
 		return nil, apperrors.Validation("invalid channel slug", map[string]any{"slug": "3-50 chars, lowercase alphanumeric, _ -"})
@@ -58,14 +58,21 @@ func (uc *ChannelUseCase) Create(ctx context.Context, userID uuid.UUID, channelS
 	if existing != nil {
 		return nil, apperrors.Conflict(apperrors.CodeConflict, "user already has a channel")
 	}
+	if marketplaceSellerID != nil {
+		if taken, _ := uc.channels.GetByMarketplaceSellerID(ctx, *marketplaceSellerID); taken != nil {
+			return nil, apperrors.Conflict(apperrors.CodeConflict, "marketplace seller already has a channel")
+		}
+	}
 	if taken, _ := uc.channels.GetBySlug(ctx, channelSlug); taken != nil {
 		return nil, apperrors.Conflict(apperrors.CodeConflict, "channel slug already taken")
 	}
 
 	ch := &domain.Channel{
-		UserID: userID,
-		Slug:   channelSlug,
-		Title:  title,
+		UserID:              userID,
+		Slug:                channelSlug,
+		Title:               title,
+		MarketplaceSellerID: marketplaceSellerID,
+		MarketplaceShopID:   marketplaceShopID,
 	}
 	if description != "" {
 		desc := strings.TrimSpace(description)
@@ -88,6 +95,17 @@ func (uc *ChannelUseCase) Create(ctx context.Context, userID uuid.UUID, channelS
 	}
 
 	return uc.channels.GetBySlug(ctx, ch.Slug)
+}
+
+func (uc *ChannelUseCase) GetByMarketplaceSeller(ctx context.Context, sellerID int64) (*domain.Channel, error) {
+	ch, err := uc.channels.GetByMarketplaceSellerID(ctx, sellerID)
+	if err != nil {
+		return nil, apperrors.Internal(err)
+	}
+	if ch == nil {
+		return nil, apperrors.NotFound("channel not found")
+	}
+	return ch, nil
 }
 
 func (uc *ChannelUseCase) GetBySlug(ctx context.Context, channelSlug string) (*domain.Channel, error) {
@@ -258,6 +276,25 @@ func (uc *ChannelUseCase) authorizeChannel(ctx context.Context, userID uuid.UUID
 	}
 	if ch.UserID != userID {
 		return nil, apperrors.Forbidden("access denied")
+	}
+	return ch, nil
+}
+
+func (uc *ChannelUseCase) List(ctx context.Context, search string, marketplaceOnly bool, page, limit int) ([]domain.Channel, int, error) {
+	list, total, err := uc.channels.List(ctx, search, marketplaceOnly, page, limit)
+	if err != nil {
+		return nil, 0, apperrors.Internal(err)
+	}
+	return list, total, nil
+}
+
+func (uc *ChannelUseCase) SetVerified(ctx context.Context, slug string, verified bool) (*domain.Channel, error) {
+	ch, err := uc.channels.SetVerified(ctx, slug, verified)
+	if err != nil {
+		return nil, apperrors.Internal(err)
+	}
+	if ch == nil {
+		return nil, apperrors.NotFound("channel not found")
 	}
 	return ch, nil
 }

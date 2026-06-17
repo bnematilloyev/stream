@@ -56,3 +56,19 @@ func (c *AuthClient) ValidateToken(ctx context.Context, req *authv1.ValidateToke
 func (c *AuthClient) GetUser(ctx context.Context, req *authv1.GetUserRequest) (*authv1.User, error) {
 	return c.client.GetUser(ctx, req)
 }
+
+func (c *AuthClient) ListUsers(ctx context.Context, req *authv1.ListUsersRequest) (*authv1.ListUsersResponse, error) {
+	return c.client.ListUsers(ctx, req)
+}
+
+func (c *AuthClient) UpdateUserAdmin(ctx context.Context, req *authv1.UpdateUserAdminRequest) (*authv1.User, error) {
+	return c.client.UpdateUserAdmin(ctx, req)
+}
+
+func (c *AuthClient) GetPlatformStats(ctx context.Context, req *authv1.GetPlatformStatsRequest) (*authv1.PlatformStatsResponse, error) {
+	return c.client.GetPlatformStats(ctx, req)
+}
+
+func (c *AuthClient) ListAuditLogs(ctx context.Context, req *authv1.ListAuditLogsRequest) (*authv1.ListAuditLogsResponse, error) {
+	return c.client.ListAuditLogs(ctx, req)
+}

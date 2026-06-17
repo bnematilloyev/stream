@@ -101,6 +101,14 @@ func (s *StreamServer) ListLiveStreams(ctx context.Context, req *streamv1.ListLi
 	return toList(list, meta), nil
 }
 
+func (s *StreamServer) ListMarketplaceLiveStreams(ctx context.Context, req *streamv1.ListMarketplaceLiveStreamsRequest) (*streamv1.ListStreamsResponse, error) {
+	list, meta, err := s.uc.ListMarketplaceLive(ctx, int(req.GetPage()), int(req.GetLimit()))
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return toList(list, meta), nil
+}
+
 func (s *StreamServer) ListChannelStreams(ctx context.Context, req *streamv1.ListChannelStreamsRequest) (*streamv1.ListStreamsResponse, error) {
 	list, meta, err := s.uc.ListByChannel(ctx, req.GetChannelSlug(), req.GetStatus(), int(req.GetPage()), int(req.GetLimit()))
 	if err != nil {
@@ -243,6 +251,18 @@ func (s *StreamServer) GetViewerStats(ctx context.Context, req *streamv1.GetView
 	}, nil
 }
 
+func (s *StreamServer) AdminForceEndStream(ctx context.Context, req *streamv1.AdminForceEndStreamRequest) (*streamv1.Stream, error) {
+	streamID, err := parseUUIDField(req.GetStreamId(), "stream_id")
+	if err != nil {
+		return nil, err
+	}
+	st, err := s.uc.AdminForceEnd(ctx, streamID)
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return toProto(st), nil
+}
+
 func parseUUIDField(value, field string) (uuid.UUID, error) {
 	id, err := uuid.Parse(value)
 	if err != nil {
@@ -286,6 +306,12 @@ func toProto(st *domain.Stream) *streamv1.Stream {
 	}
 	if st.EndedAt != nil {
 		out.EndedAtUnix = st.EndedAt.Unix()
+	}
+	if st.MarketplaceSellerID != nil {
+		out.MarketplaceSellerId = *st.MarketplaceSellerID
+	}
+	if st.MarketplaceShopID != nil {
+		out.MarketplaceShopId = *st.MarketplaceShopID
 	}
 	return out
 }

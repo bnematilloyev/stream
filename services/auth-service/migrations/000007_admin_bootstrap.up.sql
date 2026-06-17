@@ -1,0 +1,2 @@
+-- Promote a user to platform admin (run manually after first registration):
+-- UPDATE users SET role = 'admin' WHERE email = 'your@email.com';

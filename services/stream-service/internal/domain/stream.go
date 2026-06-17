@@ -17,26 +17,28 @@ const (
 )
 
 type Stream struct {
-	ID             uuid.UUID
-	ChannelID      uuid.UUID
-	ChannelSlug    string
-	ChannelTitle   string
-	Title          string
-	Description    *string
-	ThumbnailURL   *string
-	Status         string
-	IngestProtocol string
-	LatencyMode    string
-	Visibility     string
-	CategoryID     *uuid.UUID
-	Tags           []string
-	ScheduledAt    *time.Time
-	StartedAt      *time.Time
-	EndedAt        *time.Time
-	ViewerCount    int
-	PeakViewers    int
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID                  uuid.UUID
+	ChannelID           uuid.UUID
+	ChannelSlug         string
+	ChannelTitle        string
+	Title               string
+	Description         *string
+	ThumbnailURL        *string
+	Status              string
+	IngestProtocol      string
+	LatencyMode         string
+	Visibility          string
+	CategoryID          *uuid.UUID
+	Tags                []string
+	ScheduledAt         *time.Time
+	StartedAt           *time.Time
+	EndedAt             *time.Time
+	ViewerCount         int
+	PeakViewers         int
+	MarketplaceSellerID *int64
+	MarketplaceShopID   *int64
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 type Channel struct {
@@ -58,6 +60,7 @@ type StreamRepository interface {
 	Update(ctx context.Context, id uuid.UUID, userID uuid.UUID, title, description, visibility *string, categoryID *uuid.UUID, tags []string) (*Stream, error)
 	Delete(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
 	ListLive(ctx context.Context, p pagination.Params) ([]Stream, int, error)
+	ListMarketplaceLive(ctx context.Context, p pagination.Params) ([]Stream, int, error)
 	EndStaleLive(ctx context.Context) error
 	ReconcileLiveStream(ctx context.Context, id uuid.UUID) error
 	ListByChannel(ctx context.Context, channelID uuid.UUID, status string, p pagination.Params) ([]Stream, int, error)

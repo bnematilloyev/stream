@@ -141,6 +141,16 @@ func (uc *StreamUseCase) ListLive(ctx context.Context, page, limit int) ([]domai
 	return list, pagination.Result{Page: p.Page, Limit: p.Limit, Total: total}, nil
 }
 
+func (uc *StreamUseCase) ListMarketplaceLive(ctx context.Context, page, limit int) ([]domain.Stream, pagination.Result, error) {
+	p := pagination.Normalize(page, limit)
+	list, total, err := uc.streams.ListMarketplaceLive(ctx, p)
+	if err != nil {
+		return nil, pagination.Result{}, apperrors.Internal(err)
+	}
+	uc.enrichStreams(ctx, list)
+	return list, pagination.Result{Page: p.Page, Limit: p.Limit, Total: total}, nil
+}
+
 func (uc *StreamUseCase) ListByChannel(ctx context.Context, channelSlug, status string, page, limit int) ([]domain.Stream, pagination.Result, error) {
 	ch, err := uc.channels.GetBySlug(ctx, channelSlug)
 	if err != nil {
@@ -246,6 +256,37 @@ func (uc *StreamUseCase) End(ctx context.Context, userID, streamID uuid.UUID) (*
 	s, err := uc.getOwnedStream(ctx, userID, streamID)
 	if err != nil {
 		return nil, err
+	}
+	if s.Status == domain.StatusEnded {
+		return s, nil
+	}
+	if s.Status != domain.StatusLive {
+		return nil, apperrors.Validation("stream is not live", nil)
+	}
+	now := time.Now()
+	if err := uc.streams.SetStatus(ctx, streamID, domain.StatusEnded, nil, &now); err != nil {
+		return nil, apperrors.Internal(err)
+	}
+	count, err := uc.streams.CountLiveByChannel(ctx, s.ChannelID)
+	if err != nil {
+		return nil, apperrors.Internal(err)
+	}
+	if count == 0 {
+		_ = uc.channels.SetLive(ctx, s.ChannelID, false)
+	}
+	if uc.viewers != nil {
+		uc.viewers.ClearStream(ctx, streamID)
+	}
+	return uc.streams.GetByID(ctx, streamID)
+}
+
+func (uc *StreamUseCase) AdminForceEnd(ctx context.Context, streamID uuid.UUID) (*domain.Stream, error) {
+	s, err := uc.streams.GetByID(ctx, streamID)
+	if err != nil {
+		return nil, apperrors.Internal(err)
+	}
+	if s == nil {
+		return nil, apperrors.NotFound("stream not found")
 	}
 	if s.Status == domain.StatusEnded {
 		return s, nil

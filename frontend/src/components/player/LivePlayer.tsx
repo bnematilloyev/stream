@@ -115,7 +115,18 @@ export function LivePlayer({
             height: l.height,
             label: l.height ? `${l.height}p` : `Level ${i}`,
           }))
+          .filter((l) => l.height > 0)
           .sort((a, b) => b.height - a.height);
+
+        // Passthrough / single-rendition: no manual quality picker (Auto only).
+        if (levels.length <= 1) {
+          hls.currentLevel = -1;
+          setQualities([]);
+          setCurrentQuality("auto");
+          if (autoPlay) void video.play().catch(() => setPlaying(false));
+          return;
+        }
+
         setQualities(levels);
         const choice = applyQualityChoice(hls, levels);
         setCurrentQuality(choice === "auto" ? "auto" : choice);
@@ -370,7 +381,7 @@ export function LivePlayer({
           )}
 
           <div className="ml-auto flex items-center gap-1">
-            {qualities.length > 0 && (
+            {qualities.length > 1 && (
               <div className="relative">
                 <button
                   onClick={() => setShowQualityMenu(!showQualityMenu)}

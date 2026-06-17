@@ -9,28 +9,32 @@ import (
 )
 
 type Config struct {
-	AppEnv             string
-	LogLevel           string
-	HTTPAddr           string
-	AuthService        string
-	UserService        string
-	StreamService      string
-	ChatService        string
-	ChatHTTPAddr       string
-	RedisURL           string
-	CORSOrigins        []string
-	RateLimitRPM       int
-	RateLimitLogin     int
-	RateLimitRegister  int
-	RateLimitHeartbeat int
-	RequestTimeout     time.Duration
-	WhipBaseURL        string
-	JWTAccessSecret    string
-	JWTRefreshSecret   string
-	JWTAccessTTL       time.Duration
-	JWTRefreshTTL      time.Duration
-	UserCacheTTL       time.Duration
-	MaxBodyBytes       int64
+	AppEnv              string
+	LogLevel            string
+	HTTPAddr            string
+	AuthService         string
+	UserService         string
+	StreamService       string
+	ChatService         string
+	ChatHTTPAddr        string
+	RedisURL            string
+	CORSOrigins         []string
+	RateLimitRPM        int
+	RateLimitLogin      int
+	RateLimitRegister   int
+	RateLimitHeartbeat  int
+	RequestTimeout      time.Duration
+	WhipBaseURL         string
+	JWTAccessSecret     string
+	JWTRefreshSecret    string
+	JWTAccessTTL        time.Duration
+	JWTRefreshTTL       time.Duration
+	UserCacheTTL        time.Duration
+	MaxBodyBytes        int64
+	ServiceToken        string
+	ProvisionSecret     string
+	MarketWebhookURL    string
+	MarketWebhookSecret string
 }
 
 func parseOrigins(raw string) []string {
@@ -66,28 +70,32 @@ func Load() Config {
 		maxBody = 1 << 20
 	}
 	return Config{
-		AppEnv:             pkgconfig.Get("APP_ENV", "development"),
-		LogLevel:           pkgconfig.Get("LOG_LEVEL", "info"),
-		HTTPAddr:           pkgconfig.Get("GATEWAY_HTTP_ADDR", ":8080"),
-		AuthService:        pkgconfig.Get("AUTH_SERVICE_ADDR", "localhost:50051"),
-		UserService:        pkgconfig.Get("USER_SERVICE_ADDR", "localhost:50052"),
-		StreamService:      pkgconfig.Get("STREAM_SERVICE_ADDR", "localhost:50053"),
-		ChatService:        pkgconfig.Get("CHAT_SERVICE_ADDR", "localhost:50054"),
-		ChatHTTPAddr:       pkgconfig.Get("CHAT_HTTP_ADDR", "localhost:9085"),
-		RedisURL:           pkgconfig.Get("REDIS_URL", "redis://localhost:6379/0"),
-		CORSOrigins:        parseOrigins(origins),
-		RateLimitRPM:       intEnv("GATEWAY_RATE_LIMIT_RPM", 100),
-		RateLimitLogin:     intEnv("GATEWAY_RATE_LIMIT_LOGIN", 5),
-		RateLimitRegister:  intEnv("GATEWAY_RATE_LIMIT_REGISTER", 3),
-		RateLimitHeartbeat: intEnv("GATEWAY_RATE_LIMIT_HEARTBEAT", 6000),
-		RequestTimeout:     10 * time.Second,
-		WhipBaseURL:        pkgconfig.Get("WHIP_BASE_URL", "http://localhost:8889"),
-		JWTAccessSecret:    pkgconfig.Get("JWT_ACCESS_SECRET", "dev-access-secret-change-in-production-32"),
-		JWTRefreshSecret:   pkgconfig.Get("JWT_REFRESH_SECRET", "dev-refresh-secret-change-in-production-32"),
-		JWTAccessTTL:       pkgconfig.Duration("JWT_ACCESS_TTL", 15*time.Minute),
-		JWTRefreshTTL:      pkgconfig.Duration("JWT_REFRESH_TTL", 168*time.Hour),
-		UserCacheTTL:       pkgconfig.Duration("AUTH_USER_CACHE_TTL", 5*time.Minute),
-		MaxBodyBytes:       maxBody,
+		AppEnv:              pkgconfig.Get("APP_ENV", "development"),
+		LogLevel:            pkgconfig.Get("LOG_LEVEL", "info"),
+		HTTPAddr:            pkgconfig.Get("GATEWAY_HTTP_ADDR", ":8080"),
+		AuthService:         pkgconfig.Get("AUTH_SERVICE_ADDR", "localhost:50051"),
+		UserService:         pkgconfig.Get("USER_SERVICE_ADDR", "localhost:50052"),
+		StreamService:       pkgconfig.Get("STREAM_SERVICE_ADDR", "localhost:50053"),
+		ChatService:         pkgconfig.Get("CHAT_SERVICE_ADDR", "localhost:50054"),
+		ChatHTTPAddr:        pkgconfig.Get("CHAT_HTTP_ADDR", "localhost:9085"),
+		RedisURL:            pkgconfig.Get("REDIS_URL", "redis://localhost:6379/0"),
+		CORSOrigins:         parseOrigins(origins),
+		RateLimitRPM:        intEnv("GATEWAY_RATE_LIMIT_RPM", 100),
+		RateLimitLogin:      intEnv("GATEWAY_RATE_LIMIT_LOGIN", 5),
+		RateLimitRegister:   intEnv("GATEWAY_RATE_LIMIT_REGISTER", 3),
+		RateLimitHeartbeat:  intEnv("GATEWAY_RATE_LIMIT_HEARTBEAT", 6000),
+		RequestTimeout:      10 * time.Second,
+		WhipBaseURL:         pkgconfig.Get("WHIP_BASE_URL", "http://localhost:8889"),
+		JWTAccessSecret:     pkgconfig.Get("JWT_ACCESS_SECRET", "dev-access-secret-change-in-production-32"),
+		JWTRefreshSecret:    pkgconfig.Get("JWT_REFRESH_SECRET", "dev-refresh-secret-change-in-production-32"),
+		JWTAccessTTL:        pkgconfig.Duration("JWT_ACCESS_TTL", 15*time.Minute),
+		JWTRefreshTTL:       pkgconfig.Duration("JWT_REFRESH_TTL", 168*time.Hour),
+		UserCacheTTL:        pkgconfig.Duration("AUTH_USER_CACHE_TTL", 5*time.Minute),
+		MaxBodyBytes:        maxBody,
+		ServiceToken:        pkgconfig.Get("SERVICE_TOKEN", ""),
+		ProvisionSecret:     pkgconfig.Get("BROADCAST_PROVISION_SECRET", pkgconfig.Get("SERVICE_TOKEN", "dev-service-token")),
+		MarketWebhookURL:    pkgconfig.Get("MARKET_WEBHOOK_URL", ""),
+		MarketWebhookSecret: pkgconfig.Get("MARKET_WEBHOOK_SECRET", pkgconfig.Get("SERVICE_TOKEN", "")),
 	}
 }
 

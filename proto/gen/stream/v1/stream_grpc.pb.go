@@ -19,21 +19,23 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	StreamService_CreateStream_FullMethodName           = "/stream.v1.StreamService/CreateStream"
-	StreamService_GetStream_FullMethodName              = "/stream.v1.StreamService/GetStream"
-	StreamService_UpdateStream_FullMethodName           = "/stream.v1.StreamService/UpdateStream"
-	StreamService_DeleteStream_FullMethodName           = "/stream.v1.StreamService/DeleteStream"
-	StreamService_ListLiveStreams_FullMethodName        = "/stream.v1.StreamService/ListLiveStreams"
-	StreamService_ListChannelStreams_FullMethodName     = "/stream.v1.StreamService/ListChannelStreams"
-	StreamService_StartStream_FullMethodName            = "/stream.v1.StreamService/StartStream"
-	StreamService_EndStream_FullMethodName              = "/stream.v1.StreamService/EndStream"
-	StreamService_ValidateStreamKey_FullMethodName      = "/stream.v1.StreamService/ValidateStreamKey"
-	StreamService_GetPlayback_FullMethodName            = "/stream.v1.StreamService/GetPlayback"
-	StreamService_StartIngest_FullMethodName            = "/stream.v1.StreamService/StartIngest"
-	StreamService_EndIngest_FullMethodName              = "/stream.v1.StreamService/EndIngest"
-	StreamService_GetScheduledForChannel_FullMethodName = "/stream.v1.StreamService/GetScheduledForChannel"
-	StreamService_RecordViewerHeartbeat_FullMethodName  = "/stream.v1.StreamService/RecordViewerHeartbeat"
-	StreamService_GetViewerStats_FullMethodName         = "/stream.v1.StreamService/GetViewerStats"
+	StreamService_CreateStream_FullMethodName               = "/stream.v1.StreamService/CreateStream"
+	StreamService_GetStream_FullMethodName                  = "/stream.v1.StreamService/GetStream"
+	StreamService_UpdateStream_FullMethodName               = "/stream.v1.StreamService/UpdateStream"
+	StreamService_DeleteStream_FullMethodName               = "/stream.v1.StreamService/DeleteStream"
+	StreamService_ListLiveStreams_FullMethodName            = "/stream.v1.StreamService/ListLiveStreams"
+	StreamService_ListMarketplaceLiveStreams_FullMethodName = "/stream.v1.StreamService/ListMarketplaceLiveStreams"
+	StreamService_ListChannelStreams_FullMethodName         = "/stream.v1.StreamService/ListChannelStreams"
+	StreamService_StartStream_FullMethodName                = "/stream.v1.StreamService/StartStream"
+	StreamService_EndStream_FullMethodName                  = "/stream.v1.StreamService/EndStream"
+	StreamService_ValidateStreamKey_FullMethodName          = "/stream.v1.StreamService/ValidateStreamKey"
+	StreamService_GetPlayback_FullMethodName                = "/stream.v1.StreamService/GetPlayback"
+	StreamService_StartIngest_FullMethodName                = "/stream.v1.StreamService/StartIngest"
+	StreamService_EndIngest_FullMethodName                  = "/stream.v1.StreamService/EndIngest"
+	StreamService_GetScheduledForChannel_FullMethodName     = "/stream.v1.StreamService/GetScheduledForChannel"
+	StreamService_RecordViewerHeartbeat_FullMethodName      = "/stream.v1.StreamService/RecordViewerHeartbeat"
+	StreamService_GetViewerStats_FullMethodName             = "/stream.v1.StreamService/GetViewerStats"
+	StreamService_AdminForceEndStream_FullMethodName        = "/stream.v1.StreamService/AdminForceEndStream"
 )
 
 // StreamServiceClient is the client API for StreamService service.
@@ -45,6 +47,7 @@ type StreamServiceClient interface {
 	UpdateStream(ctx context.Context, in *UpdateStreamRequest, opts ...grpc.CallOption) (*Stream, error)
 	DeleteStream(ctx context.Context, in *DeleteStreamRequest, opts ...grpc.CallOption) (*DeleteStreamResponse, error)
 	ListLiveStreams(ctx context.Context, in *ListLiveStreamsRequest, opts ...grpc.CallOption) (*ListStreamsResponse, error)
+	ListMarketplaceLiveStreams(ctx context.Context, in *ListMarketplaceLiveStreamsRequest, opts ...grpc.CallOption) (*ListStreamsResponse, error)
 	ListChannelStreams(ctx context.Context, in *ListChannelStreamsRequest, opts ...grpc.CallOption) (*ListStreamsResponse, error)
 	StartStream(ctx context.Context, in *StartStreamRequest, opts ...grpc.CallOption) (*Stream, error)
 	EndStream(ctx context.Context, in *EndStreamRequest, opts ...grpc.CallOption) (*Stream, error)
@@ -55,6 +58,7 @@ type StreamServiceClient interface {
 	GetScheduledForChannel(ctx context.Context, in *GetScheduledForChannelRequest, opts ...grpc.CallOption) (*Stream, error)
 	RecordViewerHeartbeat(ctx context.Context, in *RecordViewerHeartbeatRequest, opts ...grpc.CallOption) (*ViewerStatsResponse, error)
 	GetViewerStats(ctx context.Context, in *GetViewerStatsRequest, opts ...grpc.CallOption) (*ViewerStatsResponse, error)
+	AdminForceEndStream(ctx context.Context, in *AdminForceEndStreamRequest, opts ...grpc.CallOption) (*Stream, error)
 }
 
 type streamServiceClient struct {
@@ -109,6 +113,16 @@ func (c *streamServiceClient) ListLiveStreams(ctx context.Context, in *ListLiveS
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListStreamsResponse)
 	err := c.cc.Invoke(ctx, StreamService_ListLiveStreams_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *streamServiceClient) ListMarketplaceLiveStreams(ctx context.Context, in *ListMarketplaceLiveStreamsRequest, opts ...grpc.CallOption) (*ListStreamsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListStreamsResponse)
+	err := c.cc.Invoke(ctx, StreamService_ListMarketplaceLiveStreams_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -215,6 +229,16 @@ func (c *streamServiceClient) GetViewerStats(ctx context.Context, in *GetViewerS
 	return out, nil
 }
 
+func (c *streamServiceClient) AdminForceEndStream(ctx context.Context, in *AdminForceEndStreamRequest, opts ...grpc.CallOption) (*Stream, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Stream)
+	err := c.cc.Invoke(ctx, StreamService_AdminForceEndStream_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StreamServiceServer is the server API for StreamService service.
 // All implementations must embed UnimplementedStreamServiceServer
 // for forward compatibility.
@@ -224,6 +248,7 @@ type StreamServiceServer interface {
 	UpdateStream(context.Context, *UpdateStreamRequest) (*Stream, error)
 	DeleteStream(context.Context, *DeleteStreamRequest) (*DeleteStreamResponse, error)
 	ListLiveStreams(context.Context, *ListLiveStreamsRequest) (*ListStreamsResponse, error)
+	ListMarketplaceLiveStreams(context.Context, *ListMarketplaceLiveStreamsRequest) (*ListStreamsResponse, error)
 	ListChannelStreams(context.Context, *ListChannelStreamsRequest) (*ListStreamsResponse, error)
 	StartStream(context.Context, *StartStreamRequest) (*Stream, error)
 	EndStream(context.Context, *EndStreamRequest) (*Stream, error)
@@ -234,6 +259,7 @@ type StreamServiceServer interface {
 	GetScheduledForChannel(context.Context, *GetScheduledForChannelRequest) (*Stream, error)
 	RecordViewerHeartbeat(context.Context, *RecordViewerHeartbeatRequest) (*ViewerStatsResponse, error)
 	GetViewerStats(context.Context, *GetViewerStatsRequest) (*ViewerStatsResponse, error)
+	AdminForceEndStream(context.Context, *AdminForceEndStreamRequest) (*Stream, error)
 	mustEmbedUnimplementedStreamServiceServer()
 }
 
@@ -258,6 +284,9 @@ func (UnimplementedStreamServiceServer) DeleteStream(context.Context, *DeleteStr
 }
 func (UnimplementedStreamServiceServer) ListLiveStreams(context.Context, *ListLiveStreamsRequest) (*ListStreamsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListLiveStreams not implemented")
+}
+func (UnimplementedStreamServiceServer) ListMarketplaceLiveStreams(context.Context, *ListMarketplaceLiveStreamsRequest) (*ListStreamsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListMarketplaceLiveStreams not implemented")
 }
 func (UnimplementedStreamServiceServer) ListChannelStreams(context.Context, *ListChannelStreamsRequest) (*ListStreamsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListChannelStreams not implemented")
@@ -288,6 +317,9 @@ func (UnimplementedStreamServiceServer) RecordViewerHeartbeat(context.Context, *
 }
 func (UnimplementedStreamServiceServer) GetViewerStats(context.Context, *GetViewerStatsRequest) (*ViewerStatsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetViewerStats not implemented")
+}
+func (UnimplementedStreamServiceServer) AdminForceEndStream(context.Context, *AdminForceEndStreamRequest) (*Stream, error) {
+	return nil, status.Error(codes.Unimplemented, "method AdminForceEndStream not implemented")
 }
 func (UnimplementedStreamServiceServer) mustEmbedUnimplementedStreamServiceServer() {}
 func (UnimplementedStreamServiceServer) testEmbeddedByValue()                       {}
@@ -396,6 +428,24 @@ func _StreamService_ListLiveStreams_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StreamServiceServer).ListLiveStreams(ctx, req.(*ListLiveStreamsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StreamService_ListMarketplaceLiveStreams_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMarketplaceLiveStreamsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StreamServiceServer).ListMarketplaceLiveStreams(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StreamService_ListMarketplaceLiveStreams_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StreamServiceServer).ListMarketplaceLiveStreams(ctx, req.(*ListMarketplaceLiveStreamsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -580,6 +630,24 @@ func _StreamService_GetViewerStats_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _StreamService_AdminForceEndStream_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AdminForceEndStreamRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StreamServiceServer).AdminForceEndStream(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StreamService_AdminForceEndStream_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StreamServiceServer).AdminForceEndStream(ctx, req.(*AdminForceEndStreamRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // StreamService_ServiceDesc is the grpc.ServiceDesc for StreamService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -606,6 +674,10 @@ var StreamService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListLiveStreams",
 			Handler:    _StreamService_ListLiveStreams_Handler,
+		},
+		{
+			MethodName: "ListMarketplaceLiveStreams",
+			Handler:    _StreamService_ListMarketplaceLiveStreams_Handler,
 		},
 		{
 			MethodName: "ListChannelStreams",
@@ -646,6 +718,10 @@ var StreamService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetViewerStats",
 			Handler:    _StreamService_GetViewerStats_Handler,
+		},
+		{
+			MethodName: "AdminForceEndStream",
+			Handler:    _StreamService_AdminForceEndStream_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

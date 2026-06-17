@@ -197,16 +197,19 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	ChannelService_CreateChannel_FullMethodName   = "/user.v1.ChannelService/CreateChannel"
-	ChannelService_GetChannel_FullMethodName      = "/user.v1.ChannelService/GetChannel"
-	ChannelService_GetMyChannel_FullMethodName    = "/user.v1.ChannelService/GetMyChannel"
-	ChannelService_UpdateChannel_FullMethodName   = "/user.v1.ChannelService/UpdateChannel"
-	ChannelService_Follow_FullMethodName          = "/user.v1.ChannelService/Follow"
-	ChannelService_Unfollow_FullMethodName        = "/user.v1.ChannelService/Unfollow"
-	ChannelService_ListFollowers_FullMethodName   = "/user.v1.ChannelService/ListFollowers"
-	ChannelService_IsFollowing_FullMethodName     = "/user.v1.ChannelService/IsFollowing"
-	ChannelService_GetIngestKey_FullMethodName    = "/user.v1.ChannelService/GetIngestKey"
-	ChannelService_RotateIngestKey_FullMethodName = "/user.v1.ChannelService/RotateIngestKey"
+	ChannelService_CreateChannel_FullMethodName                 = "/user.v1.ChannelService/CreateChannel"
+	ChannelService_GetChannelByMarketplaceSeller_FullMethodName = "/user.v1.ChannelService/GetChannelByMarketplaceSeller"
+	ChannelService_GetChannel_FullMethodName                    = "/user.v1.ChannelService/GetChannel"
+	ChannelService_GetMyChannel_FullMethodName                  = "/user.v1.ChannelService/GetMyChannel"
+	ChannelService_UpdateChannel_FullMethodName                 = "/user.v1.ChannelService/UpdateChannel"
+	ChannelService_Follow_FullMethodName                        = "/user.v1.ChannelService/Follow"
+	ChannelService_Unfollow_FullMethodName                      = "/user.v1.ChannelService/Unfollow"
+	ChannelService_ListFollowers_FullMethodName                 = "/user.v1.ChannelService/ListFollowers"
+	ChannelService_IsFollowing_FullMethodName                   = "/user.v1.ChannelService/IsFollowing"
+	ChannelService_GetIngestKey_FullMethodName                  = "/user.v1.ChannelService/GetIngestKey"
+	ChannelService_RotateIngestKey_FullMethodName               = "/user.v1.ChannelService/RotateIngestKey"
+	ChannelService_ListChannels_FullMethodName                  = "/user.v1.ChannelService/ListChannels"
+	ChannelService_AdminUpdateChannel_FullMethodName            = "/user.v1.ChannelService/AdminUpdateChannel"
 )
 
 // ChannelServiceClient is the client API for ChannelService service.
@@ -214,6 +217,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ChannelServiceClient interface {
 	CreateChannel(ctx context.Context, in *CreateChannelRequest, opts ...grpc.CallOption) (*Channel, error)
+	GetChannelByMarketplaceSeller(ctx context.Context, in *GetChannelByMarketplaceSellerRequest, opts ...grpc.CallOption) (*Channel, error)
 	GetChannel(ctx context.Context, in *GetChannelRequest, opts ...grpc.CallOption) (*Channel, error)
 	GetMyChannel(ctx context.Context, in *GetMyChannelRequest, opts ...grpc.CallOption) (*Channel, error)
 	UpdateChannel(ctx context.Context, in *UpdateChannelRequest, opts ...grpc.CallOption) (*Channel, error)
@@ -223,6 +227,8 @@ type ChannelServiceClient interface {
 	IsFollowing(ctx context.Context, in *IsFollowingRequest, opts ...grpc.CallOption) (*IsFollowingResponse, error)
 	GetIngestKey(ctx context.Context, in *GetIngestKeyRequest, opts ...grpc.CallOption) (*IngestKeyResponse, error)
 	RotateIngestKey(ctx context.Context, in *RotateIngestKeyRequest, opts ...grpc.CallOption) (*IngestKeyResponse, error)
+	ListChannels(ctx context.Context, in *ListChannelsRequest, opts ...grpc.CallOption) (*ListChannelsResponse, error)
+	AdminUpdateChannel(ctx context.Context, in *AdminUpdateChannelRequest, opts ...grpc.CallOption) (*Channel, error)
 }
 
 type channelServiceClient struct {
@@ -237,6 +243,16 @@ func (c *channelServiceClient) CreateChannel(ctx context.Context, in *CreateChan
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Channel)
 	err := c.cc.Invoke(ctx, ChannelService_CreateChannel_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *channelServiceClient) GetChannelByMarketplaceSeller(ctx context.Context, in *GetChannelByMarketplaceSellerRequest, opts ...grpc.CallOption) (*Channel, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Channel)
+	err := c.cc.Invoke(ctx, ChannelService_GetChannelByMarketplaceSeller_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -333,11 +349,32 @@ func (c *channelServiceClient) RotateIngestKey(ctx context.Context, in *RotateIn
 	return out, nil
 }
 
+func (c *channelServiceClient) ListChannels(ctx context.Context, in *ListChannelsRequest, opts ...grpc.CallOption) (*ListChannelsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListChannelsResponse)
+	err := c.cc.Invoke(ctx, ChannelService_ListChannels_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *channelServiceClient) AdminUpdateChannel(ctx context.Context, in *AdminUpdateChannelRequest, opts ...grpc.CallOption) (*Channel, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Channel)
+	err := c.cc.Invoke(ctx, ChannelService_AdminUpdateChannel_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChannelServiceServer is the server API for ChannelService service.
 // All implementations must embed UnimplementedChannelServiceServer
 // for forward compatibility.
 type ChannelServiceServer interface {
 	CreateChannel(context.Context, *CreateChannelRequest) (*Channel, error)
+	GetChannelByMarketplaceSeller(context.Context, *GetChannelByMarketplaceSellerRequest) (*Channel, error)
 	GetChannel(context.Context, *GetChannelRequest) (*Channel, error)
 	GetMyChannel(context.Context, *GetMyChannelRequest) (*Channel, error)
 	UpdateChannel(context.Context, *UpdateChannelRequest) (*Channel, error)
@@ -347,6 +384,8 @@ type ChannelServiceServer interface {
 	IsFollowing(context.Context, *IsFollowingRequest) (*IsFollowingResponse, error)
 	GetIngestKey(context.Context, *GetIngestKeyRequest) (*IngestKeyResponse, error)
 	RotateIngestKey(context.Context, *RotateIngestKeyRequest) (*IngestKeyResponse, error)
+	ListChannels(context.Context, *ListChannelsRequest) (*ListChannelsResponse, error)
+	AdminUpdateChannel(context.Context, *AdminUpdateChannelRequest) (*Channel, error)
 	mustEmbedUnimplementedChannelServiceServer()
 }
 
@@ -359,6 +398,9 @@ type UnimplementedChannelServiceServer struct{}
 
 func (UnimplementedChannelServiceServer) CreateChannel(context.Context, *CreateChannelRequest) (*Channel, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateChannel not implemented")
+}
+func (UnimplementedChannelServiceServer) GetChannelByMarketplaceSeller(context.Context, *GetChannelByMarketplaceSellerRequest) (*Channel, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetChannelByMarketplaceSeller not implemented")
 }
 func (UnimplementedChannelServiceServer) GetChannel(context.Context, *GetChannelRequest) (*Channel, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetChannel not implemented")
@@ -386,6 +428,12 @@ func (UnimplementedChannelServiceServer) GetIngestKey(context.Context, *GetInges
 }
 func (UnimplementedChannelServiceServer) RotateIngestKey(context.Context, *RotateIngestKeyRequest) (*IngestKeyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RotateIngestKey not implemented")
+}
+func (UnimplementedChannelServiceServer) ListChannels(context.Context, *ListChannelsRequest) (*ListChannelsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListChannels not implemented")
+}
+func (UnimplementedChannelServiceServer) AdminUpdateChannel(context.Context, *AdminUpdateChannelRequest) (*Channel, error) {
+	return nil, status.Error(codes.Unimplemented, "method AdminUpdateChannel not implemented")
 }
 func (UnimplementedChannelServiceServer) mustEmbedUnimplementedChannelServiceServer() {}
 func (UnimplementedChannelServiceServer) testEmbeddedByValue()                        {}
@@ -422,6 +470,24 @@ func _ChannelService_CreateChannel_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ChannelServiceServer).CreateChannel(ctx, req.(*CreateChannelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChannelService_GetChannelByMarketplaceSeller_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetChannelByMarketplaceSellerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChannelServiceServer).GetChannelByMarketplaceSeller(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChannelService_GetChannelByMarketplaceSeller_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChannelServiceServer).GetChannelByMarketplaceSeller(ctx, req.(*GetChannelByMarketplaceSellerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -588,6 +654,42 @@ func _ChannelService_RotateIngestKey_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChannelService_ListChannels_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListChannelsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChannelServiceServer).ListChannels(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChannelService_ListChannels_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChannelServiceServer).ListChannels(ctx, req.(*ListChannelsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChannelService_AdminUpdateChannel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AdminUpdateChannelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChannelServiceServer).AdminUpdateChannel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChannelService_AdminUpdateChannel_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChannelServiceServer).AdminUpdateChannel(ctx, req.(*AdminUpdateChannelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChannelService_ServiceDesc is the grpc.ServiceDesc for ChannelService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -598,6 +700,10 @@ var ChannelService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateChannel",
 			Handler:    _ChannelService_CreateChannel_Handler,
+		},
+		{
+			MethodName: "GetChannelByMarketplaceSeller",
+			Handler:    _ChannelService_GetChannelByMarketplaceSeller_Handler,
 		},
 		{
 			MethodName: "GetChannel",
@@ -634,6 +740,14 @@ var ChannelService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RotateIngestKey",
 			Handler:    _ChannelService_RotateIngestKey_Handler,
+		},
+		{
+			MethodName: "ListChannels",
+			Handler:    _ChannelService_ListChannels_Handler,
+		},
+		{
+			MethodName: "AdminUpdateChannel",
+			Handler:    _ChannelService_AdminUpdateChannel_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

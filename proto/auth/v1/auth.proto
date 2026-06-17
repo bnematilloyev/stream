@@ -11,6 +11,10 @@ service AuthService {
   rpc Logout(LogoutRequest) returns (LogoutResponse);
   rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
   rpc GetUser(GetUserRequest) returns (User);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc UpdateUserAdmin(UpdateUserAdminRequest) returns (User);
+  rpc GetPlatformStats(GetPlatformStatsRequest) returns (PlatformStatsResponse);
+  rpc ListAuditLogs(ListAuditLogsRequest) returns (ListAuditLogsResponse);
 }
 
 message RegisterRequest {
@@ -68,4 +72,58 @@ message User {
   string status = 6;
   bool email_verified = 7;
   int64 created_at_unix = 8;
+}
+
+message ListUsersRequest {
+  string status = 1;
+  string role = 2;
+  string search = 3;
+  int32 page = 4;
+  int32 limit = 5;
+}
+
+message ListUsersResponse {
+  repeated User users = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
+}
+
+message UpdateUserAdminRequest {
+  string user_id = 1;
+  string actor_id = 2;
+  optional string role = 3;
+  optional string status = 4;
+}
+
+message GetPlatformStatsRequest {}
+
+message PlatformStatsResponse {
+  int64 total_users = 1;
+  int64 users_active = 2;
+  int64 users_suspended = 3;
+  int64 users_banned = 4;
+  int64 admins = 5;
+}
+
+message ListAuditLogsRequest {
+  int32 page = 1;
+  int32 limit = 2;
+}
+
+message AuditLogEntry {
+  int64 id = 1;
+  string actor_id = 2;
+  string action = 3;
+  string resource_type = 4;
+  string resource_id = 5;
+  string details_json = 6;
+  int64 created_at_unix = 7;
+}
+
+message ListAuditLogsResponse {
+  repeated AuditLogEntry logs = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 limit = 4;
 }

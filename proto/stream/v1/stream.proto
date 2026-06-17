@@ -10,6 +10,7 @@ service StreamService {
   rpc UpdateStream(UpdateStreamRequest) returns (Stream);
   rpc DeleteStream(DeleteStreamRequest) returns (DeleteStreamResponse);
   rpc ListLiveStreams(ListLiveStreamsRequest) returns (ListStreamsResponse);
+  rpc ListMarketplaceLiveStreams(ListMarketplaceLiveStreamsRequest) returns (ListStreamsResponse);
   rpc ListChannelStreams(ListChannelStreamsRequest) returns (ListStreamsResponse);
   rpc StartStream(StartStreamRequest) returns (Stream);
   rpc EndStream(EndStreamRequest) returns (Stream);
@@ -20,6 +21,7 @@ service StreamService {
   rpc GetScheduledForChannel(GetScheduledForChannelRequest) returns (Stream);
   rpc RecordViewerHeartbeat(RecordViewerHeartbeatRequest) returns (ViewerStatsResponse);
   rpc GetViewerStats(GetViewerStatsRequest) returns (ViewerStatsResponse);
+  rpc AdminForceEndStream(AdminForceEndStreamRequest) returns (Stream);
 }
 
 message Stream {
@@ -43,6 +45,8 @@ message Stream {
   int32 peak_viewers = 18;
   int64 created_at_unix = 19;
   int64 updated_at_unix = 20;
+  int64 marketplace_seller_id = 21;
+  int64 marketplace_shop_id = 22;
 }
 
 message CreateStreamRequest {
@@ -72,6 +76,7 @@ message DeleteStreamRequest { string user_id = 1; string stream_id = 2; }
 message DeleteStreamResponse { bool success = 1; }
 
 message ListLiveStreamsRequest { int32 page = 1; int32 limit = 2; }
+message ListMarketplaceLiveStreamsRequest { int32 page = 1; int32 limit = 2; }
 message ListChannelStreamsRequest {
   string channel_slug = 1;
   int32 page = 2;
@@ -124,3 +129,5 @@ message ViewerStatsResponse {
   int64 concurrent = 2;
   int64 unique = 3;
 }
+
+message AdminForceEndStreamRequest { string stream_id = 1; }

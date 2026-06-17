@@ -60,10 +60,10 @@ func (uc *PlaybackUseCase) GetPlayback(ctx context.Context, streamID uuid.UUID) 
 		status = m.Status
 	}
 
-	if st.Status != domain.StatusLive {
+	if !isPlaybackAllowed(st.Status) {
 		return nil, apperrors.NotFound("playback not available")
 	}
-	if m == nil || (m.Status != domain.MediaStatusIngesting && m.Status != domain.MediaStatusReady) {
+	if !isMediaPlayable(m, st.Status) {
 		return nil, apperrors.NotFound("playback not available")
 	}
 
@@ -82,4 +82,22 @@ func (uc *PlaybackUseCase) GetPlayback(ctx context.Context, streamID uuid.UUID) 
 
 func (uc *PlaybackUseCase) UpsertMedia(ctx context.Context, m *domain.StreamMedia) error {
 	return uc.media.Upsert(ctx, m)
+}
+
+func isPlaybackAllowed(streamStatus string) bool {
+	return streamStatus == domain.StatusLive || streamStatus == domain.StatusEnded
+}
+
+func isMediaPlayable(m *domain.StreamMedia, streamStatus string) bool {
+	if m == nil {
+		return false
+	}
+
+	if streamStatus == domain.StatusLive {
+		return m.Status == domain.MediaStatusIngesting || m.Status == domain.MediaStatusReady
+	}
+	if streamStatus == domain.StatusEnded {
+		return m.Status == domain.MediaStatusStopped || m.Status == domain.MediaStatusReady
+	}
+	return false
 }

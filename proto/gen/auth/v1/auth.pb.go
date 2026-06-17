@@ -597,6 +597,542 @@ func (x *User) GetCreatedAtUnix() int64 {
 	return 0
 }
 
+type ListUsersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Role          string                 `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	Search        string                 `protobuf:"bytes,3,opt,name=search,proto3" json:"search,omitempty"`
+	Page          int32                  `protobuf:"varint,4,opt,name=page,proto3" json:"page,omitempty"`
+	Limit         int32                  `protobuf:"varint,5,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListUsersRequest) Reset() {
+	*x = ListUsersRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListUsersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListUsersRequest) ProtoMessage() {}
+
+func (x *ListUsersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListUsersRequest.ProtoReflect.Descriptor instead.
+func (*ListUsersRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ListUsersRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ListUsersRequest) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *ListUsersRequest) GetSearch() string {
+	if x != nil {
+		return x.Search
+	}
+	return ""
+}
+
+func (x *ListUsersRequest) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ListUsersRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListUsersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Users         []*User                `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	Page          int32                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"`
+	Limit         int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListUsersResponse) Reset() {
+	*x = ListUsersResponse{}
+	mi := &file_auth_v1_auth_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListUsersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListUsersResponse) ProtoMessage() {}
+
+func (x *ListUsersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListUsersResponse.ProtoReflect.Descriptor instead.
+func (*ListUsersResponse) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ListUsersResponse) GetUsers() []*User {
+	if x != nil {
+		return x.Users
+	}
+	return nil
+}
+
+func (x *ListUsersResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *ListUsersResponse) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ListUsersResponse) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type UpdateUserAdminRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	ActorId       string                 `protobuf:"bytes,2,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	Role          *string                `protobuf:"bytes,3,opt,name=role,proto3,oneof" json:"role,omitempty"`
+	Status        *string                `protobuf:"bytes,4,opt,name=status,proto3,oneof" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateUserAdminRequest) Reset() {
+	*x = UpdateUserAdminRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateUserAdminRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateUserAdminRequest) ProtoMessage() {}
+
+func (x *UpdateUserAdminRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateUserAdminRequest.ProtoReflect.Descriptor instead.
+func (*UpdateUserAdminRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *UpdateUserAdminRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *UpdateUserAdminRequest) GetActorId() string {
+	if x != nil {
+		return x.ActorId
+	}
+	return ""
+}
+
+func (x *UpdateUserAdminRequest) GetRole() string {
+	if x != nil && x.Role != nil {
+		return *x.Role
+	}
+	return ""
+}
+
+func (x *UpdateUserAdminRequest) GetStatus() string {
+	if x != nil && x.Status != nil {
+		return *x.Status
+	}
+	return ""
+}
+
+type GetPlatformStatsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPlatformStatsRequest) Reset() {
+	*x = GetPlatformStatsRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPlatformStatsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPlatformStatsRequest) ProtoMessage() {}
+
+func (x *GetPlatformStatsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPlatformStatsRequest.ProtoReflect.Descriptor instead.
+func (*GetPlatformStatsRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{13}
+}
+
+type PlatformStatsResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	TotalUsers     int64                  `protobuf:"varint,1,opt,name=total_users,json=totalUsers,proto3" json:"total_users,omitempty"`
+	UsersActive    int64                  `protobuf:"varint,2,opt,name=users_active,json=usersActive,proto3" json:"users_active,omitempty"`
+	UsersSuspended int64                  `protobuf:"varint,3,opt,name=users_suspended,json=usersSuspended,proto3" json:"users_suspended,omitempty"`
+	UsersBanned    int64                  `protobuf:"varint,4,opt,name=users_banned,json=usersBanned,proto3" json:"users_banned,omitempty"`
+	Admins         int64                  `protobuf:"varint,5,opt,name=admins,proto3" json:"admins,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *PlatformStatsResponse) Reset() {
+	*x = PlatformStatsResponse{}
+	mi := &file_auth_v1_auth_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PlatformStatsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PlatformStatsResponse) ProtoMessage() {}
+
+func (x *PlatformStatsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PlatformStatsResponse.ProtoReflect.Descriptor instead.
+func (*PlatformStatsResponse) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *PlatformStatsResponse) GetTotalUsers() int64 {
+	if x != nil {
+		return x.TotalUsers
+	}
+	return 0
+}
+
+func (x *PlatformStatsResponse) GetUsersActive() int64 {
+	if x != nil {
+		return x.UsersActive
+	}
+	return 0
+}
+
+func (x *PlatformStatsResponse) GetUsersSuspended() int64 {
+	if x != nil {
+		return x.UsersSuspended
+	}
+	return 0
+}
+
+func (x *PlatformStatsResponse) GetUsersBanned() int64 {
+	if x != nil {
+		return x.UsersBanned
+	}
+	return 0
+}
+
+func (x *PlatformStatsResponse) GetAdmins() int64 {
+	if x != nil {
+		return x.Admins
+	}
+	return 0
+}
+
+type ListAuditLogsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Page          int32                  `protobuf:"varint,1,opt,name=page,proto3" json:"page,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAuditLogsRequest) Reset() {
+	*x = ListAuditLogsRequest{}
+	mi := &file_auth_v1_auth_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAuditLogsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAuditLogsRequest) ProtoMessage() {}
+
+func (x *ListAuditLogsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAuditLogsRequest.ProtoReflect.Descriptor instead.
+func (*ListAuditLogsRequest) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ListAuditLogsRequest) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ListAuditLogsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type AuditLogEntry struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	ActorId       string                 `protobuf:"bytes,2,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	Action        string                 `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"`
+	ResourceType  string                 `protobuf:"bytes,4,opt,name=resource_type,json=resourceType,proto3" json:"resource_type,omitempty"`
+	ResourceId    string                 `protobuf:"bytes,5,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	DetailsJson   string                 `protobuf:"bytes,6,opt,name=details_json,json=detailsJson,proto3" json:"details_json,omitempty"`
+	CreatedAtUnix int64                  `protobuf:"varint,7,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AuditLogEntry) Reset() {
+	*x = AuditLogEntry{}
+	mi := &file_auth_v1_auth_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuditLogEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuditLogEntry) ProtoMessage() {}
+
+func (x *AuditLogEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuditLogEntry.ProtoReflect.Descriptor instead.
+func (*AuditLogEntry) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AuditLogEntry) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *AuditLogEntry) GetActorId() string {
+	if x != nil {
+		return x.ActorId
+	}
+	return ""
+}
+
+func (x *AuditLogEntry) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *AuditLogEntry) GetResourceType() string {
+	if x != nil {
+		return x.ResourceType
+	}
+	return ""
+}
+
+func (x *AuditLogEntry) GetResourceId() string {
+	if x != nil {
+		return x.ResourceId
+	}
+	return ""
+}
+
+func (x *AuditLogEntry) GetDetailsJson() string {
+	if x != nil {
+		return x.DetailsJson
+	}
+	return ""
+}
+
+func (x *AuditLogEntry) GetCreatedAtUnix() int64 {
+	if x != nil {
+		return x.CreatedAtUnix
+	}
+	return 0
+}
+
+type ListAuditLogsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Logs          []*AuditLogEntry       `protobuf:"bytes,1,rep,name=logs,proto3" json:"logs,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	Page          int32                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"`
+	Limit         int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAuditLogsResponse) Reset() {
+	*x = ListAuditLogsResponse{}
+	mi := &file_auth_v1_auth_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAuditLogsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAuditLogsResponse) ProtoMessage() {}
+
+func (x *ListAuditLogsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_auth_v1_auth_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAuditLogsResponse.ProtoReflect.Descriptor instead.
+func (*ListAuditLogsResponse) Descriptor() ([]byte, []int) {
+	return file_auth_v1_auth_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ListAuditLogsResponse) GetLogs() []*AuditLogEntry {
+	if x != nil {
+		return x.Logs
+	}
+	return nil
+}
+
+func (x *ListAuditLogsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *ListAuditLogsResponse) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ListAuditLogsResponse) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
 var File_auth_v1_auth_proto protoreflect.FileDescriptor
 
 const file_auth_v1_auth_proto_rawDesc = "" +
@@ -640,14 +1176,61 @@ const file_auth_v1_auth_proto_rawDesc = "" +
 	"\x04role\x18\x05 \x01(\tR\x04role\x12\x16\n" +
 	"\x06status\x18\x06 \x01(\tR\x06status\x12%\n" +
 	"\x0eemail_verified\x18\a \x01(\bR\remailVerified\x12&\n" +
-	"\x0fcreated_at_unix\x18\b \x01(\x03R\rcreatedAtUnix2\xfa\x02\n" +
+	"\x0fcreated_at_unix\x18\b \x01(\x03R\rcreatedAtUnix\"\x80\x01\n" +
+	"\x10ListUsersRequest\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12\x12\n" +
+	"\x04role\x18\x02 \x01(\tR\x04role\x12\x16\n" +
+	"\x06search\x18\x03 \x01(\tR\x06search\x12\x12\n" +
+	"\x04page\x18\x04 \x01(\x05R\x04page\x12\x14\n" +
+	"\x05limit\x18\x05 \x01(\x05R\x05limit\"x\n" +
+	"\x11ListUsersResponse\x12#\n" +
+	"\x05users\x18\x01 \x03(\v2\r.auth.v1.UserR\x05users\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
+	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\"\x96\x01\n" +
+	"\x16UpdateUserAdminRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x19\n" +
+	"\bactor_id\x18\x02 \x01(\tR\aactorId\x12\x17\n" +
+	"\x04role\x18\x03 \x01(\tH\x00R\x04role\x88\x01\x01\x12\x1b\n" +
+	"\x06status\x18\x04 \x01(\tH\x01R\x06status\x88\x01\x01B\a\n" +
+	"\x05_roleB\t\n" +
+	"\a_status\"\x19\n" +
+	"\x17GetPlatformStatsRequest\"\xbf\x01\n" +
+	"\x15PlatformStatsResponse\x12\x1f\n" +
+	"\vtotal_users\x18\x01 \x01(\x03R\n" +
+	"totalUsers\x12!\n" +
+	"\fusers_active\x18\x02 \x01(\x03R\vusersActive\x12'\n" +
+	"\x0fusers_suspended\x18\x03 \x01(\x03R\x0eusersSuspended\x12!\n" +
+	"\fusers_banned\x18\x04 \x01(\x03R\vusersBanned\x12\x16\n" +
+	"\x06admins\x18\x05 \x01(\x03R\x06admins\"@\n" +
+	"\x14ListAuditLogsRequest\x12\x12\n" +
+	"\x04page\x18\x01 \x01(\x05R\x04page\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\"\xe3\x01\n" +
+	"\rAuditLogEntry\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x19\n" +
+	"\bactor_id\x18\x02 \x01(\tR\aactorId\x12\x16\n" +
+	"\x06action\x18\x03 \x01(\tR\x06action\x12#\n" +
+	"\rresource_type\x18\x04 \x01(\tR\fresourceType\x12\x1f\n" +
+	"\vresource_id\x18\x05 \x01(\tR\n" +
+	"resourceId\x12!\n" +
+	"\fdetails_json\x18\x06 \x01(\tR\vdetailsJson\x12&\n" +
+	"\x0fcreated_at_unix\x18\a \x01(\x03R\rcreatedAtUnix\"\x83\x01\n" +
+	"\x15ListAuditLogsResponse\x12*\n" +
+	"\x04logs\x18\x01 \x03(\v2\x16.auth.v1.AuditLogEntryR\x04logs\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
+	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit2\xa7\x05\n" +
 	"\vAuthService\x12;\n" +
 	"\bRegister\x12\x18.auth.v1.RegisterRequest\x1a\x15.auth.v1.AuthResponse\x125\n" +
 	"\x05Login\x12\x15.auth.v1.LoginRequest\x1a\x15.auth.v1.AuthResponse\x129\n" +
 	"\aRefresh\x12\x17.auth.v1.RefreshRequest\x1a\x15.auth.v1.AuthResponse\x129\n" +
 	"\x06Logout\x12\x16.auth.v1.LogoutRequest\x1a\x17.auth.v1.LogoutResponse\x12N\n" +
 	"\rValidateToken\x12\x1d.auth.v1.ValidateTokenRequest\x1a\x1e.auth.v1.ValidateTokenResponse\x121\n" +
-	"\aGetUser\x12\x17.auth.v1.GetUserRequest\x1a\r.auth.v1.UserB8Z6github.com/sahiy/sahiy-stream/proto/gen/auth/v1;authv1b\x06proto3"
+	"\aGetUser\x12\x17.auth.v1.GetUserRequest\x1a\r.auth.v1.User\x12B\n" +
+	"\tListUsers\x12\x19.auth.v1.ListUsersRequest\x1a\x1a.auth.v1.ListUsersResponse\x12A\n" +
+	"\x0fUpdateUserAdmin\x12\x1f.auth.v1.UpdateUserAdminRequest\x1a\r.auth.v1.User\x12T\n" +
+	"\x10GetPlatformStats\x12 .auth.v1.GetPlatformStatsRequest\x1a\x1e.auth.v1.PlatformStatsResponse\x12N\n" +
+	"\rListAuditLogs\x12\x1d.auth.v1.ListAuditLogsRequest\x1a\x1e.auth.v1.ListAuditLogsResponseB8Z6github.com/sahiy/sahiy-stream/proto/gen/auth/v1;authv1b\x06proto3"
 
 var (
 	file_auth_v1_auth_proto_rawDescOnce sync.Once
@@ -661,39 +1244,57 @@ func file_auth_v1_auth_proto_rawDescGZIP() []byte {
 	return file_auth_v1_auth_proto_rawDescData
 }
 
-var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_auth_v1_auth_proto_goTypes = []any{
-	(*RegisterRequest)(nil),       // 0: auth.v1.RegisterRequest
-	(*LoginRequest)(nil),          // 1: auth.v1.LoginRequest
-	(*RefreshRequest)(nil),        // 2: auth.v1.RefreshRequest
-	(*LogoutRequest)(nil),         // 3: auth.v1.LogoutRequest
-	(*LogoutResponse)(nil),        // 4: auth.v1.LogoutResponse
-	(*ValidateTokenRequest)(nil),  // 5: auth.v1.ValidateTokenRequest
-	(*ValidateTokenResponse)(nil), // 6: auth.v1.ValidateTokenResponse
-	(*GetUserRequest)(nil),        // 7: auth.v1.GetUserRequest
-	(*AuthResponse)(nil),          // 8: auth.v1.AuthResponse
-	(*User)(nil),                  // 9: auth.v1.User
+	(*RegisterRequest)(nil),         // 0: auth.v1.RegisterRequest
+	(*LoginRequest)(nil),            // 1: auth.v1.LoginRequest
+	(*RefreshRequest)(nil),          // 2: auth.v1.RefreshRequest
+	(*LogoutRequest)(nil),           // 3: auth.v1.LogoutRequest
+	(*LogoutResponse)(nil),          // 4: auth.v1.LogoutResponse
+	(*ValidateTokenRequest)(nil),    // 5: auth.v1.ValidateTokenRequest
+	(*ValidateTokenResponse)(nil),   // 6: auth.v1.ValidateTokenResponse
+	(*GetUserRequest)(nil),          // 7: auth.v1.GetUserRequest
+	(*AuthResponse)(nil),            // 8: auth.v1.AuthResponse
+	(*User)(nil),                    // 9: auth.v1.User
+	(*ListUsersRequest)(nil),        // 10: auth.v1.ListUsersRequest
+	(*ListUsersResponse)(nil),       // 11: auth.v1.ListUsersResponse
+	(*UpdateUserAdminRequest)(nil),  // 12: auth.v1.UpdateUserAdminRequest
+	(*GetPlatformStatsRequest)(nil), // 13: auth.v1.GetPlatformStatsRequest
+	(*PlatformStatsResponse)(nil),   // 14: auth.v1.PlatformStatsResponse
+	(*ListAuditLogsRequest)(nil),    // 15: auth.v1.ListAuditLogsRequest
+	(*AuditLogEntry)(nil),           // 16: auth.v1.AuditLogEntry
+	(*ListAuditLogsResponse)(nil),   // 17: auth.v1.ListAuditLogsResponse
 }
 var file_auth_v1_auth_proto_depIdxs = []int32{
-	9, // 0: auth.v1.ValidateTokenResponse.user:type_name -> auth.v1.User
-	9, // 1: auth.v1.AuthResponse.user:type_name -> auth.v1.User
-	0, // 2: auth.v1.AuthService.Register:input_type -> auth.v1.RegisterRequest
-	1, // 3: auth.v1.AuthService.Login:input_type -> auth.v1.LoginRequest
-	2, // 4: auth.v1.AuthService.Refresh:input_type -> auth.v1.RefreshRequest
-	3, // 5: auth.v1.AuthService.Logout:input_type -> auth.v1.LogoutRequest
-	5, // 6: auth.v1.AuthService.ValidateToken:input_type -> auth.v1.ValidateTokenRequest
-	7, // 7: auth.v1.AuthService.GetUser:input_type -> auth.v1.GetUserRequest
-	8, // 8: auth.v1.AuthService.Register:output_type -> auth.v1.AuthResponse
-	8, // 9: auth.v1.AuthService.Login:output_type -> auth.v1.AuthResponse
-	8, // 10: auth.v1.AuthService.Refresh:output_type -> auth.v1.AuthResponse
-	4, // 11: auth.v1.AuthService.Logout:output_type -> auth.v1.LogoutResponse
-	6, // 12: auth.v1.AuthService.ValidateToken:output_type -> auth.v1.ValidateTokenResponse
-	9, // 13: auth.v1.AuthService.GetUser:output_type -> auth.v1.User
-	8, // [8:14] is the sub-list for method output_type
-	2, // [2:8] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	9,  // 0: auth.v1.ValidateTokenResponse.user:type_name -> auth.v1.User
+	9,  // 1: auth.v1.AuthResponse.user:type_name -> auth.v1.User
+	9,  // 2: auth.v1.ListUsersResponse.users:type_name -> auth.v1.User
+	16, // 3: auth.v1.ListAuditLogsResponse.logs:type_name -> auth.v1.AuditLogEntry
+	0,  // 4: auth.v1.AuthService.Register:input_type -> auth.v1.RegisterRequest
+	1,  // 5: auth.v1.AuthService.Login:input_type -> auth.v1.LoginRequest
+	2,  // 6: auth.v1.AuthService.Refresh:input_type -> auth.v1.RefreshRequest
+	3,  // 7: auth.v1.AuthService.Logout:input_type -> auth.v1.LogoutRequest
+	5,  // 8: auth.v1.AuthService.ValidateToken:input_type -> auth.v1.ValidateTokenRequest
+	7,  // 9: auth.v1.AuthService.GetUser:input_type -> auth.v1.GetUserRequest
+	10, // 10: auth.v1.AuthService.ListUsers:input_type -> auth.v1.ListUsersRequest
+	12, // 11: auth.v1.AuthService.UpdateUserAdmin:input_type -> auth.v1.UpdateUserAdminRequest
+	13, // 12: auth.v1.AuthService.GetPlatformStats:input_type -> auth.v1.GetPlatformStatsRequest
+	15, // 13: auth.v1.AuthService.ListAuditLogs:input_type -> auth.v1.ListAuditLogsRequest
+	8,  // 14: auth.v1.AuthService.Register:output_type -> auth.v1.AuthResponse
+	8,  // 15: auth.v1.AuthService.Login:output_type -> auth.v1.AuthResponse
+	8,  // 16: auth.v1.AuthService.Refresh:output_type -> auth.v1.AuthResponse
+	4,  // 17: auth.v1.AuthService.Logout:output_type -> auth.v1.LogoutResponse
+	6,  // 18: auth.v1.AuthService.ValidateToken:output_type -> auth.v1.ValidateTokenResponse
+	9,  // 19: auth.v1.AuthService.GetUser:output_type -> auth.v1.User
+	11, // 20: auth.v1.AuthService.ListUsers:output_type -> auth.v1.ListUsersResponse
+	9,  // 21: auth.v1.AuthService.UpdateUserAdmin:output_type -> auth.v1.User
+	14, // 22: auth.v1.AuthService.GetPlatformStats:output_type -> auth.v1.PlatformStatsResponse
+	17, // 23: auth.v1.AuthService.ListAuditLogs:output_type -> auth.v1.ListAuditLogsResponse
+	14, // [14:24] is the sub-list for method output_type
+	4,  // [4:14] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_auth_v1_auth_proto_init() }
@@ -701,13 +1302,14 @@ func file_auth_v1_auth_proto_init() {
 	if File_auth_v1_auth_proto != nil {
 		return
 	}
+	file_auth_v1_auth_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_auth_v1_auth_proto_rawDesc), len(file_auth_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

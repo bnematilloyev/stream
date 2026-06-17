@@ -198,23 +198,25 @@ func (x *PublicProfile) GetCreatedAtUnix() int64 {
 }
 
 type Channel struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Slug          string                 `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
-	Title         string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
-	Description   string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
-	BannerUrl     string                 `protobuf:"bytes,6,opt,name=banner_url,json=bannerUrl,proto3" json:"banner_url,omitempty"`
-	AvatarUrl     string                 `protobuf:"bytes,7,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
-	CategoryId    string                 `protobuf:"bytes,8,opt,name=category_id,json=categoryId,proto3" json:"category_id,omitempty"`
-	CategorySlug  string                 `protobuf:"bytes,9,opt,name=category_slug,json=categorySlug,proto3" json:"category_slug,omitempty"`
-	IsVerified    bool                   `protobuf:"varint,10,opt,name=is_verified,json=isVerified,proto3" json:"is_verified,omitempty"`
-	IsLive        bool                   `protobuf:"varint,11,opt,name=is_live,json=isLive,proto3" json:"is_live,omitempty"`
-	FollowerCount int32                  `protobuf:"varint,12,opt,name=follower_count,json=followerCount,proto3" json:"follower_count,omitempty"`
-	CreatedAtUnix int64                  `protobuf:"varint,13,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
-	UpdatedAtUnix int64                  `protobuf:"varint,14,opt,name=updated_at_unix,json=updatedAtUnix,proto3" json:"updated_at_unix,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Id                  string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	UserId              string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Slug                string                 `protobuf:"bytes,3,opt,name=slug,proto3" json:"slug,omitempty"`
+	Title               string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	Description         string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	BannerUrl           string                 `protobuf:"bytes,6,opt,name=banner_url,json=bannerUrl,proto3" json:"banner_url,omitempty"`
+	AvatarUrl           string                 `protobuf:"bytes,7,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	CategoryId          string                 `protobuf:"bytes,8,opt,name=category_id,json=categoryId,proto3" json:"category_id,omitempty"`
+	CategorySlug        string                 `protobuf:"bytes,9,opt,name=category_slug,json=categorySlug,proto3" json:"category_slug,omitempty"`
+	IsVerified          bool                   `protobuf:"varint,10,opt,name=is_verified,json=isVerified,proto3" json:"is_verified,omitempty"`
+	IsLive              bool                   `protobuf:"varint,11,opt,name=is_live,json=isLive,proto3" json:"is_live,omitempty"`
+	FollowerCount       int32                  `protobuf:"varint,12,opt,name=follower_count,json=followerCount,proto3" json:"follower_count,omitempty"`
+	CreatedAtUnix       int64                  `protobuf:"varint,13,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	UpdatedAtUnix       int64                  `protobuf:"varint,14,opt,name=updated_at_unix,json=updatedAtUnix,proto3" json:"updated_at_unix,omitempty"`
+	MarketplaceSellerId int64                  `protobuf:"varint,15,opt,name=marketplace_seller_id,json=marketplaceSellerId,proto3" json:"marketplace_seller_id,omitempty"`
+	MarketplaceShopId   int64                  `protobuf:"varint,16,opt,name=marketplace_shop_id,json=marketplaceShopId,proto3" json:"marketplace_shop_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Channel) Reset() {
@@ -341,6 +343,20 @@ func (x *Channel) GetCreatedAtUnix() int64 {
 func (x *Channel) GetUpdatedAtUnix() int64 {
 	if x != nil {
 		return x.UpdatedAtUnix
+	}
+	return 0
+}
+
+func (x *Channel) GetMarketplaceSellerId() int64 {
+	if x != nil {
+		return x.MarketplaceSellerId
+	}
+	return 0
+}
+
+func (x *Channel) GetMarketplaceShopId() int64 {
+	if x != nil {
+		return x.MarketplaceShopId
 	}
 	return 0
 }
@@ -494,14 +510,16 @@ func (x *GetPublicProfileRequest) GetUsername() string {
 }
 
 type CreateChannelRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Slug          string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
-	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
-	CategoryId    string                 `protobuf:"bytes,5,opt,name=category_id,json=categoryId,proto3" json:"category_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	UserId              string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Slug                string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
+	Title               string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	Description         string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	CategoryId          string                 `protobuf:"bytes,5,opt,name=category_id,json=categoryId,proto3" json:"category_id,omitempty"`
+	MarketplaceSellerId int64                  `protobuf:"varint,6,opt,name=marketplace_seller_id,json=marketplaceSellerId,proto3" json:"marketplace_seller_id,omitempty"`
+	MarketplaceShopId   int64                  `protobuf:"varint,7,opt,name=marketplace_shop_id,json=marketplaceShopId,proto3" json:"marketplace_shop_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *CreateChannelRequest) Reset() {
@@ -569,6 +587,64 @@ func (x *CreateChannelRequest) GetCategoryId() string {
 	return ""
 }
 
+func (x *CreateChannelRequest) GetMarketplaceSellerId() int64 {
+	if x != nil {
+		return x.MarketplaceSellerId
+	}
+	return 0
+}
+
+func (x *CreateChannelRequest) GetMarketplaceShopId() int64 {
+	if x != nil {
+		return x.MarketplaceShopId
+	}
+	return 0
+}
+
+type GetChannelByMarketplaceSellerRequest struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	MarketplaceSellerId int64                  `protobuf:"varint,1,opt,name=marketplace_seller_id,json=marketplaceSellerId,proto3" json:"marketplace_seller_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *GetChannelByMarketplaceSellerRequest) Reset() {
+	*x = GetChannelByMarketplaceSellerRequest{}
+	mi := &file_user_v1_user_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetChannelByMarketplaceSellerRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetChannelByMarketplaceSellerRequest) ProtoMessage() {}
+
+func (x *GetChannelByMarketplaceSellerRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_v1_user_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetChannelByMarketplaceSellerRequest.ProtoReflect.Descriptor instead.
+func (*GetChannelByMarketplaceSellerRequest) Descriptor() ([]byte, []int) {
+	return file_user_v1_user_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GetChannelByMarketplaceSellerRequest) GetMarketplaceSellerId() int64 {
+	if x != nil {
+		return x.MarketplaceSellerId
+	}
+	return 0
+}
+
 type GetChannelRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
@@ -578,7 +654,7 @@ type GetChannelRequest struct {
 
 func (x *GetChannelRequest) Reset() {
 	*x = GetChannelRequest{}
-	mi := &file_user_v1_user_proto_msgTypes[7]
+	mi := &file_user_v1_user_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -590,7 +666,7 @@ func (x *GetChannelRequest) String() string {
 func (*GetChannelRequest) ProtoMessage() {}
 
 func (x *GetChannelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[7]
+	mi := &file_user_v1_user_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -603,7 +679,7 @@ func (x *GetChannelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetChannelRequest.ProtoReflect.Descriptor instead.
 func (*GetChannelRequest) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{7}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GetChannelRequest) GetSlug() string {
@@ -622,7 +698,7 @@ type GetMyChannelRequest struct {
 
 func (x *GetMyChannelRequest) Reset() {
 	*x = GetMyChannelRequest{}
-	mi := &file_user_v1_user_proto_msgTypes[8]
+	mi := &file_user_v1_user_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -634,7 +710,7 @@ func (x *GetMyChannelRequest) String() string {
 func (*GetMyChannelRequest) ProtoMessage() {}
 
 func (x *GetMyChannelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[8]
+	mi := &file_user_v1_user_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -647,7 +723,7 @@ func (x *GetMyChannelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyChannelRequest.ProtoReflect.Descriptor instead.
 func (*GetMyChannelRequest) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{8}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetMyChannelRequest) GetUserId() string {
@@ -672,7 +748,7 @@ type UpdateChannelRequest struct {
 
 func (x *UpdateChannelRequest) Reset() {
 	*x = UpdateChannelRequest{}
-	mi := &file_user_v1_user_proto_msgTypes[9]
+	mi := &file_user_v1_user_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -684,7 +760,7 @@ func (x *UpdateChannelRequest) String() string {
 func (*UpdateChannelRequest) ProtoMessage() {}
 
 func (x *UpdateChannelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[9]
+	mi := &file_user_v1_user_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -697,7 +773,7 @@ func (x *UpdateChannelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateChannelRequest.ProtoReflect.Descriptor instead.
 func (*UpdateChannelRequest) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{9}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *UpdateChannelRequest) GetUserId() string {
@@ -759,7 +835,7 @@ type FollowRequest struct {
 
 func (x *FollowRequest) Reset() {
 	*x = FollowRequest{}
-	mi := &file_user_v1_user_proto_msgTypes[10]
+	mi := &file_user_v1_user_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -771,7 +847,7 @@ func (x *FollowRequest) String() string {
 func (*FollowRequest) ProtoMessage() {}
 
 func (x *FollowRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[10]
+	mi := &file_user_v1_user_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -784,7 +860,7 @@ func (x *FollowRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FollowRequest.ProtoReflect.Descriptor instead.
 func (*FollowRequest) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{10}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *FollowRequest) GetUserId() string {
@@ -811,7 +887,7 @@ type FollowResponse struct {
 
 func (x *FollowResponse) Reset() {
 	*x = FollowResponse{}
-	mi := &file_user_v1_user_proto_msgTypes[11]
+	mi := &file_user_v1_user_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -823,7 +899,7 @@ func (x *FollowResponse) String() string {
 func (*FollowResponse) ProtoMessage() {}
 
 func (x *FollowResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[11]
+	mi := &file_user_v1_user_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -836,7 +912,7 @@ func (x *FollowResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FollowResponse.ProtoReflect.Descriptor instead.
 func (*FollowResponse) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{11}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *FollowResponse) GetSuccess() bool {
@@ -863,7 +939,7 @@ type UnfollowRequest struct {
 
 func (x *UnfollowRequest) Reset() {
 	*x = UnfollowRequest{}
-	mi := &file_user_v1_user_proto_msgTypes[12]
+	mi := &file_user_v1_user_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -875,7 +951,7 @@ func (x *UnfollowRequest) String() string {
 func (*UnfollowRequest) ProtoMessage() {}
 
 func (x *UnfollowRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[12]
+	mi := &file_user_v1_user_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -888,7 +964,7 @@ func (x *UnfollowRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnfollowRequest.ProtoReflect.Descriptor instead.
 func (*UnfollowRequest) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{12}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *UnfollowRequest) GetUserId() string {
@@ -915,7 +991,7 @@ type UnfollowResponse struct {
 
 func (x *UnfollowResponse) Reset() {
 	*x = UnfollowResponse{}
-	mi := &file_user_v1_user_proto_msgTypes[13]
+	mi := &file_user_v1_user_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -927,7 +1003,7 @@ func (x *UnfollowResponse) String() string {
 func (*UnfollowResponse) ProtoMessage() {}
 
 func (x *UnfollowResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[13]
+	mi := &file_user_v1_user_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -940,7 +1016,7 @@ func (x *UnfollowResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnfollowResponse.ProtoReflect.Descriptor instead.
 func (*UnfollowResponse) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{13}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *UnfollowResponse) GetSuccess() bool {
@@ -968,7 +1044,7 @@ type ListFollowersRequest struct {
 
 func (x *ListFollowersRequest) Reset() {
 	*x = ListFollowersRequest{}
-	mi := &file_user_v1_user_proto_msgTypes[14]
+	mi := &file_user_v1_user_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -980,7 +1056,7 @@ func (x *ListFollowersRequest) String() string {
 func (*ListFollowersRequest) ProtoMessage() {}
 
 func (x *ListFollowersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[14]
+	mi := &file_user_v1_user_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -993,7 +1069,7 @@ func (x *ListFollowersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFollowersRequest.ProtoReflect.Descriptor instead.
 func (*ListFollowersRequest) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{14}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListFollowersRequest) GetChannelSlug() string {
@@ -1029,7 +1105,7 @@ type Follower struct {
 
 func (x *Follower) Reset() {
 	*x = Follower{}
-	mi := &file_user_v1_user_proto_msgTypes[15]
+	mi := &file_user_v1_user_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1041,7 +1117,7 @@ func (x *Follower) String() string {
 func (*Follower) ProtoMessage() {}
 
 func (x *Follower) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[15]
+	mi := &file_user_v1_user_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1054,7 +1130,7 @@ func (x *Follower) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Follower.ProtoReflect.Descriptor instead.
 func (*Follower) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{15}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *Follower) GetUserId() string {
@@ -1097,7 +1173,7 @@ type ListFollowersResponse struct {
 
 func (x *ListFollowersResponse) Reset() {
 	*x = ListFollowersResponse{}
-	mi := &file_user_v1_user_proto_msgTypes[16]
+	mi := &file_user_v1_user_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1109,7 +1185,7 @@ func (x *ListFollowersResponse) String() string {
 func (*ListFollowersResponse) ProtoMessage() {}
 
 func (x *ListFollowersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[16]
+	mi := &file_user_v1_user_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1122,7 +1198,7 @@ func (x *ListFollowersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFollowersResponse.ProtoReflect.Descriptor instead.
 func (*ListFollowersResponse) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{16}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ListFollowersResponse) GetFollowers() []*Follower {
@@ -1163,7 +1239,7 @@ type IsFollowingRequest struct {
 
 func (x *IsFollowingRequest) Reset() {
 	*x = IsFollowingRequest{}
-	mi := &file_user_v1_user_proto_msgTypes[17]
+	mi := &file_user_v1_user_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1175,7 +1251,7 @@ func (x *IsFollowingRequest) String() string {
 func (*IsFollowingRequest) ProtoMessage() {}
 
 func (x *IsFollowingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[17]
+	mi := &file_user_v1_user_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1188,7 +1264,7 @@ func (x *IsFollowingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IsFollowingRequest.ProtoReflect.Descriptor instead.
 func (*IsFollowingRequest) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{17}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *IsFollowingRequest) GetUserId() string {
@@ -1214,7 +1290,7 @@ type IsFollowingResponse struct {
 
 func (x *IsFollowingResponse) Reset() {
 	*x = IsFollowingResponse{}
-	mi := &file_user_v1_user_proto_msgTypes[18]
+	mi := &file_user_v1_user_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1226,7 +1302,7 @@ func (x *IsFollowingResponse) String() string {
 func (*IsFollowingResponse) ProtoMessage() {}
 
 func (x *IsFollowingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[18]
+	mi := &file_user_v1_user_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1239,7 +1315,7 @@ func (x *IsFollowingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IsFollowingResponse.ProtoReflect.Descriptor instead.
 func (*IsFollowingResponse) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{18}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *IsFollowingResponse) GetFollowing() bool {
@@ -1259,7 +1335,7 @@ type GetIngestKeyRequest struct {
 
 func (x *GetIngestKeyRequest) Reset() {
 	*x = GetIngestKeyRequest{}
-	mi := &file_user_v1_user_proto_msgTypes[19]
+	mi := &file_user_v1_user_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1271,7 +1347,7 @@ func (x *GetIngestKeyRequest) String() string {
 func (*GetIngestKeyRequest) ProtoMessage() {}
 
 func (x *GetIngestKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[19]
+	mi := &file_user_v1_user_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1284,7 +1360,7 @@ func (x *GetIngestKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetIngestKeyRequest.ProtoReflect.Descriptor instead.
 func (*GetIngestKeyRequest) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{19}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GetIngestKeyRequest) GetUserId() string {
@@ -1311,7 +1387,7 @@ type RotateIngestKeyRequest struct {
 
 func (x *RotateIngestKeyRequest) Reset() {
 	*x = RotateIngestKeyRequest{}
-	mi := &file_user_v1_user_proto_msgTypes[20]
+	mi := &file_user_v1_user_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1323,7 +1399,7 @@ func (x *RotateIngestKeyRequest) String() string {
 func (*RotateIngestKeyRequest) ProtoMessage() {}
 
 func (x *RotateIngestKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[20]
+	mi := &file_user_v1_user_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1336,7 +1412,7 @@ func (x *RotateIngestKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotateIngestKeyRequest.ProtoReflect.Descriptor instead.
 func (*RotateIngestKeyRequest) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{20}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *RotateIngestKeyRequest) GetUserId() string {
@@ -1365,7 +1441,7 @@ type IngestKeyResponse struct {
 
 func (x *IngestKeyResponse) Reset() {
 	*x = IngestKeyResponse{}
-	mi := &file_user_v1_user_proto_msgTypes[21]
+	mi := &file_user_v1_user_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1377,7 +1453,7 @@ func (x *IngestKeyResponse) String() string {
 func (*IngestKeyResponse) ProtoMessage() {}
 
 func (x *IngestKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_user_v1_user_proto_msgTypes[21]
+	mi := &file_user_v1_user_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1390,7 +1466,7 @@ func (x *IngestKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IngestKeyResponse.ProtoReflect.Descriptor instead.
 func (*IngestKeyResponse) Descriptor() ([]byte, []int) {
-	return file_user_v1_user_proto_rawDescGZIP(), []int{21}
+	return file_user_v1_user_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *IngestKeyResponse) GetStreamKey() string {
@@ -1421,6 +1497,194 @@ func (x *IngestKeyResponse) GetKeyPrefix() string {
 	return ""
 }
 
+type ListChannelsRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Search          string                 `protobuf:"bytes,1,opt,name=search,proto3" json:"search,omitempty"`
+	MarketplaceOnly bool                   `protobuf:"varint,2,opt,name=marketplace_only,json=marketplaceOnly,proto3" json:"marketplace_only,omitempty"`
+	Page            int32                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"`
+	Limit           int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ListChannelsRequest) Reset() {
+	*x = ListChannelsRequest{}
+	mi := &file_user_v1_user_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListChannelsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListChannelsRequest) ProtoMessage() {}
+
+func (x *ListChannelsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_v1_user_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListChannelsRequest.ProtoReflect.Descriptor instead.
+func (*ListChannelsRequest) Descriptor() ([]byte, []int) {
+	return file_user_v1_user_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ListChannelsRequest) GetSearch() string {
+	if x != nil {
+		return x.Search
+	}
+	return ""
+}
+
+func (x *ListChannelsRequest) GetMarketplaceOnly() bool {
+	if x != nil {
+		return x.MarketplaceOnly
+	}
+	return false
+}
+
+func (x *ListChannelsRequest) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ListChannelsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListChannelsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Channels      []*Channel             `protobuf:"bytes,1,rep,name=channels,proto3" json:"channels,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	Page          int32                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"`
+	Limit         int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListChannelsResponse) Reset() {
+	*x = ListChannelsResponse{}
+	mi := &file_user_v1_user_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListChannelsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListChannelsResponse) ProtoMessage() {}
+
+func (x *ListChannelsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_user_v1_user_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListChannelsResponse.ProtoReflect.Descriptor instead.
+func (*ListChannelsResponse) Descriptor() ([]byte, []int) {
+	return file_user_v1_user_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ListChannelsResponse) GetChannels() []*Channel {
+	if x != nil {
+		return x.Channels
+	}
+	return nil
+}
+
+func (x *ListChannelsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *ListChannelsResponse) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ListChannelsResponse) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type AdminUpdateChannelRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	IsVerified    *bool                  `protobuf:"varint,2,opt,name=is_verified,json=isVerified,proto3,oneof" json:"is_verified,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminUpdateChannelRequest) Reset() {
+	*x = AdminUpdateChannelRequest{}
+	mi := &file_user_v1_user_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminUpdateChannelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminUpdateChannelRequest) ProtoMessage() {}
+
+func (x *AdminUpdateChannelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_v1_user_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminUpdateChannelRequest.ProtoReflect.Descriptor instead.
+func (*AdminUpdateChannelRequest) Descriptor() ([]byte, []int) {
+	return file_user_v1_user_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *AdminUpdateChannelRequest) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *AdminUpdateChannelRequest) GetIsVerified() bool {
+	if x != nil && x.IsVerified != nil {
+		return *x.IsVerified
+	}
+	return false
+}
+
 var File_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_user_v1_user_proto_rawDesc = "" +
@@ -1442,7 +1706,7 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12\x1d\n" +
 	"\n" +
 	"avatar_url\x18\x04 \x01(\tR\tavatarUrl\x12&\n" +
-	"\x0fcreated_at_unix\x18\x05 \x01(\x03R\rcreatedAtUnix\"\xb3\x03\n" +
+	"\x0fcreated_at_unix\x18\x05 \x01(\x03R\rcreatedAtUnix\"\x97\x04\n" +
 	"\aChannel\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x12\n" +
@@ -1462,7 +1726,9 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\ais_live\x18\v \x01(\bR\x06isLive\x12%\n" +
 	"\x0efollower_count\x18\f \x01(\x05R\rfollowerCount\x12&\n" +
 	"\x0fcreated_at_unix\x18\r \x01(\x03R\rcreatedAtUnix\x12&\n" +
-	"\x0fupdated_at_unix\x18\x0e \x01(\x03R\rupdatedAtUnix\",\n" +
+	"\x0fupdated_at_unix\x18\x0e \x01(\x03R\rupdatedAtUnix\x122\n" +
+	"\x15marketplace_seller_id\x18\x0f \x01(\x03R\x13marketplaceSellerId\x12.\n" +
+	"\x13marketplace_shop_id\x18\x10 \x01(\x03R\x11marketplaceShopId\",\n" +
 	"\x11GetProfileRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x9b\x01\n" +
 	"\x14UpdateProfileRequest\x12\x17\n" +
@@ -1473,14 +1739,18 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\r_display_nameB\r\n" +
 	"\v_avatar_url\"5\n" +
 	"\x17GetPublicProfileRequest\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\"\x9c\x01\n" +
+	"\busername\x18\x01 \x01(\tR\busername\"\x80\x02\n" +
 	"\x14CreateChannelRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x12\n" +
 	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x14\n" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12 \n" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x1f\n" +
 	"\vcategory_id\x18\x05 \x01(\tR\n" +
-	"categoryId\"'\n" +
+	"categoryId\x122\n" +
+	"\x15marketplace_seller_id\x18\x06 \x01(\x03R\x13marketplaceSellerId\x12.\n" +
+	"\x13marketplace_shop_id\x18\a \x01(\x03R\x11marketplaceShopId\"Z\n" +
+	"$GetChannelByMarketplaceSellerRequest\x122\n" +
+	"\x15marketplace_seller_id\x18\x01 \x01(\x03R\x13marketplaceSellerId\"'\n" +
 	"\x11GetChannelRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\".\n" +
 	"\x13GetMyChannelRequest\x12\x17\n" +
@@ -1544,14 +1814,30 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\brtmp_url\x18\x02 \x01(\tR\artmpUrl\x12\x17\n" +
 	"\asrt_url\x18\x03 \x01(\tR\x06srtUrl\x12\x1d\n" +
 	"\n" +
-	"key_prefix\x18\x04 \x01(\tR\tkeyPrefix2\xd9\x01\n" +
+	"key_prefix\x18\x04 \x01(\tR\tkeyPrefix\"\x82\x01\n" +
+	"\x13ListChannelsRequest\x12\x16\n" +
+	"\x06search\x18\x01 \x01(\tR\x06search\x12)\n" +
+	"\x10marketplace_only\x18\x02 \x01(\bR\x0fmarketplaceOnly\x12\x12\n" +
+	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\"\x84\x01\n" +
+	"\x14ListChannelsResponse\x12,\n" +
+	"\bchannels\x18\x01 \x03(\v2\x10.user.v1.ChannelR\bchannels\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
+	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\"e\n" +
+	"\x19AdminUpdateChannelRequest\x12\x12\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x12$\n" +
+	"\vis_verified\x18\x02 \x01(\bH\x00R\n" +
+	"isVerified\x88\x01\x01B\x0e\n" +
+	"\f_is_verified2\xd9\x01\n" +
 	"\vUserService\x12:\n" +
 	"\n" +
 	"GetProfile\x12\x1a.user.v1.GetProfileRequest\x1a\x10.user.v1.Profile\x12@\n" +
 	"\rUpdateProfile\x12\x1d.user.v1.UpdateProfileRequest\x1a\x10.user.v1.Profile\x12L\n" +
-	"\x10GetPublicProfile\x12 .user.v1.GetPublicProfileRequest\x1a\x16.user.v1.PublicProfile2\xc0\x05\n" +
+	"\x10GetPublicProfile\x12 .user.v1.GetPublicProfileRequest\x1a\x16.user.v1.PublicProfile2\xbb\a\n" +
 	"\x0eChannelService\x12@\n" +
-	"\rCreateChannel\x12\x1d.user.v1.CreateChannelRequest\x1a\x10.user.v1.Channel\x12:\n" +
+	"\rCreateChannel\x12\x1d.user.v1.CreateChannelRequest\x1a\x10.user.v1.Channel\x12`\n" +
+	"\x1dGetChannelByMarketplaceSeller\x12-.user.v1.GetChannelByMarketplaceSellerRequest\x1a\x10.user.v1.Channel\x12:\n" +
 	"\n" +
 	"GetChannel\x12\x1a.user.v1.GetChannelRequest\x1a\x10.user.v1.Channel\x12>\n" +
 	"\fGetMyChannel\x12\x1c.user.v1.GetMyChannelRequest\x1a\x10.user.v1.Channel\x12@\n" +
@@ -1561,7 +1847,9 @@ const file_user_v1_user_proto_rawDesc = "" +
 	"\rListFollowers\x12\x1d.user.v1.ListFollowersRequest\x1a\x1e.user.v1.ListFollowersResponse\x12H\n" +
 	"\vIsFollowing\x12\x1b.user.v1.IsFollowingRequest\x1a\x1c.user.v1.IsFollowingResponse\x12H\n" +
 	"\fGetIngestKey\x12\x1c.user.v1.GetIngestKeyRequest\x1a\x1a.user.v1.IngestKeyResponse\x12N\n" +
-	"\x0fRotateIngestKey\x12\x1f.user.v1.RotateIngestKeyRequest\x1a\x1a.user.v1.IngestKeyResponseB8Z6github.com/sahiy/sahiy-stream/proto/gen/user/v1;userv1b\x06proto3"
+	"\x0fRotateIngestKey\x12\x1f.user.v1.RotateIngestKeyRequest\x1a\x1a.user.v1.IngestKeyResponse\x12K\n" +
+	"\fListChannels\x12\x1c.user.v1.ListChannelsRequest\x1a\x1d.user.v1.ListChannelsResponse\x12J\n" +
+	"\x12AdminUpdateChannel\x12\".user.v1.AdminUpdateChannelRequest\x1a\x10.user.v1.ChannelB8Z6github.com/sahiy/sahiy-stream/proto/gen/user/v1;userv1b\x06proto3"
 
 var (
 	file_user_v1_user_proto_rawDescOnce sync.Once
@@ -1575,64 +1863,75 @@ func file_user_v1_user_proto_rawDescGZIP() []byte {
 	return file_user_v1_user_proto_rawDescData
 }
 
-var file_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_user_v1_user_proto_goTypes = []any{
-	(*Profile)(nil),                 // 0: user.v1.Profile
-	(*PublicProfile)(nil),           // 1: user.v1.PublicProfile
-	(*Channel)(nil),                 // 2: user.v1.Channel
-	(*GetProfileRequest)(nil),       // 3: user.v1.GetProfileRequest
-	(*UpdateProfileRequest)(nil),    // 4: user.v1.UpdateProfileRequest
-	(*GetPublicProfileRequest)(nil), // 5: user.v1.GetPublicProfileRequest
-	(*CreateChannelRequest)(nil),    // 6: user.v1.CreateChannelRequest
-	(*GetChannelRequest)(nil),       // 7: user.v1.GetChannelRequest
-	(*GetMyChannelRequest)(nil),     // 8: user.v1.GetMyChannelRequest
-	(*UpdateChannelRequest)(nil),    // 9: user.v1.UpdateChannelRequest
-	(*FollowRequest)(nil),           // 10: user.v1.FollowRequest
-	(*FollowResponse)(nil),          // 11: user.v1.FollowResponse
-	(*UnfollowRequest)(nil),         // 12: user.v1.UnfollowRequest
-	(*UnfollowResponse)(nil),        // 13: user.v1.UnfollowResponse
-	(*ListFollowersRequest)(nil),    // 14: user.v1.ListFollowersRequest
-	(*Follower)(nil),                // 15: user.v1.Follower
-	(*ListFollowersResponse)(nil),   // 16: user.v1.ListFollowersResponse
-	(*IsFollowingRequest)(nil),      // 17: user.v1.IsFollowingRequest
-	(*IsFollowingResponse)(nil),     // 18: user.v1.IsFollowingResponse
-	(*GetIngestKeyRequest)(nil),     // 19: user.v1.GetIngestKeyRequest
-	(*RotateIngestKeyRequest)(nil),  // 20: user.v1.RotateIngestKeyRequest
-	(*IngestKeyResponse)(nil),       // 21: user.v1.IngestKeyResponse
+	(*Profile)(nil),                              // 0: user.v1.Profile
+	(*PublicProfile)(nil),                        // 1: user.v1.PublicProfile
+	(*Channel)(nil),                              // 2: user.v1.Channel
+	(*GetProfileRequest)(nil),                    // 3: user.v1.GetProfileRequest
+	(*UpdateProfileRequest)(nil),                 // 4: user.v1.UpdateProfileRequest
+	(*GetPublicProfileRequest)(nil),              // 5: user.v1.GetPublicProfileRequest
+	(*CreateChannelRequest)(nil),                 // 6: user.v1.CreateChannelRequest
+	(*GetChannelByMarketplaceSellerRequest)(nil), // 7: user.v1.GetChannelByMarketplaceSellerRequest
+	(*GetChannelRequest)(nil),                    // 8: user.v1.GetChannelRequest
+	(*GetMyChannelRequest)(nil),                  // 9: user.v1.GetMyChannelRequest
+	(*UpdateChannelRequest)(nil),                 // 10: user.v1.UpdateChannelRequest
+	(*FollowRequest)(nil),                        // 11: user.v1.FollowRequest
+	(*FollowResponse)(nil),                       // 12: user.v1.FollowResponse
+	(*UnfollowRequest)(nil),                      // 13: user.v1.UnfollowRequest
+	(*UnfollowResponse)(nil),                     // 14: user.v1.UnfollowResponse
+	(*ListFollowersRequest)(nil),                 // 15: user.v1.ListFollowersRequest
+	(*Follower)(nil),                             // 16: user.v1.Follower
+	(*ListFollowersResponse)(nil),                // 17: user.v1.ListFollowersResponse
+	(*IsFollowingRequest)(nil),                   // 18: user.v1.IsFollowingRequest
+	(*IsFollowingResponse)(nil),                  // 19: user.v1.IsFollowingResponse
+	(*GetIngestKeyRequest)(nil),                  // 20: user.v1.GetIngestKeyRequest
+	(*RotateIngestKeyRequest)(nil),               // 21: user.v1.RotateIngestKeyRequest
+	(*IngestKeyResponse)(nil),                    // 22: user.v1.IngestKeyResponse
+	(*ListChannelsRequest)(nil),                  // 23: user.v1.ListChannelsRequest
+	(*ListChannelsResponse)(nil),                 // 24: user.v1.ListChannelsResponse
+	(*AdminUpdateChannelRequest)(nil),            // 25: user.v1.AdminUpdateChannelRequest
 }
 var file_user_v1_user_proto_depIdxs = []int32{
-	15, // 0: user.v1.ListFollowersResponse.followers:type_name -> user.v1.Follower
-	3,  // 1: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
-	4,  // 2: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
-	5,  // 3: user.v1.UserService.GetPublicProfile:input_type -> user.v1.GetPublicProfileRequest
-	6,  // 4: user.v1.ChannelService.CreateChannel:input_type -> user.v1.CreateChannelRequest
-	7,  // 5: user.v1.ChannelService.GetChannel:input_type -> user.v1.GetChannelRequest
-	8,  // 6: user.v1.ChannelService.GetMyChannel:input_type -> user.v1.GetMyChannelRequest
-	9,  // 7: user.v1.ChannelService.UpdateChannel:input_type -> user.v1.UpdateChannelRequest
-	10, // 8: user.v1.ChannelService.Follow:input_type -> user.v1.FollowRequest
-	12, // 9: user.v1.ChannelService.Unfollow:input_type -> user.v1.UnfollowRequest
-	14, // 10: user.v1.ChannelService.ListFollowers:input_type -> user.v1.ListFollowersRequest
-	17, // 11: user.v1.ChannelService.IsFollowing:input_type -> user.v1.IsFollowingRequest
-	19, // 12: user.v1.ChannelService.GetIngestKey:input_type -> user.v1.GetIngestKeyRequest
-	20, // 13: user.v1.ChannelService.RotateIngestKey:input_type -> user.v1.RotateIngestKeyRequest
-	0,  // 14: user.v1.UserService.GetProfile:output_type -> user.v1.Profile
-	0,  // 15: user.v1.UserService.UpdateProfile:output_type -> user.v1.Profile
-	1,  // 16: user.v1.UserService.GetPublicProfile:output_type -> user.v1.PublicProfile
-	2,  // 17: user.v1.ChannelService.CreateChannel:output_type -> user.v1.Channel
-	2,  // 18: user.v1.ChannelService.GetChannel:output_type -> user.v1.Channel
-	2,  // 19: user.v1.ChannelService.GetMyChannel:output_type -> user.v1.Channel
-	2,  // 20: user.v1.ChannelService.UpdateChannel:output_type -> user.v1.Channel
-	11, // 21: user.v1.ChannelService.Follow:output_type -> user.v1.FollowResponse
-	13, // 22: user.v1.ChannelService.Unfollow:output_type -> user.v1.UnfollowResponse
-	16, // 23: user.v1.ChannelService.ListFollowers:output_type -> user.v1.ListFollowersResponse
-	18, // 24: user.v1.ChannelService.IsFollowing:output_type -> user.v1.IsFollowingResponse
-	21, // 25: user.v1.ChannelService.GetIngestKey:output_type -> user.v1.IngestKeyResponse
-	21, // 26: user.v1.ChannelService.RotateIngestKey:output_type -> user.v1.IngestKeyResponse
-	14, // [14:27] is the sub-list for method output_type
-	1,  // [1:14] is the sub-list for method input_type
-	1,  // [1:1] is the sub-list for extension type_name
-	1,  // [1:1] is the sub-list for extension extendee
-	0,  // [0:1] is the sub-list for field type_name
+	16, // 0: user.v1.ListFollowersResponse.followers:type_name -> user.v1.Follower
+	2,  // 1: user.v1.ListChannelsResponse.channels:type_name -> user.v1.Channel
+	3,  // 2: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
+	4,  // 3: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
+	5,  // 4: user.v1.UserService.GetPublicProfile:input_type -> user.v1.GetPublicProfileRequest
+	6,  // 5: user.v1.ChannelService.CreateChannel:input_type -> user.v1.CreateChannelRequest
+	7,  // 6: user.v1.ChannelService.GetChannelByMarketplaceSeller:input_type -> user.v1.GetChannelByMarketplaceSellerRequest
+	8,  // 7: user.v1.ChannelService.GetChannel:input_type -> user.v1.GetChannelRequest
+	9,  // 8: user.v1.ChannelService.GetMyChannel:input_type -> user.v1.GetMyChannelRequest
+	10, // 9: user.v1.ChannelService.UpdateChannel:input_type -> user.v1.UpdateChannelRequest
+	11, // 10: user.v1.ChannelService.Follow:input_type -> user.v1.FollowRequest
+	13, // 11: user.v1.ChannelService.Unfollow:input_type -> user.v1.UnfollowRequest
+	15, // 12: user.v1.ChannelService.ListFollowers:input_type -> user.v1.ListFollowersRequest
+	18, // 13: user.v1.ChannelService.IsFollowing:input_type -> user.v1.IsFollowingRequest
+	20, // 14: user.v1.ChannelService.GetIngestKey:input_type -> user.v1.GetIngestKeyRequest
+	21, // 15: user.v1.ChannelService.RotateIngestKey:input_type -> user.v1.RotateIngestKeyRequest
+	23, // 16: user.v1.ChannelService.ListChannels:input_type -> user.v1.ListChannelsRequest
+	25, // 17: user.v1.ChannelService.AdminUpdateChannel:input_type -> user.v1.AdminUpdateChannelRequest
+	0,  // 18: user.v1.UserService.GetProfile:output_type -> user.v1.Profile
+	0,  // 19: user.v1.UserService.UpdateProfile:output_type -> user.v1.Profile
+	1,  // 20: user.v1.UserService.GetPublicProfile:output_type -> user.v1.PublicProfile
+	2,  // 21: user.v1.ChannelService.CreateChannel:output_type -> user.v1.Channel
+	2,  // 22: user.v1.ChannelService.GetChannelByMarketplaceSeller:output_type -> user.v1.Channel
+	2,  // 23: user.v1.ChannelService.GetChannel:output_type -> user.v1.Channel
+	2,  // 24: user.v1.ChannelService.GetMyChannel:output_type -> user.v1.Channel
+	2,  // 25: user.v1.ChannelService.UpdateChannel:output_type -> user.v1.Channel
+	12, // 26: user.v1.ChannelService.Follow:output_type -> user.v1.FollowResponse
+	14, // 27: user.v1.ChannelService.Unfollow:output_type -> user.v1.UnfollowResponse
+	17, // 28: user.v1.ChannelService.ListFollowers:output_type -> user.v1.ListFollowersResponse
+	19, // 29: user.v1.ChannelService.IsFollowing:output_type -> user.v1.IsFollowingResponse
+	22, // 30: user.v1.ChannelService.GetIngestKey:output_type -> user.v1.IngestKeyResponse
+	22, // 31: user.v1.ChannelService.RotateIngestKey:output_type -> user.v1.IngestKeyResponse
+	24, // 32: user.v1.ChannelService.ListChannels:output_type -> user.v1.ListChannelsResponse
+	2,  // 33: user.v1.ChannelService.AdminUpdateChannel:output_type -> user.v1.Channel
+	18, // [18:34] is the sub-list for method output_type
+	2,  // [2:18] is the sub-list for method input_type
+	2,  // [2:2] is the sub-list for extension type_name
+	2,  // [2:2] is the sub-list for extension extendee
+	0,  // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_user_v1_user_proto_init() }
@@ -1641,14 +1940,15 @@ func file_user_v1_user_proto_init() {
 		return
 	}
 	file_user_v1_user_proto_msgTypes[4].OneofWrappers = []any{}
-	file_user_v1_user_proto_msgTypes[9].OneofWrappers = []any{}
+	file_user_v1_user_proto_msgTypes[10].OneofWrappers = []any{}
+	file_user_v1_user_proto_msgTypes[25].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_user_v1_user_proto_rawDesc), len(file_user_v1_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   22,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

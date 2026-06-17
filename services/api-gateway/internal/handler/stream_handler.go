@@ -242,6 +242,7 @@ func streamToJSON(st *streamv1.Stream) map[string]any {
 		"category_id": st.CategoryId, "tags": st.Tags, "viewer_count": st.ViewerCount, "peak_viewers": st.PeakViewers,
 		"scheduled_at_unix": st.ScheduledAtUnix, "started_at_unix": st.StartedAtUnix, "ended_at_unix": st.EndedAtUnix,
 		"created_at_unix": st.CreatedAtUnix, "updated_at_unix": st.UpdatedAtUnix,
+		"marketplace_seller_id": st.MarketplaceSellerId, "marketplace_shop_id": st.MarketplaceShopId,
 	}
 }
 

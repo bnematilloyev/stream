@@ -22,7 +22,9 @@ func NewPostgresStreamRepository(db *database.Router) *PostgresStreamRepository 
 const streamSelect = `
 	SELECT s.id, s.channel_id, c.slug, c.title, s.title, s.description, s.thumbnail_url,
 	       s.status, s.ingest_protocol, s.latency_mode, s.visibility, s.category_id, s.tags,
-	       s.scheduled_at, s.started_at, s.ended_at, s.viewer_count, s.peak_viewers, s.created_at, s.updated_at
+	       s.scheduled_at, s.started_at, s.ended_at, s.viewer_count, s.peak_viewers,
+	       c.marketplace_seller_id, c.marketplace_shop_id,
+	       s.created_at, s.updated_at
 	FROM streams s JOIN channels c ON c.id = s.channel_id
 `
 
@@ -91,8 +93,31 @@ func (r *PostgresStreamRepository) ListLive(ctx context.Context, p pagination.Pa
 	rows, err := r.db.Read().Query(ctx, `
 		SELECT s.id, s.channel_id, c.slug, c.title, s.title, s.description, s.thumbnail_url,
 		       s.status, s.ingest_protocol, s.latency_mode, s.visibility, s.category_id, s.tags,
-		       s.scheduled_at, s.started_at, s.ended_at, s.viewer_count, s.peak_viewers, s.created_at, s.updated_at
+		       s.scheduled_at, s.started_at, s.ended_at, s.viewer_count, s.peak_viewers,
+		       c.marketplace_seller_id, c.marketplace_shop_id,
+		       s.created_at, s.updated_at
 	`+liveWithIngest+` WHERE s.status = 'live' AND s.visibility = 'public'
+		ORDER BY s.viewer_count DESC LIMIT $1 OFFSET $2`, p.Limit, p.Offset())
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	return r.scanRows(rows, total)
+}
+
+func (r *PostgresStreamRepository) ListMarketplaceLive(ctx context.Context, p pagination.Params) ([]domain.Stream, int, error) {
+	where := liveWithIngest + ` WHERE s.status = 'live' AND s.visibility = 'public' AND c.marketplace_seller_id IS NOT NULL`
+	var total int
+	if err := r.db.Read().QueryRow(ctx, `SELECT COUNT(*) `+where).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	rows, err := r.db.Read().Query(ctx, `
+		SELECT s.id, s.channel_id, c.slug, c.title, s.title, s.description, s.thumbnail_url,
+		       s.status, s.ingest_protocol, s.latency_mode, s.visibility, s.category_id, s.tags,
+		       s.scheduled_at, s.started_at, s.ended_at, s.viewer_count, s.peak_viewers,
+		       c.marketplace_seller_id, c.marketplace_shop_id,
+		       s.created_at, s.updated_at
+	`+where+`
 		ORDER BY s.viewer_count DESC LIMIT $1 OFFSET $2`, p.Limit, p.Offset())
 	if err != nil {
 		return nil, 0, err
@@ -258,7 +283,9 @@ func (r *PostgresStreamRepository) scanRows(rows pgx.Rows, total int) ([]domain.
 		if err := rows.Scan(
 			&s.ID, &s.ChannelID, &s.ChannelSlug, &s.ChannelTitle, &s.Title, &s.Description, &s.ThumbnailURL,
 			&s.Status, &s.IngestProtocol, &s.LatencyMode, &s.Visibility, &s.CategoryID, &s.Tags,
-			&s.ScheduledAt, &s.StartedAt, &s.EndedAt, &s.ViewerCount, &s.PeakViewers, &s.CreatedAt, &s.UpdatedAt,
+			&s.ScheduledAt, &s.StartedAt, &s.EndedAt, &s.ViewerCount, &s.PeakViewers,
+			&s.MarketplaceSellerID, &s.MarketplaceShopID,
+			&s.CreatedAt, &s.UpdatedAt,
 		); err != nil {
 			return nil, 0, err
 		}

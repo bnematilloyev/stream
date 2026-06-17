@@ -18,6 +18,7 @@ import (
 	"github.com/sahiy/sahiy-stream/pkg/logger"
 	"github.com/sahiy/sahiy-stream/pkg/metrics"
 	pkgredis "github.com/sahiy/sahiy-stream/pkg/redis"
+	"github.com/sahiy/sahiy-stream/pkg/security/serviceauth"
 	authadapter "github.com/sahiy/sahiy-stream/services/api-gateway/internal/auth"
 	"github.com/sahiy/sahiy-stream/services/api-gateway/internal/client"
 	"github.com/sahiy/sahiy-stream/services/api-gateway/internal/config"
@@ -74,6 +75,11 @@ func main() {
 	userHandler := handler.NewUserHandler(userClient)
 	channelHandler := handler.NewChannelHandler(userClient, cfg.WhipBaseURL)
 	streamHandler := handler.NewStreamHandler(streamClient, cfg.WhipBaseURL)
+	broadcastHandler := handler.NewBroadcastHandler(
+		authClient, userClient, streamClient,
+		cfg.ProvisionSecret, cfg.WhipBaseURL, cfg.MarketWebhookURL, cfg.MarketWebhookSecret,
+	)
+	adminHandler := handler.NewAdminHandler(authClient, userClient, streamClient)
 	chatHandler, err := handler.NewChatHandler(chatClient, cfg.ChatHTTPAddr)
 	if err != nil {
 		log.Fatal("chat handler init failed", zap.Error(err))
@@ -95,7 +101,7 @@ func main() {
 	corsOpts := cors.Options{
 		AllowedOrigins:   cfg.CORSOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Service-Token"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}
@@ -162,6 +168,34 @@ func main() {
 					streams.With(middleware.Authenticate(tokenValidator)).Post("/{id}/end", streamHandler.End)
 					streams.Post("/{id}/heartbeat", streamHandler.Heartbeat)
 					streams.Get("/{id}/viewers", streamHandler.ViewerStats)
+				})
+
+				rest.Route("/internal/broadcast", func(internal chi.Router) {
+					internal.Use(serviceauth.Middleware(cfg.ServiceToken))
+					internal.Post("/channels", broadcastHandler.ProvisionChannel)
+					internal.Get("/live", broadcastHandler.ListMarketplaceLive)
+					internal.Post("/sessions", broadcastHandler.CreateSession)
+					internal.Get("/streams/{stream_id}/playback", broadcastHandler.GetStreamPlayback)
+
+					internal.Route("/sellers/{seller_id}", func(sellers chi.Router) {
+						sellers.Get("/streams", broadcastHandler.ListSellerStreams)
+						sellers.Post("/streams", broadcastHandler.CreateSellerStream)
+						sellers.Post("/streams/{stream_id}/start", broadcastHandler.StartSellerStream)
+						sellers.Post("/streams/{stream_id}/end", broadcastHandler.EndSellerStream)
+					})
+				})
+
+				rest.Route("/admin", func(admin chi.Router) {
+					admin.Use(middleware.Authenticate(tokenValidator))
+					admin.Use(middleware.RequireRole("admin"))
+					admin.Get("/stats", adminHandler.Stats)
+					admin.Get("/users", adminHandler.ListUsers)
+					admin.Patch("/users/{id}", adminHandler.UpdateUser)
+					admin.Get("/audit-logs", adminHandler.ListAuditLogs)
+					admin.Get("/channels", adminHandler.ListChannels)
+					admin.Patch("/channels/{slug}", adminHandler.UpdateChannel)
+					admin.Get("/streams/live", adminHandler.ListLiveStreams)
+					admin.Post("/streams/{id}/force-end", adminHandler.ForceEndStream)
 				})
 			})
 		})

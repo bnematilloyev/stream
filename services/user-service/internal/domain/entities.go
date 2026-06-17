@@ -18,20 +18,22 @@ type Profile struct {
 }
 
 type Channel struct {
-	ID            uuid.UUID
-	UserID        uuid.UUID
-	Slug          string
-	Title         string
-	Description   *string
-	BannerURL     *string
-	AvatarURL     *string
-	CategoryID    *uuid.UUID
-	CategorySlug  *string
-	IsVerified    bool
-	IsLive        bool
-	FollowerCount int
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID                  uuid.UUID
+	UserID              uuid.UUID
+	Slug                string
+	Title               string
+	Description         *string
+	BannerURL           *string
+	AvatarURL           *string
+	CategoryID          *uuid.UUID
+	CategorySlug        *string
+	IsVerified          bool
+	IsLive              bool
+	FollowerCount       int
+	MarketplaceSellerID *int64
+	MarketplaceShopID   *int64
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 type Follower struct {
