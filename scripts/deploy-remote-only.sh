@@ -41,17 +41,22 @@ ensure_env() {
     touch "${REMOTE_DIR}/.gpu-transcode"
     return 0
   fi
-  local jwt_access jwt_refresh media_hook playback_signing
+  local jwt_access jwt_refresh media_hook playback_signing service_token market_webhook_url market_webhook_secret
   if [[ -f "${env_file}" ]]; then
     jwt_access="$(grep -E '^JWT_ACCESS_SECRET=' "${env_file}" | cut -d= -f2- || true)"
     jwt_refresh="$(grep -E '^JWT_REFRESH_SECRET=' "${env_file}" | cut -d= -f2- || true)"
     media_hook="$(grep -E '^MEDIA_HOOK_SECRET=' "${env_file}" | cut -d= -f2- || true)"
     playback_signing="$(grep -E '^PLAYBACK_SIGNING_SECRET=' "${env_file}" | cut -d= -f2- || true)"
+    service_token="$(grep -E '^SERVICE_TOKEN=' "${env_file}" | cut -d= -f2- || true)"
+    market_webhook_url="$(grep -E '^MARKET_WEBHOOK_URL=' "${env_file}" | cut -d= -f2- || true)"
+    market_webhook_secret="$(grep -E '^MARKET_WEBHOOK_SECRET=' "${env_file}" | cut -d= -f2- || true)"
   fi
   jwt_access="${jwt_access:-$(openssl rand -hex 32)}"
   jwt_refresh="${jwt_refresh:-$(openssl rand -hex 32)}"
   media_hook="${media_hook:-$(openssl rand -hex 32)}"
   playback_signing="${playback_signing:-$(openssl rand -hex 32)}"
+  service_token="${service_token:-$(openssl rand -hex 32)}"
+  market_webhook_secret="${market_webhook_secret:-${service_token}}"
 
   cat >"${env_file}" <<ENVFILE
 APP_ENV=production
@@ -84,6 +89,9 @@ RTMP_INTERNAL_URL=rtmp://127.0.0.1:1935/live
 RTSP_INTERNAL_URL=rtsp://127.0.0.1:8554
 MEDIA_HTTP_ADDR=:9084
 GATEWAY_RATE_LIMIT_RPM=500
+SERVICE_TOKEN=${service_token}
+MARKET_WEBHOOK_URL=${market_webhook_url}
+MARKET_WEBHOOK_SECRET=${market_webhook_secret}
 ENVFILE
 }
 

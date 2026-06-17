@@ -123,8 +123,10 @@ func (h *BroadcastHandler) CreateSellerStream(w http.ResponseWriter, r *http.Req
 	}
 
 	var body struct {
-		Title       string `json:"title"`
-		Description string `json:"description"`
+		Title          string `json:"title"`
+		Description    string `json:"description"`
+		LatencyMode    string `json:"latency_mode"`
+		IngestProtocol string `json:"ingest_protocol"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		httputil.Error(w, decodeError(err))
@@ -138,6 +140,7 @@ func (h *BroadcastHandler) CreateSellerStream(w http.ResponseWriter, r *http.Req
 	st, err := h.stream.Stream.CreateStream(r.Context(), &streamv1.CreateStreamRequest{
 		UserId: authResp.GetUser().GetId(), ChannelSlug: ch.GetSlug(),
 		Title: body.Title, Description: body.Description, Visibility: "public",
+		LatencyMode: body.LatencyMode, IngestProtocol: body.IngestProtocol,
 	})
 	if err != nil {
 		httputil.Error(w, grpcError(err))

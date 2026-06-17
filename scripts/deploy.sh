@@ -196,6 +196,7 @@ JWT_ACCESS_SECRET=\$(openssl rand -hex 32)
 JWT_REFRESH_SECRET=\$(openssl rand -hex 32)
 MEDIA_HOOK_SECRET=\$(openssl rand -hex 32)
 PLAYBACK_SIGNING_SECRET=\$(openssl rand -hex 32)
+SERVICE_TOKEN=\$(openssl rand -hex 32)
 
 cat >"\${REMOTE_DIR}/.env" <<ENVFILE
 APP_ENV=production
@@ -228,7 +229,13 @@ RTMP_INTERNAL_URL=rtmp://127.0.0.1:1935/live
 RTSP_INTERNAL_URL=rtsp://127.0.0.1:8554
 MEDIA_HTTP_ADDR=:9084
 GATEWAY_RATE_LIMIT_RPM=500
+SERVICE_TOKEN=\${SERVICE_TOKEN}
+MARKET_WEBHOOK_URL=
+MARKET_WEBHOOK_SECRET=\${SERVICE_TOKEN}
 ENVFILE
+
+echo "SERVICE_TOKEN (market STREAM_SERVICE_TOKEN bilan bir xil qiling):"
+grep '^SERVICE_TOKEN=' "\${REMOTE_DIR}/.env"
 
 bash "\${REMOTE_DIR}/scripts/sync-hook-secrets.sh" 2>/dev/null || true
 
