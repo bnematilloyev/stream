@@ -2,7 +2,8 @@
 
 ## Oldindan
 
-- [ ] DNS Cloudflare: `stream.vibrant.uz` va `api.stream.vibrant.uz` → server IP
+- [ ] DNS Cloudflare: `stream.vibrant.uz` → server IP, **Proxied** (sariq bulut)
+- [ ] `ingest.stream.vibrant.uz` → server IP, **DNS only** (kulrang)
 - [ ] Cloudflare SSL/TLS: **Full** (origin sertifikat kerak bo'ladi)
 - [ ] Certbot uchun: DNS **DNS only** (kulrang bulut) yoki Full + origin cert
 - [ ] `sshpass` o'rnatilgan (lokal Mac/Linux)
@@ -43,8 +44,7 @@ Band port bo'lsa `for-deploy.txt` da `Frontend port` yoki `Gateway port` o'zgart
 
 ```bash
 dig +short stream.vibrant.uz
-dig +short api.stream.vibrant.uz
-# Ikkalasi server IP ni ko'rsatishi kerak
+# Server IP ni ko'rsatishi kerak
 ```
 
 ---
@@ -77,7 +77,7 @@ SETUP_SSL=1 CERTBOT_EMAIL=siz@email.com bash /opt/sahiy-stream/scripts/setup-ngi
 ## Bosqich 3 — Tekshiruv
 
 ```bash
-curl -s https://api.stream.vibrant.uz/health
+curl -s https://stream.vibrant.uz/health
 curl -sI https://stream.vibrant.uz/
 ```
 
@@ -123,5 +123,5 @@ Agar **Flexible** bo'lsa — origin HTTP, lekin kamera/WHIP uchun **Full** tavsi
 
 ```
 stream.vibrant.uz     → nginx → Next.js :3002
-api.stream.vibrant.uz → nginx → gateway :8080, HLS :8090, WHIP :8889
+stream.vibrant.uz → nginx → frontend, gateway :8080, HLS :8090, WHIP :8889
 ```

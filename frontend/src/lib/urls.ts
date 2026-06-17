@@ -1,4 +1,4 @@
-/** API, WHIP va sahifa URLlari — ikki domen rejimi (stream + api). */
+/** API, WHIP va sahifa URLlari — bitta domen (stream.vibrant.uz). */
 
 function trimSlash(url: string): string {
   return url.replace(/\/+$/, "");

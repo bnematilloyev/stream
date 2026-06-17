@@ -6,8 +6,8 @@ REMOTE_DIR="/opt/sahiy-stream"
 FRONTEND_PORT="${FRONTEND_PORT:-3002}"
 GATEWAY_PORT="${GATEWAY_PORT:-8080}"
 HLS_PORT="${HLS_PORT:-8090}"
-API_DOMAIN="${API_DOMAIN:-api.stream.vibrant.uz}"
 FRONTEND_DOMAIN="${FRONTEND_DOMAIN:-stream.vibrant.uz}"
+API_DOMAIN="${API_DOMAIN:-${FRONTEND_DOMAIN}}"
 
 if [[ -f "${REMOTE_DIR}/deploy-host.txt" ]]; then
   HOST_IP=$(cat "${REMOTE_DIR}/deploy-host.txt")
@@ -22,12 +22,17 @@ if [[ -f "${REMOTE_DIR}/for-deploy.txt" ]]; then
   GATEWAY_PORT="${GATEWAY_PORT:-8080}"
   HLS_PORT="$(grep -E '^HLS port:' "${REMOTE_DIR}/for-deploy.txt" | cut -d: -f2- | xargs || true)"
   HLS_PORT="${HLS_PORT:-8090}"
-  API_DOMAIN="$(grep -E '^API domen:' "${REMOTE_DIR}/for-deploy.txt" | cut -d: -f2- | xargs || true)"
   FRONTEND_DOMAIN="$(grep -E '^Frontend domen:' "${REMOTE_DIR}/for-deploy.txt" | cut -d: -f2- | xargs || true)"
+  FRONTEND_DOMAIN="${FRONTEND_DOMAIN:-stream.vibrant.uz}"
+  API_DOMAIN="$(grep -E '^API domen:' "${REMOTE_DIR}/for-deploy.txt" | cut -d: -f2- | xargs || true)"
+  if [[ -z "${API_DOMAIN}" || "${API_DOMAIN}" == "${FRONTEND_DOMAIN}" ]]; then
+    API_DOMAIN="${FRONTEND_DOMAIN}"
+  fi
 fi
 
-API_URL="https://${API_DOMAIN:-api.stream.vibrant.uz}"
-FRONTEND_URL="https://${FRONTEND_DOMAIN:-stream.vibrant.uz}"
+PUBLIC_URL="https://${FRONTEND_DOMAIN}"
+FRONTEND_URL="${PUBLIC_URL}"
+API_URL="${PUBLIC_URL}"
 
 ensure_env() {
   local env_file="${REMOTE_DIR}/.env"
@@ -58,7 +63,7 @@ JWT_ACCESS_SECRET=${jwt_access}
 JWT_REFRESH_SECRET=${jwt_refresh}
 MEDIA_HOOK_SECRET=${media_hook}
 PLAYBACK_SIGNING_SECRET=${playback_signing}
-PLAYBACK_BASE_URL=${API_URL}
+PLAYBACK_BASE_URL=${FRONTEND_URL}
 HLS_STORAGE_BACKEND=local
 FFMPEG_VIDEO_ENCODER=libx264
 TRANSCODE_QUALITY=production
@@ -71,8 +76,8 @@ CHAT_SERVICE_ADDR=localhost:50054
 CHAT_HTTP_ADDR=localhost:9085
 GATEWAY_HTTP_ADDR=:${GATEWAY_PORT}
 GATEWAY_CORS_ORIGINS=${FRONTEND_URL},https://${FRONTEND_DOMAIN}
-WHIP_BASE_URL=${API_URL}
-HLS_BASE_URL=${API_URL}/hls
+WHIP_BASE_URL=${FRONTEND_URL}
+HLS_BASE_URL=${FRONTEND_URL}/hls
 HLS_OUTPUT_DIR=${REMOTE_DIR}/data/hls
 RTMP_BASE_URL=rtmp://${HOST_IP}:1935/live
 RTMP_INTERNAL_URL=rtmp://127.0.0.1:1935/live
@@ -167,4 +172,4 @@ if ! curl -sf "http://127.0.0.1:${FRONTEND_PORT}/" >/dev/null 2>&1; then
 fi
 
 echo "Panel:    ${FRONTEND_URL}"
-echo "API:      ${API_URL}/health"
+echo "API:      ${FRONTEND_URL}/health"

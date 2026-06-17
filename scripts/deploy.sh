@@ -30,13 +30,17 @@ if [[ -z "${FRONTEND_DOMAIN}" ]]; then
   FRONTEND_DOMAIN=$(read_deploy "Domen")
 fi
 FRONTEND_DOMAIN="${FRONTEND_DOMAIN:-stream.vibrant.uz}"
-API_DOMAIN="${API_DOMAIN:-api.stream.vibrant.uz}"
+API_DOMAIN=$(read_deploy "API domen")
+if [[ -z "${API_DOMAIN}" || "${API_DOMAIN}" == "${FRONTEND_DOMAIN}" ]]; then
+  API_DOMAIN="${FRONTEND_DOMAIN}"
+fi
 GPU_TRANSCODE=$(read_deploy "GPU transcode")
 GPU_TRANSCODE="${GPU_TRANSCODE:-no}"
 
 CERTBOT_EMAIL="${CERTBOT_EMAIL:-admin@vibrant.uz}"
-API_URL="https://${API_DOMAIN}"
-FRONTEND_URL="https://${FRONTEND_DOMAIN}"
+PUBLIC_URL="https://${FRONTEND_DOMAIN}"
+FRONTEND_URL="${PUBLIC_URL}"
+API_URL="${PUBLIC_URL}"
 
 if [[ -z "${HOST}" || -z "${USER}" || -z "${PASS}" ]]; then
   echo "for-deploy.txt da IP, user yoki parol yo'q"
@@ -90,9 +94,9 @@ if [[ "${SKIP_FRONTEND:-}" != "1" ]]; then
   pkill -f "next dev" 2>/dev/null || true
   (
     cd "${ROOT}/frontend"
-    export NEXT_PUBLIC_API_URL="${API_URL}"
-    export NEXT_PUBLIC_WHIP_BASE_URL="${API_URL}"
-    export NEXT_PUBLIC_HLS_BASE_URL="${API_URL}/hls"
+    export NEXT_PUBLIC_API_URL="${FRONTEND_URL}"
+    export NEXT_PUBLIC_WHIP_BASE_URL="${FRONTEND_URL}"
+    export NEXT_PUBLIC_HLS_BASE_URL="${FRONTEND_URL}/hls"
     if [[ ! -x node_modules/.bin/next ]]; then
       echo "==> Frontend dependencies (npm ci)..."
       npm ci
@@ -197,7 +201,7 @@ JWT_ACCESS_SECRET=\${JWT_ACCESS_SECRET}
 JWT_REFRESH_SECRET=\${JWT_REFRESH_SECRET}
 MEDIA_HOOK_SECRET=\${MEDIA_HOOK_SECRET}
 PLAYBACK_SIGNING_SECRET=\${PLAYBACK_SIGNING_SECRET}
-PLAYBACK_BASE_URL=\${API_URL}
+PLAYBACK_BASE_URL=\${FRONTEND_URL}
 HLS_STORAGE_BACKEND=local
 FFMPEG_VIDEO_ENCODER=libx264
 TRANSCODE_QUALITY=production
@@ -210,8 +214,8 @@ CHAT_SERVICE_ADDR=localhost:50054
 CHAT_HTTP_ADDR=localhost:9085
 GATEWAY_HTTP_ADDR=:\${GATEWAY_PORT}
 GATEWAY_CORS_ORIGINS=\${FRONTEND_URL},https://\${FRONTEND_DOMAIN}
-WHIP_BASE_URL=\${API_URL}
-HLS_BASE_URL=\${API_URL}/hls
+WHIP_BASE_URL=\${FRONTEND_URL}
+HLS_BASE_URL=\${FRONTEND_URL}/hls
 HLS_OUTPUT_DIR=\${REMOTE_DIR}/data/hls
 RTMP_BASE_URL=rtmp://\${HOST_IP}:1935/live
 RTMP_INTERNAL_URL=rtmp://127.0.0.1:1935/live
@@ -291,12 +295,12 @@ if [[ "\${SETUP_SSL:-1}" == "1" ]]; then
 fi
 
 echo "Frontend: \${FRONTEND_URL}"
-echo "API:      \${API_URL}/health"
+echo "API:      \${FRONTEND_URL}/health"
 REMOTE
 
 rm -f "${ARCHIVE}"
 echo ""
 echo "Deploy tugadi!"
 echo "  Panel:    ${FRONTEND_URL}"
-echo "  API:      ${API_URL}/health"
+echo "  API:      ${FRONTEND_URL}/health"
 echo "  Broadcast: ${FRONTEND_URL}/studio/broadcast"

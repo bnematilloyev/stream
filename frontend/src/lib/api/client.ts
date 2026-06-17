@@ -1,7 +1,7 @@
 import { configuredApiUrl } from "@/lib/urls";
 import type { ApiError } from "@/types";
 
-/** Production: NEXT_PUBLIC_API_URL (api domeni). Dev: localhost:8080. */
+/** Production: NEXT_PUBLIC_API_URL yoki brauzer origin. Dev: localhost:8080. */
 export function resolveApiUrl(): string {
   const configured = configuredApiUrl();
   if (configured) {

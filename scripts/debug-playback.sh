@@ -5,7 +5,7 @@ set -euo pipefail
 
 SID="${1:-}"
 REMOTE_DIR="${REMOTE_DIR:-/opt/sahiy-stream}"
-API_DOMAIN="${API_DOMAIN:-api.stream.vibrant.uz}"
+API_DOMAIN="${API_DOMAIN:-stream.vibrant.uz}"
 GATEWAY_PORT="$(grep -E '^Gateway port:' "${REMOTE_DIR}/for-deploy.txt" 2>/dev/null | cut -d: -f2- | xargs || echo 18080)"
 
 if [[ -z "${SID}" ]]; then

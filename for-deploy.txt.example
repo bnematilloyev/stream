@@ -9,5 +9,6 @@ Frontend port: 3010
 Gateway port: 18080
 HLS port: 18090
 Frontend domen: stream.vibrant.uz
-API domen: api.stream.vibrant.uz
+# API ham shu domen (bitta domen + Cloudflare CDN). Eski: api.stream.vibrant.uz
+API domen: stream.vibrant.uz
 Certbot email: admin@vibrant.uz

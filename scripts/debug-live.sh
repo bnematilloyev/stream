@@ -74,5 +74,5 @@ echo "  2) Broadcast sahifani refresh → WHIP uziladi → publish_done → ende
 echo "  3) Efini tugatish tugmasi → ended"
 echo ""
 echo "Tekshirish:"
-echo "  curl -s https://api.stream.vibrant.uz/v1/streams/STREAM_ID"
-echo "  curl -s https://api.stream.vibrant.uz/v1/streams/STREAM_ID/playback"
+echo "  curl -s https://stream.vibrant.uz/v1/streams/STREAM_ID"
+echo "  curl -s https://stream.vibrant.uz/v1/streams/STREAM_ID/playback"

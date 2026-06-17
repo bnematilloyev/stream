@@ -25,11 +25,14 @@ GATEWAY_PORT="${GATEWAY_PORT:-18080}"
 HLS_PORT=$(read_deploy "HLS port")
 HLS_PORT="${HLS_PORT:-18090}"
 FRONTEND_DOMAIN=$(read_deploy "Frontend domen")
-API_DOMAIN=$(read_deploy "API domen")
 CERTBOT_EMAIL=$(read_deploy "Certbot email")
 FRONTEND_DOMAIN="${FRONTEND_DOMAIN:-stream.vibrant.uz}"
-API_DOMAIN="${API_DOMAIN:-api.stream.vibrant.uz}"
+API_DOMAIN=$(read_deploy "API domen")
+if [[ -z "${API_DOMAIN}" || "${API_DOMAIN}" == "${FRONTEND_DOMAIN}" ]]; then
+  API_DOMAIN="${FRONTEND_DOMAIN}"
+fi
 CERTBOT_EMAIL="${CERTBOT_EMAIL:-admin@vibrant.uz}"
+PUBLIC_URL="https://${FRONTEND_DOMAIN}"
 
 CTRL_DIR="${TMPDIR:-/tmp}/sahiy-ssh-$$"
 mkdir -p "${CTRL_DIR}"
@@ -170,9 +173,9 @@ REMOTE
 
 echo ""
 echo "Tekshiruv:"
-echo "  curl -s https://${API_DOMAIN}/health"
-echo "  curl -sI https://${FRONTEND_DOMAIN}/"
+echo "  curl -s ${PUBLIC_URL}/health"
+echo "  curl -sI ${PUBLIC_URL}/"
 echo ""
-curl -s "https://${API_DOMAIN}/health" || true
+curl -s "${PUBLIC_URL}/health" || true
 echo ""
-curl -sI "https://${FRONTEND_DOMAIN}/" | head -5 || true
+curl -sI "${PUBLIC_URL}/" | head -5 || true

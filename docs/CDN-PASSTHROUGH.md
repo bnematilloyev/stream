@@ -7,7 +7,7 @@ Use this mode when OBS sends a stable H.264 video stream and you do not need ada
 ```env
 TRANSCODE_MODE=passthrough
 HLS_STORAGE_BACKEND=local
-PLAYBACK_BASE_URL=https://api.stream.vibrant.uz
+PLAYBACK_BASE_URL=https://stream.vibrant.uz
 ```
 
 In this setup:
@@ -16,14 +16,14 @@ In this setup:
 - `media-orchestrator` starts FFmpeg in remux mode.
 - FFmpeg copies video (`-c:v copy`) and writes HLS.
 - `stream-service` serves signed `/playback/{streamID}/master.m3u8`.
-- A CDN should cache `/playback/*` in front of `stream-service`.
+- Cloudflare CDN caches `/playback/*` on `stream.vibrant.uz` (proxied / orange cloud).
 
 ## CDN Origin
 
 Point CDN origin to:
 
 ```text
-https://api.stream.vibrant.uz
+https://stream.vibrant.uz
 ```
 
 Cache behavior:
@@ -34,6 +34,14 @@ Cache behavior:
 | `/playback/*.(ts|m4s|mp4)` | long cache, immutable |
 | `/v1/streams/*/playback` | 5 seconds |
 | `/v1/streams/live` | 2 seconds |
+
+## DNS (Cloudflare)
+
+| Record | Proxy |
+|---|---|
+| `stream.vibrant.uz` | Proxied (CDN + free SSL) |
+| `ingest.stream.vibrant.uz` | DNS only (RTMP) |
+| `api.stream.vibrant.uz` | optional redirect only (DNS only) |
 
 ## When To Use GPU Again
 
