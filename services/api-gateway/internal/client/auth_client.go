@@ -41,6 +41,10 @@ func (c *AuthClient) Login(ctx context.Context, req *authv1.LoginRequest) (*auth
 	return c.client.Login(ctx, req)
 }
 
+func (c *AuthClient) SyncProvisionLogin(ctx context.Context, req *authv1.SyncProvisionLoginRequest) (*authv1.AuthResponse, error) {
+	return c.client.SyncProvisionLogin(ctx, req)
+}
+
 func (c *AuthClient) Refresh(ctx context.Context, req *authv1.RefreshRequest) (*authv1.AuthResponse, error) {
 	return c.client.Refresh(ctx, req)
 }

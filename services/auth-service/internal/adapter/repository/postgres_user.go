@@ -51,6 +51,11 @@ func (r *PostgresUserRepository) UpdateLastLogin(ctx context.Context, id uuid.UU
 	return err
 }
 
+func (r *PostgresUserRepository) UpdatePasswordHash(ctx context.Context, id uuid.UUID, passwordHash string) error {
+	_, err := r.pool.Exec(ctx, `UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1`, id, passwordHash)
+	return err
+}
+
 func (r *PostgresUserRepository) List(ctx context.Context, status, role, search string, page, limit int) ([]domain.User, int, error) {
 	if page < 1 {
 		page = 1

@@ -10,6 +10,7 @@ service AuthService {
   rpc Refresh(RefreshRequest) returns (AuthResponse);
   rpc Logout(LogoutRequest) returns (LogoutResponse);
   rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  rpc SyncProvisionLogin(SyncProvisionLoginRequest) returns (AuthResponse);
   rpc GetUser(GetUserRequest) returns (User);
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
   rpc UpdateUserAdmin(UpdateUserAdminRequest) returns (User);
@@ -50,6 +51,11 @@ message ValidateTokenRequest {
 message ValidateTokenResponse {
   bool valid = 1;
   User user = 2;
+}
+
+message SyncProvisionLoginRequest {
+  string email = 1;
+  string password = 2;
 }
 
 message GetUserRequest {

@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	apperrors "github.com/sahiy/sahiy-stream/pkg/errors"
 	"github.com/sahiy/sahiy-stream/pkg/crypto"
+	apperrors "github.com/sahiy/sahiy-stream/pkg/errors"
 	"github.com/sahiy/sahiy-stream/services/auth-service/internal/domain"
 )
 
@@ -123,6 +123,50 @@ func (uc *AuthUseCase) Login(ctx context.Context, email, password, deviceInfo, i
 
 	_ = uc.users.UpdateLastLogin(ctx, user.ID)
 	_ = uc.audit.Log(ctx, &user.ID, "user.login", "user", &user.ID, map[string]any{}, clientIP)
+
+	return &AuthResult{User: user, Tokens: *tokens}, nil
+}
+
+const provisionEmailSuffix = "@broadcast.internal.sahiy"
+
+// SyncProvisionLogin refreshes the internal marketplace seller password and issues tokens.
+// Used when SERVICE_TOKEN / BROADCAST_PROVISION_SECRET changes after initial provisioning.
+func (uc *AuthUseCase) SyncProvisionLogin(ctx context.Context, email, password string) (*AuthResult, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
+	if !strings.HasSuffix(email, provisionEmailSuffix) {
+		return nil, apperrors.Forbidden("not a provision account")
+	}
+	if len(strings.TrimSpace(password)) < 8 {
+		return nil, apperrors.Validation("invalid password", nil)
+	}
+
+	user, err := uc.users.GetByEmail(ctx, email)
+	if err != nil {
+		return nil, apperrors.Internal(err)
+	}
+	if user == nil {
+		return nil, apperrors.NotFound("user not found")
+	}
+	if user.Status != domain.StatusActive {
+		return nil, apperrors.Forbidden("account is not active")
+	}
+
+	hash, err := crypto.HashPassword(password)
+	if err != nil {
+		return nil, apperrors.Internal(err)
+	}
+	if err := uc.users.UpdatePasswordHash(ctx, user.ID, hash); err != nil {
+		return nil, apperrors.Internal(err)
+	}
+	user.PasswordHash = hash
+
+	tokens, err := uc.issueTokens(ctx, user, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	uc.cacheUserSession(ctx, user)
+	_ = uc.users.UpdateLastLogin(ctx, user.ID)
+	_ = uc.audit.Log(ctx, &user.ID, "user.provision_login", "user", &user.ID, map[string]any{}, nil)
 
 	return &AuthResult{User: user, Tokens: *tokens}, nil
 }

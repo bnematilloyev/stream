@@ -97,7 +97,7 @@ func (h *BroadcastHandler) ProvisionChannel(w http.ResponseWriter, r *http.Reque
 			httputil.Error(w, grpcError(err))
 			return
 		}
-		authResp, err = h.auth.Login(r.Context(), &authv1.LoginRequest{
+		authResp, err = h.auth.SyncProvisionLogin(r.Context(), &authv1.SyncProvisionLoginRequest{
 			Email:    email,
 			Password: password,
 		})

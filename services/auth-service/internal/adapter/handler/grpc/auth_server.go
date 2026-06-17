@@ -36,6 +36,14 @@ func (s *AuthServer) Login(ctx context.Context, req *authv1.LoginRequest) (*auth
 	return toAuthResponse(result), nil
 }
 
+func (s *AuthServer) SyncProvisionLogin(ctx context.Context, req *authv1.SyncProvisionLoginRequest) (*authv1.AuthResponse, error) {
+	result, err := s.uc.SyncProvisionLogin(ctx, req.GetEmail(), req.GetPassword())
+	if err != nil {
+		return nil, toGRPCError(err)
+	}
+	return toAuthResponse(result), nil
+}
+
 func (s *AuthServer) Refresh(ctx context.Context, req *authv1.RefreshRequest) (*authv1.AuthResponse, error) {
 	result, err := s.uc.Refresh(ctx, req.GetRefreshToken())
 	if err != nil {

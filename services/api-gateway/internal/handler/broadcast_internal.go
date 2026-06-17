@@ -37,7 +37,7 @@ func (h *BroadcastHandler) sellerAuth(ctx context.Context, sellerID int64) (*aut
 	}
 
 	email := fmt.Sprintf("seller-%d@broadcast.internal.sahiy", sellerID)
-	authResp, err := h.auth.Login(ctx, &authv1.LoginRequest{
+	authResp, err := h.auth.SyncProvisionLogin(ctx, &authv1.SyncProvisionLoginRequest{
 		Email:    email,
 		Password: provisionPassword(h.secret, sellerID),
 	})

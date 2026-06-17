@@ -19,16 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_Register_FullMethodName         = "/auth.v1.AuthService/Register"
-	AuthService_Login_FullMethodName            = "/auth.v1.AuthService/Login"
-	AuthService_Refresh_FullMethodName          = "/auth.v1.AuthService/Refresh"
-	AuthService_Logout_FullMethodName           = "/auth.v1.AuthService/Logout"
-	AuthService_ValidateToken_FullMethodName    = "/auth.v1.AuthService/ValidateToken"
-	AuthService_GetUser_FullMethodName          = "/auth.v1.AuthService/GetUser"
-	AuthService_ListUsers_FullMethodName        = "/auth.v1.AuthService/ListUsers"
-	AuthService_UpdateUserAdmin_FullMethodName  = "/auth.v1.AuthService/UpdateUserAdmin"
-	AuthService_GetPlatformStats_FullMethodName = "/auth.v1.AuthService/GetPlatformStats"
-	AuthService_ListAuditLogs_FullMethodName    = "/auth.v1.AuthService/ListAuditLogs"
+	AuthService_Register_FullMethodName           = "/auth.v1.AuthService/Register"
+	AuthService_Login_FullMethodName              = "/auth.v1.AuthService/Login"
+	AuthService_Refresh_FullMethodName            = "/auth.v1.AuthService/Refresh"
+	AuthService_Logout_FullMethodName             = "/auth.v1.AuthService/Logout"
+	AuthService_ValidateToken_FullMethodName      = "/auth.v1.AuthService/ValidateToken"
+	AuthService_SyncProvisionLogin_FullMethodName = "/auth.v1.AuthService/SyncProvisionLogin"
+	AuthService_GetUser_FullMethodName            = "/auth.v1.AuthService/GetUser"
+	AuthService_ListUsers_FullMethodName          = "/auth.v1.AuthService/ListUsers"
+	AuthService_UpdateUserAdmin_FullMethodName    = "/auth.v1.AuthService/UpdateUserAdmin"
+	AuthService_GetPlatformStats_FullMethodName   = "/auth.v1.AuthService/GetPlatformStats"
+	AuthService_ListAuditLogs_FullMethodName      = "/auth.v1.AuthService/ListAuditLogs"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -40,6 +41,7 @@ type AuthServiceClient interface {
 	Refresh(ctx context.Context, in *RefreshRequest, opts ...grpc.CallOption) (*AuthResponse, error)
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	ValidateToken(ctx context.Context, in *ValidateTokenRequest, opts ...grpc.CallOption) (*ValidateTokenResponse, error)
+	SyncProvisionLogin(ctx context.Context, in *SyncProvisionLoginRequest, opts ...grpc.CallOption) (*AuthResponse, error)
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*User, error)
 	ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error)
 	UpdateUserAdmin(ctx context.Context, in *UpdateUserAdminRequest, opts ...grpc.CallOption) (*User, error)
@@ -105,6 +107,16 @@ func (c *authServiceClient) ValidateToken(ctx context.Context, in *ValidateToken
 	return out, nil
 }
 
+func (c *authServiceClient) SyncProvisionLogin(ctx context.Context, in *SyncProvisionLoginRequest, opts ...grpc.CallOption) (*AuthResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AuthResponse)
+	err := c.cc.Invoke(ctx, AuthService_SyncProvisionLogin_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *authServiceClient) GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*User, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(User)
@@ -164,6 +176,7 @@ type AuthServiceServer interface {
 	Refresh(context.Context, *RefreshRequest) (*AuthResponse, error)
 	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
 	ValidateToken(context.Context, *ValidateTokenRequest) (*ValidateTokenResponse, error)
+	SyncProvisionLogin(context.Context, *SyncProvisionLoginRequest) (*AuthResponse, error)
 	GetUser(context.Context, *GetUserRequest) (*User, error)
 	ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error)
 	UpdateUserAdmin(context.Context, *UpdateUserAdminRequest) (*User, error)
@@ -193,6 +206,9 @@ func (UnimplementedAuthServiceServer) Logout(context.Context, *LogoutRequest) (*
 }
 func (UnimplementedAuthServiceServer) ValidateToken(context.Context, *ValidateTokenRequest) (*ValidateTokenResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ValidateToken not implemented")
+}
+func (UnimplementedAuthServiceServer) SyncProvisionLogin(context.Context, *SyncProvisionLoginRequest) (*AuthResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SyncProvisionLogin not implemented")
 }
 func (UnimplementedAuthServiceServer) GetUser(context.Context, *GetUserRequest) (*User, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUser not implemented")
@@ -320,6 +336,24 @@ func _AuthService_ValidateToken_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_SyncProvisionLogin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SyncProvisionLoginRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).SyncProvisionLogin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_SyncProvisionLogin_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).SyncProvisionLogin(ctx, req.(*SyncProvisionLoginRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AuthService_GetUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetUserRequest)
 	if err := dec(in); err != nil {
@@ -436,6 +470,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ValidateToken",
 			Handler:    _AuthService_ValidateToken_Handler,
+		},
+		{
+			MethodName: "SyncProvisionLogin",
+			Handler:    _AuthService_SyncProvisionLogin_Handler,
 		},
 		{
 			MethodName: "GetUser",

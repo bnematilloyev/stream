@@ -13,6 +13,7 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	GetByUsername(ctx context.Context, username string) (*User, error)
 	UpdateLastLogin(ctx context.Context, id uuid.UUID) error
+	UpdatePasswordHash(ctx context.Context, id uuid.UUID, passwordHash string) error
 	List(ctx context.Context, status, role, search string, page, limit int) ([]User, int, error)
 	UpdateAdmin(ctx context.Context, id uuid.UUID, role, status *string) (*User, error)
 	CountByStatus(ctx context.Context) (total int64, byStatus map[string]int64, admins int64, err error)
