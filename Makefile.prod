@@ -1,0 +1,25 @@
+# Production Makefile — /opt/sahiy-stream da ishlatiladi.
+# Dev uchun asosiy Makefile repo ildizida (make dev, make migrate).
+
+REMOTE_DIR := /opt/sahiy-stream
+
+.PHONY: help migrate restart status logs
+
+help:
+	@echo "Sahiy Stream — production buyruqlar:"
+	@echo "  make migrate   — DB migration (up)"
+	@echo "  make restart   — barcha servislarni qayta ishga tushirish"
+	@echo "  make status    — holat tekshiruvi"
+	@echo "  make logs      — api-gateway oxirgi loglar"
+
+migrate:
+	bash scripts/prod-migrate.sh up
+
+restart:
+	bash scripts/prod-restart.sh
+
+status:
+	bash scripts/prod-status.sh
+
+logs:
+	tail -n 80 .logs/api-gateway.log 2>/dev/null || echo "log topilmadi"

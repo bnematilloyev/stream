@@ -2,7 +2,21 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-MIGRATIONS_DIR="${ROOT}/services/auth-service/migrations"
+if [[ -d "${ROOT}/migrations" ]]; then
+  MIGRATIONS_DIR="${ROOT}/migrations"
+elif [[ -d "${ROOT}/services/auth-service/migrations" ]]; then
+  MIGRATIONS_DIR="${ROOT}/services/auth-service/migrations"
+else
+  echo "migrations papkasi topilmadi"
+  exit 1
+fi
+
+if [[ -f "${ROOT}/.env" ]]; then
+  # shellcheck disable=SC1090
+  set -a
+  source <(grep -E '^DATABASE_URL=' "${ROOT}/.env" | sed 's/\r$//')
+  set +a
+fi
 DATABASE_URL="${DATABASE_URL:-postgres://sahiy:sahiy_secret@localhost:5433/sahiy_stream?sslmode=disable}"
 
 MIGRATE_BIN="${MIGRATE_BIN:-migrate}"

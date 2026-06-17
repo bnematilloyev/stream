@@ -113,6 +113,13 @@ cd "${REMOTE_DIR}/infra/docker"
 docker compose -f docker-compose.prod.yml up -d
 sleep 8
 
+if [[ -x "${REMOTE_DIR}/scripts/prod-migrate.sh" ]]; then
+  bash "${REMOTE_DIR}/scripts/prod-migrate.sh" up || true
+elif [[ -d "${REMOTE_DIR}/migrations" ]] && command -v migrate >/dev/null 2>&1; then
+  DATABASE_URL="$(grep -E '^DATABASE_URL=' "${REMOTE_DIR}/.env" | cut -d= -f2- | sed 's/\r$//')"
+  migrate -path "${REMOTE_DIR}/migrations" -database "${DATABASE_URL}" up 2>/dev/null || true
+fi
+
 if [[ -x "${REMOTE_DIR}/scripts/sync-hook-secrets.sh" ]]; then
   bash "${REMOTE_DIR}/scripts/sync-hook-secrets.sh"
 elif [[ -f "${REMOTE_DIR}/scripts/sync-hook-secrets.sh" ]]; then

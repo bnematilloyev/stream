@@ -110,7 +110,11 @@ echo "==> Arxiv..."
 tar -czf "${ARCHIVE}" -C "${ROOT}" \
   bin \
   infra \
+  Makefile.prod \
   scripts/migrate.sh \
+  scripts/prod-migrate.sh \
+  scripts/prod-restart.sh \
+  scripts/prod-status.sh \
   scripts/wait-for-api.sh \
   scripts/deploy-remote-only.sh \
   scripts/setup-nginx-ssl.sh \
@@ -147,6 +151,8 @@ GPU_TRANSCODE="${GPU_TRANSCODE}"
 cd "\${REMOTE_DIR}"
 tar -xzf deploy.tar.gz
 rm -f deploy.tar.gz
+mv -f Makefile.prod Makefile 2>/dev/null || true
+chmod +x scripts/*.sh 2>/dev/null || true
 chmod +x scripts/setup-nginx-ssl.sh
 mv services/auth-service/migrations migrations 2>/dev/null || true
 
