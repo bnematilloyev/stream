@@ -118,6 +118,8 @@ Agar **Flexible** bo'lsa — origin HTTP, lekin kamera/WHIP uchun **Full** tavsi
 | CORS xato | `GATEWAY_CORS_ORIGINS` da `https://stream.vibrant.uz` |
 | Kamera ishlamaydi | HTTPS + `mediamtx.yml` da to'g'ri `__SERVER_IP__` |
 | 502 Bad Gateway | `next start` port 3002, nginx `__FRONTEND_PORT__` |
+| `/v1/auth/refresh` 500 | `bash scripts/debug-auth.sh` — `auth-service` OFF, `sessions` jadvali yo'q, yoki migratsiya o'tmagan |
+| Studio: missing authorization token | Refresh 500 → access token yo'q; serverda auth tuzatilsa yoki qayta login |
 
 ---
 

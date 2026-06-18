@@ -41,7 +41,18 @@ type TokenRefreshListener = (accessToken: string) => void;
 type AuthRefreshListener = (data: AuthResponse) => void;
 type AuthClearListener = () => void;
 
-let accessToken: string | null = null;
+const SESSION_ACCESS_KEY = "sahiy-access-token";
+
+function readSessionAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return sessionStorage.getItem(SESSION_ACCESS_KEY);
+  } catch {
+    return null;
+  }
+}
+
+let accessToken: string | null = readSessionAccessToken();
 let refreshPromise: Promise<string | null> | null = null;
 const tokenRefreshListeners = new Set<TokenRefreshListener>();
 const authRefreshListeners = new Set<AuthRefreshListener>();
@@ -49,6 +60,13 @@ const authClearListeners = new Set<AuthClearListener>();
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
+  if (typeof window === "undefined") return;
+  try {
+    if (token) sessionStorage.setItem(SESSION_ACCESS_KEY, token);
+    else sessionStorage.removeItem(SESSION_ACCESS_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 export function getAccessToken() {

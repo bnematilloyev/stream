@@ -43,13 +43,13 @@ ensure_env() {
   fi
   local jwt_access jwt_refresh media_hook playback_signing service_token market_webhook_url market_webhook_secret
   if [[ -f "${env_file}" ]]; then
-    jwt_access="$(grep -E '^JWT_ACCESS_SECRET=' "${env_file}" | cut -d= -f2- || true)"
-    jwt_refresh="$(grep -E '^JWT_REFRESH_SECRET=' "${env_file}" | cut -d= -f2- || true)"
-    media_hook="$(grep -E '^MEDIA_HOOK_SECRET=' "${env_file}" | cut -d= -f2- || true)"
-    playback_signing="$(grep -E '^PLAYBACK_SIGNING_SECRET=' "${env_file}" | cut -d= -f2- || true)"
-    service_token="$(grep -E '^SERVICE_TOKEN=' "${env_file}" | cut -d= -f2- || true)"
-    market_webhook_url="$(grep -E '^MARKET_WEBHOOK_URL=' "${env_file}" | cut -d= -f2- || true)"
-    market_webhook_secret="$(grep -E '^MARKET_WEBHOOK_SECRET=' "${env_file}" | cut -d= -f2- || true)"
+    jwt_access="$(grep -E '^JWT_ACCESS_SECRET=' "${env_file}" | cut -d= -f2- | sed 's/\r$//' || true)"
+    jwt_refresh="$(grep -E '^JWT_REFRESH_SECRET=' "${env_file}" | cut -d= -f2- | sed 's/\r$//' || true)"
+    media_hook="$(grep -E '^MEDIA_HOOK_SECRET=' "${env_file}" | cut -d= -f2- | sed 's/\r$//' || true)"
+    playback_signing="$(grep -E '^PLAYBACK_SIGNING_SECRET=' "${env_file}" | cut -d= -f2- | sed 's/\r$//' || true)"
+    service_token="$(grep -E '^SERVICE_TOKEN=' "${env_file}" | cut -d= -f2- | sed 's/\r$//' || true)"
+    market_webhook_url="$(grep -E '^MARKET_WEBHOOK_URL=' "${env_file}" | cut -d= -f2- | sed 's/\r$//' || true)"
+    market_webhook_secret="$(grep -E '^MARKET_WEBHOOK_SECRET=' "${env_file}" | cut -d= -f2- | sed 's/\r$//' || true)"
   fi
   jwt_access="${jwt_access:-$(openssl rand -hex 32)}"
   jwt_refresh="${jwt_refresh:-$(openssl rand -hex 32)}"
@@ -124,10 +124,15 @@ docker compose -f docker-compose.prod.yml up -d
 sleep 8
 
 if [[ -x "${REMOTE_DIR}/scripts/prod-migrate.sh" ]]; then
-  bash "${REMOTE_DIR}/scripts/prod-migrate.sh" up || true
+  if ! bash "${REMOTE_DIR}/scripts/prod-migrate.sh" up; then
+    echo "XATO: DB migratsiya muvaffaqiyatsiz — /v1/auth/refresh 500 berishi mumkin"
+    echo "      Tekshiring: bash ${REMOTE_DIR}/scripts/debug-auth.sh"
+  fi
 elif [[ -d "${REMOTE_DIR}/migrations" ]] && command -v migrate >/dev/null 2>&1; then
   DATABASE_URL="$(grep -E '^DATABASE_URL=' "${REMOTE_DIR}/.env" | cut -d= -f2- | sed 's/\r$//')"
-  migrate -path "${REMOTE_DIR}/migrations" -database "${DATABASE_URL}" up 2>/dev/null || true
+  if ! migrate -path "${REMOTE_DIR}/migrations" -database "${DATABASE_URL}" up; then
+    echo "XATO: DB migratsiya muvaffaqiyatsiz"
+  fi
 fi
 
 if [[ -x "${REMOTE_DIR}/scripts/sync-hook-secrets.sh" ]]; then
@@ -140,11 +145,16 @@ LOG="${REMOTE_DIR}/.logs"
 mkdir -p "${LOG}" "${REMOTE_DIR}/data/hls"
 
 start_svc() {
-  nohup env $(grep -v '^#' "${REMOTE_DIR}/.env" | xargs) "${REMOTE_DIR}/bin/$1" >"${LOG}/$1.log" 2>&1 &
+  nohup bash -c "REMOTE_DIR='${REMOTE_DIR}'; source '${REMOTE_DIR}/scripts/load-prod-env.sh'; exec '${REMOTE_DIR}/bin/$1'" >"${LOG}/$1.log" 2>&1 &
   echo "  $1 pid=$!"
 }
 
 start_svc auth-service; sleep 2
+if ! pgrep -f "${REMOTE_DIR}/bin/auth-service" >/dev/null 2>&1; then
+  echo "XATO: auth-service ishga tushmadi — refresh 500 beradi"
+  tail -20 "${LOG}/auth-service.log" 2>&1 || true
+  exit 1
+fi
 start_svc user-service; sleep 2
 start_svc stream-service; sleep 2
 start_svc chat-service; sleep 2

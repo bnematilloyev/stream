@@ -276,11 +276,16 @@ sleep 2
 
 LOG="\${REMOTE_DIR}/.logs"
 start_svc() {
-  nohup env \$(grep -v '^#' "\${REMOTE_DIR}/.env" | xargs) "\${REMOTE_DIR}/bin/\$1" >"\${LOG}/\$1.log" 2>&1 &
+  nohup bash -c "REMOTE_DIR='\${REMOTE_DIR}'; source '\${REMOTE_DIR}/scripts/load-prod-env.sh'; exec '\${REMOTE_DIR}/bin/\$1'" >"\${LOG}/\$1.log" 2>&1 &
   echo "  \$1 pid=\$!"
 }
 
 start_svc auth-service; sleep 2
+if ! pgrep -f "\${REMOTE_DIR}/bin/auth-service" >/dev/null 2>&1; then
+  echo "XATO: auth-service ishga tushmadi"
+  tail -20 "\${LOG}/auth-service.log" 2>&1 || true
+  exit 1
+fi
 start_svc user-service; sleep 2
 start_svc stream-service; sleep 2
 start_svc chat-service; sleep 2

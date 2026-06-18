@@ -2,8 +2,10 @@ package grpc
 
 import (
 	"context"
+	"log"
 
 	"github.com/google/uuid"
+	apperrors "github.com/sahiy/sahiy-stream/pkg/errors"
 	authv1 "github.com/sahiy/sahiy-stream/proto/gen/auth/v1"
 	"github.com/sahiy/sahiy-stream/services/auth-service/internal/domain"
 	"github.com/sahiy/sahiy-stream/services/auth-service/internal/usecase"
@@ -47,6 +49,9 @@ func (s *AuthServer) SyncProvisionLogin(ctx context.Context, req *authv1.SyncPro
 func (s *AuthServer) Refresh(ctx context.Context, req *authv1.RefreshRequest) (*authv1.AuthResponse, error) {
 	result, err := s.uc.Refresh(ctx, req.GetRefreshToken())
 	if err != nil {
+		if appErr, ok := apperrors.IsAppError(err); ok && appErr.HTTPStatus >= 500 && appErr.Err != nil {
+			log.Printf("auth refresh internal error: %v", appErr.Err)
+		}
 		return nil, toGRPCError(err)
 	}
 	return toAuthResponse(result), nil
