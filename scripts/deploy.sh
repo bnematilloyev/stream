@@ -117,16 +117,20 @@ tar -czf "${ARCHIVE}" -C "${ROOT}" \
   scripts/prod-status.sh \
   scripts/wait-for-api.sh \
   scripts/deploy-remote-only.sh \
+  scripts/build-frontend-server.sh \
   scripts/setup-nginx-ssl.sh \
   scripts/check-server-ports.sh \
   scripts/ensure-gpu-queue.sh \
   for-deploy.txt.example \
   services/auth-service/migrations \
-  frontend/.next \
+  frontend/src \
   frontend/public \
   frontend/package.json \
   frontend/package-lock.json \
-  frontend/next.config.mjs
+  frontend/next.config.mjs \
+  frontend/tsconfig.json \
+  frontend/postcss.config.mjs \
+  frontend/.next
 
 echo "==> Serverga yuklash..."
 ssh_cmd "mkdir -p ${REMOTE_DIR}"

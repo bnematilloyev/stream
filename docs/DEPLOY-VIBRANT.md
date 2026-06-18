@@ -112,6 +112,7 @@ Agar **Flexible** bo'lsa — origin HTTP, lekin kamera/WHIP uchun **Full** tavsi
 
 | Muammo | Yechim |
 |--------|--------|
+| `Couldn't find any pages or app directory` (serverda `npm run build`) | Serverda `src/` yo'q — **lokalda** `bash scripts/deploy.sh` yoki `git pull` + `bash scripts/build-frontend-server.sh` |
 | certbot failed | DNS-only (kulrang bulut), 80-port ochiq |
 | CORS xato | `GATEWAY_CORS_ORIGINS` da `https://stream.vibrant.uz` |
 | Kamera ishlamaydi | HTTPS + `mediamtx.yml` da to'g'ri `__SERVER_IP__` |

@@ -164,8 +164,17 @@ fi
 
 cd "${REMOTE_DIR}/frontend"
 if [[ ! -d .next ]]; then
-  echo "Xato: frontend/.next yo'q. Lokalda deploy qiling: bash scripts/deploy.sh"
-  exit 1
+  if [[ -d src/app ]]; then
+    echo "==> .next yo'q — serverda build..."
+    bash "${REMOTE_DIR}/scripts/build-frontend-server.sh"
+  else
+    echo "Xato: frontend/.next va frontend/src/app yo'q."
+    echo "Lokalda deploy qiling: bash scripts/deploy.sh"
+    exit 1
+  fi
+elif [[ "${REBUILD_FRONTEND:-}" == "1" && -d src/app ]]; then
+  echo "==> REBUILD_FRONTEND=1 — qayta build..."
+  bash "${REMOTE_DIR}/scripts/build-frontend-server.sh"
 fi
 npm ci --omit=dev 2>/dev/null || npm ci
 pkill -f "next start -p ${FRONTEND_PORT}" 2>/dev/null || true
