@@ -1,9 +1,5 @@
 import { configuredApiUrl } from "@/lib/urls";
-import {
-  clearStoredRefreshToken,
-  getStoredRefreshToken,
-  setStoredRefreshToken,
-} from "@/lib/refresh-token";
+import { clearStoredRefreshToken } from "@/lib/refresh-token";
 import type { ApiError, AuthResponse } from "@/types";
 
 /** Production: NEXT_PUBLIC_API_URL yoki brauzer origin. Dev: localhost:8080. */
@@ -100,29 +96,16 @@ function notifyAuthCleared() {
   authClearListeners.forEach((listener) => listener());
 }
 
-function refreshRequestBody(useCookieOnly = false) {
-  if (useCookieOnly) return "{}";
-  const refreshToken = getStoredRefreshToken();
-  return JSON.stringify(refreshToken ? { refresh_token: refreshToken } : {});
-}
-
-async function postRefresh(body: string) {
-  return fetch(`${resolveApiUrl()}/v1/auth/refresh`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body,
-  });
-}
-
 async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
-        let res = await postRefresh(refreshRequestBody());
-        if (!res.ok && getStoredRefreshToken()) {
-          res = await postRefresh(refreshRequestBody(true));
-        }
+        const res = await fetch(`${resolveApiUrl()}/v1/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        });
         if (!res.ok) {
           if (res.status === 401 || res.status === 403) {
             notifyAuthCleared();
@@ -130,14 +113,13 @@ async function refreshAccessToken(): Promise<string | null> {
           return null;
         }
         const data: AuthResponse = await res.json();
-        accessToken = data.access_token;
-        if (data.refresh_token) setStoredRefreshToken(data.refresh_token);
+        setAccessToken(data.access_token);
         if (data.user) {
           notifyAuthRefreshed(data);
         } else {
           notifyTokenRefreshed(data.access_token);
         }
-        return accessToken;
+        return data.access_token;
       } catch {
         return null;
       } finally {
@@ -203,5 +185,5 @@ export async function apiFetch<T>(
   return res.json() as Promise<T>;
 }
 
-export { clearStoredRefreshToken, setStoredRefreshToken };
+export { clearStoredRefreshToken };
 export { API_URL, resolveApiUrl as API_URL_RESOLVER };

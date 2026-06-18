@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"net"
 	"regexp"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/sahiy/sahiy-stream/pkg/crypto"
 	apperrors "github.com/sahiy/sahiy-stream/pkg/errors"
+	"github.com/sahiy/sahiy-stream/services/auth-service/internal/adapter/repository"
 	"github.com/sahiy/sahiy-stream/services/auth-service/internal/domain"
 )
 
@@ -205,17 +207,36 @@ func (uc *AuthUseCase) Refresh(ctx context.Context, refreshToken string) (*AuthR
 	if session.IPAddress != nil {
 		ip = session.IPAddress
 	}
-	tokens, err := uc.issueTokens(ctx, user, nil, ip)
+
+	pair, err := uc.jwt.GeneratePair(user.ID.String(), user.Username, user.Role)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.Internal(err)
 	}
-	if err := uc.sessions.DeleteByRefreshToken(ctx, refreshToken); err != nil {
+
+	newSession := &domain.Session{
+		UserID:       user.ID,
+		RefreshToken: pair.RefreshToken,
+		DeviceInfo:   map[string]any{},
+		IPAddress:    ip,
+		ExpiresAt:    time.Now().Add(uc.jwt.RefreshTTL()),
+	}
+	if err := uc.sessions.ReplaceByRefreshToken(ctx, refreshToken, newSession); err != nil {
+		if errors.Is(err, repository.ErrSessionNotFound) {
+			return nil, apperrors.New(apperrors.CodeTokenExpired, "refresh token expired", 401)
+		}
 		return nil, apperrors.Internal(err)
 	}
 
 	uc.cacheUserSession(ctx, user)
 
-	return &AuthResult{User: user, Tokens: *tokens}, nil
+	return &AuthResult{
+		User: user,
+		Tokens: AuthTokens{
+			AccessToken:  pair.AccessToken,
+			RefreshToken: pair.RefreshToken,
+			ExpiresAt:    pair.ExpiresAt,
+		},
+	}, nil
 }
 
 func (uc *AuthUseCase) Logout(ctx context.Context, refreshToken string) error {

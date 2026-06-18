@@ -12,6 +12,8 @@ import (
 	"github.com/sahiy/sahiy-stream/services/auth-service/internal/domain"
 )
 
+var ErrSessionNotFound = errors.New("session not found")
+
 type PostgresSessionRepository struct {
 	pool *pgxpool.Pool
 }
@@ -42,7 +44,7 @@ func (r *PostgresSessionRepository) Create(ctx context.Context, session *domain.
 
 func (r *PostgresSessionRepository) GetByRefreshToken(ctx context.Context, token string) (*domain.Session, error) {
 	query := `
-		SELECT id, user_id, refresh_token, device_info, ip_address, expires_at, created_at
+		SELECT id, user_id, refresh_token, device_info, host(ip_address), expires_at, created_at
 		FROM sessions WHERE refresh_token = $1
 	`
 	var s domain.Session
@@ -60,6 +62,41 @@ func (r *PostgresSessionRepository) GetByRefreshToken(ctx context.Context, token
 		_ = json.Unmarshal(deviceJSON, &s.DeviceInfo)
 	}
 	return &s, nil
+}
+
+func (r *PostgresSessionRepository) ReplaceByRefreshToken(ctx context.Context, oldToken string, session *domain.Session) error {
+	deviceJSON, err := json.Marshal(session.DeviceInfo)
+	if err != nil {
+		return fmt.Errorf("marshal device info: %w", err)
+	}
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	tag, err := tx.Exec(ctx, `DELETE FROM sessions WHERE refresh_token = $1`, oldToken)
+	if err != nil {
+		return fmt.Errorf("delete session: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrSessionNotFound
+	}
+
+	query := `
+		INSERT INTO sessions (user_id, refresh_token, device_info, ip_address, expires_at)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, created_at
+	`
+	err = tx.QueryRow(ctx, query,
+		session.UserID, session.RefreshToken, deviceJSON, session.IPAddress, session.ExpiresAt,
+	).Scan(&session.ID, &session.CreatedAt)
+	if err != nil {
+		return fmt.Errorf("insert session: %w", err)
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (r *PostgresSessionRepository) DeleteByRefreshToken(ctx context.Context, token string) error {

@@ -102,11 +102,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
-	var req refreshRequest
-	_ = json.NewDecoder(r.Body).Decode(&req)
-	token := strings.TrimSpace(req.RefreshToken)
+	token := refreshTokenFromRequest(r)
 	if token == "" {
-		token = refreshTokenFromRequest(r)
+		var req refreshRequest
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		token = strings.TrimSpace(req.RefreshToken)
 	}
 	if token == "" {
 		httputil.Error(w, validationError("refresh_token is required"))
@@ -114,14 +114,6 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := h.auth.Refresh(r.Context(), &authv1.RefreshRequest{RefreshToken: token})
-	if err != nil && req.RefreshToken != "" {
-		if cookie := refreshTokenFromRequest(r); cookie != "" && cookie != token {
-			resp, err = h.auth.Refresh(r.Context(), &authv1.RefreshRequest{RefreshToken: cookie})
-			if err == nil {
-				token = cookie
-			}
-		}
-	}
 	if err != nil {
 		httputil.Error(w, grpcError(err))
 		return

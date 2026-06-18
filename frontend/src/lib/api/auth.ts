@@ -4,13 +4,11 @@ import {
   getAccessToken,
   refreshAccessToken,
   setAccessToken,
-  setStoredRefreshToken,
 } from "./client";
 import { useAuthStore } from "@/stores/authStore";
 import type { AuthResponse, User } from "@/types";
 
 function persistAuth(res: AuthResponse) {
-  setStoredRefreshToken(res.refresh_token);
   setAccessToken(res.access_token);
   useAuthStore.getState().setAuth(res.user, res.access_token);
 }

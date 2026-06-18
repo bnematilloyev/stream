@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { restoreSession } from "@/lib/api/auth";
 import { getAccessToken } from "@/lib/api/client";
+import { clearLegacyRefreshTokens } from "@/lib/refresh-token";
 import { useAuthStore } from "@/stores/authStore";
 
 export function AuthHydrator({ children }: { children: React.ReactNode }) {
@@ -12,6 +13,8 @@ export function AuthHydrator({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
+
+    clearLegacyRefreshTokens();
 
     if (!user) {
       setSessionReady(true);

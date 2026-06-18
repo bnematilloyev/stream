@@ -44,6 +44,8 @@ func grpcError(err error) error {
 		return apperrors.RateLimited()
 	case codes.Unavailable:
 		return apperrors.ServiceUnavailable(st.Message())
+	case codes.DeadlineExceeded:
+		return apperrors.ServiceUnavailable("auth service timeout")
 	default:
 		return apperrors.Internal(err)
 	}

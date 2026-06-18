@@ -47,7 +47,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "sahiy-auth",
-      // Faqat user saqlanadi — access token memory + refresh cookie orqali tiklanadi.
+      // Faqat user saqlanadi — access token sessionStorage, refresh HttpOnly cookie.
       partialize: (s) => ({ user: s.user }),
       onRehydrateStorage: () => (state) => {
         const token = getAccessToken();

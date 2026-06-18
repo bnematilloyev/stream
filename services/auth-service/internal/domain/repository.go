@@ -22,6 +22,7 @@ type UserRepository interface {
 type SessionRepository interface {
 	Create(ctx context.Context, session *Session) error
 	GetByRefreshToken(ctx context.Context, token string) (*Session, error)
+	ReplaceByRefreshToken(ctx context.Context, oldToken string, session *Session) error
 	DeleteByRefreshToken(ctx context.Context, token string) error
 	DeleteByUserID(ctx context.Context, userID uuid.UUID) error
 }
