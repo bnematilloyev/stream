@@ -42,6 +42,8 @@ func grpcError(err error) error {
 		return apperrors.Conflict(apperrors.CodeConflict, st.Message())
 	case codes.ResourceExhausted:
 		return apperrors.RateLimited()
+	case codes.Unavailable:
+		return apperrors.ServiceUnavailable(st.Message())
 	default:
 		return apperrors.Internal(err)
 	}

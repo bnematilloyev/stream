@@ -1,4 +1,9 @@
 import { configuredApiUrl } from "@/lib/urls";
+import {
+  clearStoredRefreshToken,
+  getStoredRefreshToken,
+  setStoredRefreshToken,
+} from "@/lib/refresh-token";
 import type { ApiError } from "@/types";
 
 /** Production: NEXT_PUBLIC_API_URL yoki brauzer origin. Dev: localhost:8080. */
@@ -66,26 +71,33 @@ function notifyAuthCleared() {
   authClearListeners.forEach((listener) => listener());
 }
 
+function refreshRequestBody() {
+  const refreshToken = getStoredRefreshToken();
+  return JSON.stringify(refreshToken ? { refresh_token: refreshToken } : {});
+}
+
 async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
+      const hadToken = !!accessToken;
       try {
         const res = await fetch(`${resolveApiUrl()}/v1/auth/refresh`, {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
+          body: refreshRequestBody(),
         });
         if (!res.ok) {
-          notifyAuthCleared();
+          if (!hadToken) notifyAuthCleared();
           return null;
         }
         const data = await res.json();
         accessToken = data.access_token;
+        if (data.refresh_token) setStoredRefreshToken(data.refresh_token);
         notifyTokenRefreshed(data.access_token);
         return accessToken;
       } catch {
-        notifyAuthCleared();
+        if (!hadToken) notifyAuthCleared();
         return null;
       } finally {
         refreshPromise = null;
@@ -148,4 +160,5 @@ export async function apiFetch<T>(
   return res.json() as Promise<T>;
 }
 
+export { clearStoredRefreshToken, setStoredRefreshToken };
 export { API_URL, resolveApiUrl as API_URL_RESOLVER };

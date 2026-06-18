@@ -7,12 +7,13 @@ import { useAuthStore } from "@/stores/authStore";
 export function AuthHydrator({ children }: { children: React.ReactNode }) {
   const hydrated = useAuthStore((s) => s.hydrated);
   const user = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
     if (!hydrated) return;
 
-    if (!user) {
+    if (!user || accessToken) {
       setSessionReady(true);
       return;
     }
@@ -25,9 +26,9 @@ export function AuthHydrator({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [hydrated, user]);
+  }, [hydrated, user, accessToken]);
 
-  if (!hydrated || (user && !sessionReady)) {
+  if (!hydrated || (user && !accessToken && !sessionReady)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />

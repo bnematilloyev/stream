@@ -7,6 +7,7 @@ import {
   onAuthCleared,
   setAccessToken,
 } from "@/lib/api/client";
+import { clearStoredRefreshToken } from "@/lib/refresh-token";
 import type { User } from "@/types";
 
 interface AuthState {
@@ -37,6 +38,7 @@ export const useAuthStore = create<AuthState>()(
       setUser: (user) => set({ user }),
       clearAuth: () => {
         setAccessToken(null);
+        clearStoredRefreshToken();
         set({ user: null, accessToken: null });
       },
       setHydrated: (hydrated) => set({ hydrated }),

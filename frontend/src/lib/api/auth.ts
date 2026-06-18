@@ -1,6 +1,18 @@
-import { apiFetch, resolveApiUrl, setAccessToken } from "./client";
+import {
+  apiFetch,
+  clearStoredRefreshToken,
+  resolveApiUrl,
+  setAccessToken,
+  setStoredRefreshToken,
+} from "./client";
+import { getStoredRefreshToken } from "@/lib/refresh-token";
 import { useAuthStore } from "@/stores/authStore";
 import type { AuthResponse, User } from "@/types";
+
+function persistAuth(res: AuthResponse) {
+  setStoredRefreshToken(res.refresh_token);
+  useAuthStore.getState().setAuth(res.user, res.access_token);
+}
 
 export async function register(data: {
   email: string;
@@ -13,7 +25,7 @@ export async function register(data: {
     body: JSON.stringify(data),
     credentials: "include",
   });
-  useAuthStore.getState().setAuth(res.user, res.access_token);
+  persistAuth(res);
   return res;
 }
 
@@ -23,7 +35,7 @@ export async function login(data: { email: string; password: string }) {
     body: JSON.stringify(data),
     credentials: "include",
   });
-  useAuthStore.getState().setAuth(res.user, res.access_token);
+  persistAuth(res);
   return res;
 }
 
@@ -35,6 +47,7 @@ export async function logout() {
       credentials: "include",
     });
   } finally {
+    clearStoredRefreshToken();
     useAuthStore.getState().clearAuth();
   }
 }
@@ -43,25 +56,38 @@ export async function getMe() {
   return apiFetch<User>("/v1/auth/me", { auth: true });
 }
 
-/** HttpOnly refresh cookie orqali yangi access token olish (sahifa yuklanganda). */
+/** Cookie yoki sessionStorage refresh_token orqali sessiyani tiklash. */
 export async function restoreSession(): Promise<boolean> {
+  if (useAuthStore.getState().accessToken) {
+    return true;
+  }
+
+  const refreshToken = getStoredRefreshToken();
+  if (!refreshToken) {
+    // Cookie-only sessiya — body bo'sh, cookie yuboriladi.
+  }
+
   try {
     const res = await fetch(`${resolveApiUrl()}/v1/auth/refresh`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify(
+        refreshToken ? { refresh_token: refreshToken } : {},
+      ),
     });
     if (!res.ok) {
       useAuthStore.getState().clearAuth();
+      clearStoredRefreshToken();
       return false;
     }
     const data: AuthResponse = await res.json();
-    useAuthStore.getState().setAuth(data.user, data.access_token);
+    persistAuth(data);
     setAccessToken(data.access_token);
     return true;
   } catch {
     useAuthStore.getState().clearAuth();
+    clearStoredRefreshToken();
     return false;
   }
 }

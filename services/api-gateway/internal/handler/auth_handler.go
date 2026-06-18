@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/sahiy/sahiy-stream/pkg/auth"
@@ -101,11 +102,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
-	token := refreshTokenFromRequest(r)
+	var req refreshRequest
+	_ = json.NewDecoder(r.Body).Decode(&req)
+	token := strings.TrimSpace(req.RefreshToken)
 	if token == "" {
-		var req refreshRequest
-		_ = json.NewDecoder(r.Body).Decode(&req)
-		token = req.RefreshToken
+		token = refreshTokenFromRequest(r)
 	}
 	if token == "" {
 		httputil.Error(w, validationError("refresh_token is required"))
@@ -147,9 +148,13 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	httputil.JSON(w, http.StatusOK, toPrincipalResponse(user))
 }
 
+const refreshCookieName = "sahiy_refresh"
+
 func refreshTokenFromRequest(r *http.Request) string {
-	if c, err := r.Cookie("refresh_token"); err == nil {
-		return c.Value
+	for _, name := range []string{refreshCookieName, "refresh_token"} {
+		if c, err := r.Cookie(name); err == nil && strings.TrimSpace(c.Value) != "" {
+			return strings.TrimSpace(c.Value)
+		}
 	}
 	return ""
 }
@@ -160,13 +165,19 @@ func (h *AuthHandler) setRefreshCookie(w http.ResponseWriter, token string) {
 	if maxAge <= 0 {
 		maxAge = int((30 * 24 * time.Hour).Seconds())
 	}
-	// Eski deploydagi /v1/auth path cookie ni tozalash.
+	// Eski cookie nomlari va pathlarni tozalash.
+	for _, legacy := range []struct{ name, path string }{
+		{"refresh_token", "/v1/auth"},
+		{"refresh_token", "/"},
+		{refreshCookieName, "/v1/auth"},
+	} {
+		http.SetCookie(w, &http.Cookie{
+			Name: legacy.name, Value: "", Path: legacy.path,
+			HttpOnly: true, Secure: secure, MaxAge: -1,
+		})
+	}
 	http.SetCookie(w, &http.Cookie{
-		Name: "refresh_token", Value: "", Path: "/v1/auth",
-		HttpOnly: true, Secure: secure, MaxAge: -1,
-	})
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_token",
+		Name:     refreshCookieName,
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
@@ -178,14 +189,16 @@ func (h *AuthHandler) setRefreshCookie(w http.ResponseWriter, token string) {
 
 func (h *AuthHandler) clearRefreshCookie(w http.ResponseWriter) {
 	secure := h.appEnv == "production"
-	http.SetCookie(w, &http.Cookie{
-		Name:     "refresh_token",
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   secure,
-		MaxAge:   -1,
-	})
+	for _, legacy := range []struct{ name, path string }{
+		{refreshCookieName, "/"},
+		{"refresh_token", "/"},
+		{"refresh_token", "/v1/auth"},
+	} {
+		http.SetCookie(w, &http.Cookie{
+			Name: legacy.name, Value: "", Path: legacy.path,
+			HttpOnly: true, Secure: secure, MaxAge: -1,
+		})
+	}
 }
 
 func toAuthResponse(resp *authv1.AuthResponse) authResponse {
