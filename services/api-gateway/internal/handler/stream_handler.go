@@ -166,9 +166,14 @@ func (h *StreamHandler) Playback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Cache-Control", "public, max-age=5, stale-while-revalidate=30")
+	hlsReady := resp.Status == "ingesting" || resp.Status == "ready"
+	if stErr == nil && st != nil && st.Status == "ended" {
+		hlsReady = resp.Status == "stopped" || resp.Status == "ready"
+	}
 	out := map[string]any{
 		"stream_id": resp.StreamId, "url": resp.Url, "format": "ll-hls",
 		"status": resp.Status, "expires_at_unix": resp.ExpiresAtUnix,
+		"hls_ready": hlsReady,
 	}
 	if stErr == nil && st != nil {
 		out["latency_mode"] = st.LatencyMode

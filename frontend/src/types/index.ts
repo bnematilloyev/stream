@@ -82,6 +82,7 @@ export interface Playback {
   latency_mode?: string;
   playback_mode?: "ll-hls" | "dual" | "whep";
   whep_url?: string;
+  hls_ready?: boolean;
 }
 
 export interface IngestKey {

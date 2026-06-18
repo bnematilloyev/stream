@@ -19,9 +19,9 @@ func NewPostgresStreamMediaRepository(db *database.Router) *PostgresStreamMediaR
 func (r *PostgresStreamMediaRepository) GetByStreamID(ctx context.Context, streamID uuid.UUID) (*domain.StreamMedia, error) {
 	var m domain.StreamMedia
 	err := r.db.Read().QueryRow(ctx, `
-		SELECT stream_id, status, hls_path, playback_url, ingest_name, started_at, stopped_at, updated_at
+		SELECT stream_id, status, hls_path, playback_url, ingest_name, ffmpeg_pid, started_at, stopped_at, updated_at
 		FROM stream_media WHERE stream_id = $1
-	`, streamID).Scan(&m.StreamID, &m.Status, &m.HLSPath, &m.PlaybackURL, &m.IngestName, &m.StartedAt, &m.StoppedAt, &m.UpdatedAt)
+	`, streamID).Scan(&m.StreamID, &m.Status, &m.HLSPath, &m.PlaybackURL, &m.IngestName, &m.FFmpegPID, &m.StartedAt, &m.StoppedAt, &m.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

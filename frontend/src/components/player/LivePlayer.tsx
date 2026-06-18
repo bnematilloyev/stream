@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import {
   createDvrHlsConfig,
   createHlsConfig,
+  createLowLatencyHlsConfig,
   createVodHlsConfig,
   minBufferBeforePlaySec,
 } from "@/lib/player/hls-config";
@@ -29,6 +30,7 @@ interface LivePlayerProps {
   autoPlay?: boolean;
   className?: string;
   playbackMode?: PlaybackMode;
+  lowLatency?: boolean;
 }
 
 type QualityLevel = { height: number; label: string; index: number };
@@ -101,6 +103,7 @@ export function LivePlayer({
   autoPlay = true,
   className,
   playbackMode = "live",
+  lowLatency = false,
 }: LivePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -188,8 +191,12 @@ export function LivePlayer({
         playbackMode === "vod"
           ? createVodHlsConfig()
           : playbackMode === "dvr"
-            ? createDvrHlsConfig(networkProfile)
-            : createHlsConfig(networkProfile);
+            ? lowLatency
+              ? createLowLatencyHlsConfig()
+              : createDvrHlsConfig(networkProfile)
+            : lowLatency
+              ? createLowLatencyHlsConfig()
+              : createHlsConfig(networkProfile);
 
       try {
         const hls = new Hls(hlsConfig);
@@ -266,7 +273,11 @@ export function LivePlayer({
               hls.recoverMediaError();
               break;
             default:
-              setError("Stream uzildi. Qayta ulanmoqda...");
+              setError(
+                data.details === "manifestLoadError" || data.response?.code === 404
+                  ? "LL-HLS hali tayyor emas. Ultra-low rejimini tanlang yoki bir necha soniya kuting."
+                  : "Stream uzildi. Qayta ulanmoqda...",
+              );
               setTimeout(() => initPlayer(), 3000);
               break;
           }
@@ -286,7 +297,7 @@ export function LivePlayer({
       setError("Brauzeringiz HLS ni qo'llab-quvvatlamaydi");
       setWarming(false);
     }
-  }, [src, autoPlay, tryStartPlayback, networkProfile, playbackMode]);
+  }, [src, autoPlay, tryStartPlayback, networkProfile, playbackMode, lowLatency]);
 
   useEffect(() => {
     if (!seekable) return;

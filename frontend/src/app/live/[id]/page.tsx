@@ -36,6 +36,12 @@ export default function WatchPage() {
     enabled: !!id && (isLive || isReplay),
     staleTime: isReplay ? 300_000 : 30_000,
     retry: isReplay ? 1 : 2,
+    refetchInterval: (query) => {
+      if (!isLive) return false;
+      const pb = query.state.data;
+      if (pb?.hls_ready) return false;
+      return 3000;
+    },
   });
 
   const channelQuery = useQuery({
@@ -46,8 +52,9 @@ export default function WatchPage() {
 
   const playback = playbackQuery.data;
   const isUltraLow = playback?.latency_mode === "ultra-low";
+  const hlsReady = playback?.hls_ready !== false;
   const [ultraLow, setUltraLow] = useState(true);
-  const playbackReady = !!(playback?.url || playback?.whep_url);
+  const playbackReady = !!(playback?.whep_url || (playback?.url && hlsReady));
 
   useEffect(() => {
     if (!id || !isLive || !playbackReady) return;
@@ -95,7 +102,8 @@ export default function WatchPage() {
                       size="sm"
                       variant={!ultraLow ? "default" : "secondary"}
                       onClick={() => setUltraLow(false)}
-                      disabled={!playback.url}
+                      disabled={!hlsReady}
+                      title={!hlsReady ? "HLS hali tayyorlanmoqda" : undefined}
                     >
                       LL-HLS (CDN scale)
                     </Button>

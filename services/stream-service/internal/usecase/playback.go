@@ -17,6 +17,7 @@ type PlaybackResult struct {
 	URL       string
 	Format    string
 	Status    string
+	HlsReady  bool
 	ExpiresAt time.Time
 }
 
@@ -60,6 +61,8 @@ func (uc *PlaybackUseCase) GetPlayback(ctx context.Context, streamID uuid.UUID) 
 		status = m.Status
 	}
 
+	hlsReady := mediaHLSReady(m, st.Status)
+
 	if !isPlaybackAllowed(st.Status) {
 		return nil, apperrors.NotFound("playback not available")
 	}
@@ -74,6 +77,7 @@ func (uc *PlaybackUseCase) GetPlayback(ctx context.Context, streamID uuid.UUID) 
 			URL:       signedURL,
 			Format:    "hls",
 			Status:    status,
+			HlsReady:  hlsReady,
 			ExpiresAt: expiresAt,
 		}, nil
 	}
@@ -91,8 +95,22 @@ func (uc *PlaybackUseCase) GetPlayback(ctx context.Context, streamID uuid.UUID) 
 		URL:       signedURL,
 		Format:    "hls",
 		Status:    status,
+		HlsReady:  hlsReady,
 		ExpiresAt: expiresAt,
 	}, nil
+}
+
+func mediaHLSReady(m *domain.StreamMedia, streamStatus string) bool {
+	if m == nil {
+		return false
+	}
+	if m.FFmpegPID != nil && *m.FFmpegPID > 0 {
+		return true
+	}
+	if streamStatus == domain.StatusEnded && m.HLSPath != nil && *m.HLSPath != "" {
+		return m.Status == domain.MediaStatusStopped || m.Status == domain.MediaStatusReady
+	}
+	return false
 }
 
 func (uc *PlaybackUseCase) UpsertMedia(ctx context.Context, m *domain.StreamMedia) error {

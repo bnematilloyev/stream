@@ -13,16 +13,17 @@ type StreamMedia struct {
 	HLSPath     *string
 	PlaybackURL *string
 	IngestName  *string
+	FFmpegPID   *int
 	StartedAt   *time.Time
 	StoppedAt   *time.Time
 	UpdatedAt   time.Time
 }
 
 const (
-	MediaStatusIdle     = "idle"
+	MediaStatusIdle      = "idle"
 	MediaStatusIngesting = "ingesting"
-	MediaStatusReady    = "ready"
-	MediaStatusStopped  = "stopped"
+	MediaStatusReady     = "ready"
+	MediaStatusStopped   = "stopped"
 )
 
 type StreamMediaRepository interface {

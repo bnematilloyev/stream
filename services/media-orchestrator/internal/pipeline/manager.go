@@ -121,6 +121,13 @@ func (m *Manager) OnPublish(ctx context.Context, ingestName, source string) erro
 		// RTMP_BASE_URL shown to OBS — hairpin to the VPS public IP often fails.
 		inputURL = readyURL
 	}
+	if source == "whip" {
+		readyURL, err := waitForRTSPPublisher(ctx, m.rtspBase, ingestName, m.log)
+		if err != nil {
+			return err
+		}
+		inputURL = readyURL
+	}
 	outDir := filepath.Join(m.hlsDir, sid.String())
 
 	var job *transcode.RunningJob
@@ -131,16 +138,7 @@ func (m *Manager) OnPublish(ctx context.Context, ingestName, source string) erro
 		Encoder: m.encoder, Storage: m.storageBackend,
 	})
 	if err != nil {
-		// WHIP ultra-low can play via WHEP without HLS when FFmpeg is unavailable.
-		if source == "whip" {
-			m.log.Warn("ffmpeg unavailable, whip-only ingest (no HLS)",
-				zap.String("stream_id", sid.String()),
-				zap.Error(err),
-			)
-			job = &transcode.RunningJob{JobID: sid.String(), StreamID: sid.String()}
-		} else {
-			return err
-		}
+		return fmt.Errorf("start transcode for %s: %w", source, err)
 	}
 
 	if job.Cmd != nil && m.syncSegments && m.storage != nil && m.storage.Backend() == storage.BackendS3 {
@@ -274,7 +272,6 @@ func (m *Manager) resolveStream(ctx context.Context, ingestName string) (streamI
 
 func (m *Manager) buildInputURL(ingestName, source, latencyMode string) (string, string) {
 	if source == "whip" {
-		time.Sleep(1200 * time.Millisecond)
 		if latencyMode == "" || latencyMode == "ultra-low" {
 			latencyMode = "ultra-low"
 		}

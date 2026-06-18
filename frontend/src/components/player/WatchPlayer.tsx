@@ -29,9 +29,10 @@ export function WatchPlayer({
 }) {
   const canWhep =
     !!playback.whep_url && playback.latency_mode === "ultra-low";
+  const canHls = !!playback.url && playback.hls_ready !== false;
   const useWhep =
     canWhep &&
-    (preferUltraLow || playback.playback_mode === "whep" || !playback.url);
+    (preferUltraLow || playback.playback_mode === "whep" || !canHls);
 
   if (useWhep) {
     return <WhepPlayer whepUrl={playback.whep_url!} title={title} />;
@@ -44,6 +45,7 @@ export function WatchPlayer({
         title={title}
         autoPlay
         playbackMode={playbackMode}
+        lowLatency={playback.playback_mode === "dual" || playback.format === "ll-hls"}
       />
     );
   }
