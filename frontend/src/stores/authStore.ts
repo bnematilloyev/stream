@@ -2,7 +2,11 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { setAccessToken } from "@/lib/api/client";
+import {
+  onAccessTokenRefreshed,
+  onAuthCleared,
+  setAccessToken,
+} from "@/lib/api/client";
 import type { User } from "@/types";
 
 interface AuthState {
@@ -10,6 +14,7 @@ interface AuthState {
   accessToken: string | null;
   hydrated: boolean;
   setAuth: (user: User, accessToken: string) => void;
+  setAccessTokenOnly: (accessToken: string) => void;
   setUser: (user: User) => void;
   clearAuth: () => void;
   setHydrated: (v: boolean) => void;
@@ -25,6 +30,10 @@ export const useAuthStore = create<AuthState>()(
         setAccessToken(accessToken);
         set({ user, accessToken });
       },
+      setAccessTokenOnly: (accessToken) => {
+        setAccessToken(accessToken);
+        set({ accessToken });
+      },
       setUser: (user) => set({ user }),
       clearAuth: () => {
         setAccessToken(null);
@@ -34,11 +43,20 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "sahiy-auth",
-      partialize: (s) => ({ user: s.user, accessToken: s.accessToken }),
+      // Faqat user saqlanadi — access token memory + refresh cookie orqali tiklanadi.
+      partialize: (s) => ({ user: s.user }),
       onRehydrateStorage: () => (state) => {
-        if (state?.accessToken) setAccessToken(state.accessToken);
         state?.setHydrated(true);
       },
     },
   ),
 );
+
+if (typeof window !== "undefined") {
+  onAccessTokenRefreshed((token) => {
+    useAuthStore.getState().setAccessTokenOnly(token);
+  });
+  onAuthCleared(() => {
+    useAuthStore.getState().clearAuth();
+  });
+}

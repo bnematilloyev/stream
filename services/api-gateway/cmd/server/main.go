@@ -71,7 +71,7 @@ func main() {
 	sessionCache := auth.NewSessionCache(redisClient, cfg.UserCacheTTL)
 	tokenValidator := auth.NewValidator(jwtManager, sessionCache, authadapter.NewGRPCUserFetcher(authClient))
 
-	authHandler := handler.NewAuthHandler(authClient)
+	authHandler := handler.NewAuthHandler(authClient, cfg.JWTRefreshTTL, cfg.AppEnv)
 	userHandler := handler.NewUserHandler(userClient)
 	channelHandler := handler.NewChannelHandler(userClient, cfg.WhipBaseURL)
 	streamHandler := handler.NewStreamHandler(streamClient, cfg.WhipBaseURL)

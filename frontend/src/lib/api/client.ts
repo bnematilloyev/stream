@@ -32,8 +32,13 @@ export class ApiClientError extends Error {
 
 type RequestOptions = RequestInit & { auth?: boolean };
 
+type TokenRefreshListener = (accessToken: string) => void;
+type AuthClearListener = () => void;
+
 let accessToken: string | null = null;
 let refreshPromise: Promise<string | null> | null = null;
+const tokenRefreshListeners = new Set<TokenRefreshListener>();
+const authClearListeners = new Set<AuthClearListener>();
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
@@ -41,6 +46,24 @@ export function setAccessToken(token: string | null) {
 
 export function getAccessToken() {
   return accessToken;
+}
+
+export function onAccessTokenRefreshed(listener: TokenRefreshListener) {
+  tokenRefreshListeners.add(listener);
+  return () => tokenRefreshListeners.delete(listener);
+}
+
+export function onAuthCleared(listener: AuthClearListener) {
+  authClearListeners.add(listener);
+  return () => authClearListeners.delete(listener);
+}
+
+function notifyTokenRefreshed(token: string) {
+  tokenRefreshListeners.forEach((listener) => listener(token));
+}
+
+function notifyAuthCleared() {
+  authClearListeners.forEach((listener) => listener());
 }
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -53,11 +76,16 @@ async function refreshAccessToken(): Promise<string | null> {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
         });
-        if (!res.ok) return null;
+        if (!res.ok) {
+          notifyAuthCleared();
+          return null;
+        }
         const data = await res.json();
         accessToken = data.access_token;
+        notifyTokenRefreshed(data.access_token);
         return accessToken;
       } catch {
+        notifyAuthCleared();
         return null;
       } finally {
         refreshPromise = null;
@@ -75,6 +103,10 @@ export async function apiFetch<T>(
   const reqHeaders = new Headers(headers);
   reqHeaders.set("Content-Type", "application/json");
 
+  if (auth && !accessToken) {
+    await refreshAccessToken();
+  }
+
   if (auth && accessToken) {
     reqHeaders.set("Authorization", `Bearer ${accessToken}`);
   }
@@ -86,7 +118,7 @@ export async function apiFetch<T>(
     credentials: auth ? "include" : rest.credentials,
   });
 
-  if (auth && res.status === 401 && accessToken) {
+  if (auth && res.status === 401) {
     const newToken = await refreshAccessToken();
     if (newToken) {
       reqHeaders.set("Authorization", `Bearer ${newToken}`);

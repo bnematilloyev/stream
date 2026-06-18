@@ -3,22 +3,23 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 	"time"
 
+	"github.com/sahiy/sahiy-stream/pkg/auth"
 	"github.com/sahiy/sahiy-stream/pkg/httputil"
+	authv1 "github.com/sahiy/sahiy-stream/proto/gen/auth/v1"
 	"github.com/sahiy/sahiy-stream/services/api-gateway/internal/client"
 	"github.com/sahiy/sahiy-stream/services/api-gateway/internal/middleware"
-	"github.com/sahiy/sahiy-stream/pkg/auth"
-	authv1 "github.com/sahiy/sahiy-stream/proto/gen/auth/v1"
 )
 
 type AuthHandler struct {
-	auth *client.AuthClient
+	auth       *client.AuthClient
+	refreshTTL time.Duration
+	appEnv     string
 }
 
-func NewAuthHandler(auth *client.AuthClient) *AuthHandler {
-	return &AuthHandler{auth: auth}
+func NewAuthHandler(auth *client.AuthClient, refreshTTL time.Duration, appEnv string) *AuthHandler {
+	return &AuthHandler{auth: auth, refreshTTL: refreshTTL, appEnv: appEnv}
 }
 
 type registerRequest struct {
@@ -45,13 +46,13 @@ type authResponse struct {
 }
 
 type userResponse struct {
-	ID            string `json:"id"`
-	Email         string `json:"email"`
-	Username      string `json:"username"`
-	DisplayName   string `json:"display_name"`
-	Role          string `json:"role"`
-	Status        string `json:"status"`
-	EmailVerified bool   `json:"email_verified"`
+	ID            string    `json:"id"`
+	Email         string    `json:"email"`
+	Username      string    `json:"username"`
+	DisplayName   string    `json:"display_name"`
+	Role          string    `json:"role"`
+	Status        string    `json:"status"`
+	EmailVerified bool      `json:"email_verified"`
 	CreatedAt     time.Time `json:"created_at"`
 }
 
@@ -73,7 +74,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setRefreshCookie(w, resp.RefreshToken)
+	h.setRefreshCookie(w, resp.RefreshToken)
 	httputil.JSON(w, http.StatusCreated, toAuthResponse(resp))
 }
 
@@ -95,7 +96,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setRefreshCookie(w, resp.RefreshToken)
+	h.setRefreshCookie(w, resp.RefreshToken)
 	httputil.JSON(w, http.StatusOK, toAuthResponse(resp))
 }
 
@@ -117,7 +118,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setRefreshCookie(w, resp.RefreshToken)
+	h.setRefreshCookie(w, resp.RefreshToken)
 	httputil.JSON(w, http.StatusOK, toAuthResponse(resp))
 }
 
@@ -133,7 +134,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		_, _ = h.auth.Logout(r.Context(), &authv1.LogoutRequest{RefreshToken: token})
 	}
 
-	clearRefreshCookie(w)
+	h.clearRefreshCookie(w)
 	httputil.JSON(w, http.StatusOK, map[string]bool{"success": true})
 }
 
@@ -153,25 +154,36 @@ func refreshTokenFromRequest(r *http.Request) string {
 	return ""
 }
 
-func setRefreshCookie(w http.ResponseWriter, token string) {
-	secure := os.Getenv("APP_ENV") == "production"
+func (h *AuthHandler) setRefreshCookie(w http.ResponseWriter, token string) {
+	secure := h.appEnv == "production"
+	maxAge := int(h.refreshTTL.Seconds())
+	if maxAge <= 0 {
+		maxAge = int((30 * 24 * time.Hour).Seconds())
+	}
+	// Eski deploydagi /v1/auth path cookie ni tozalash.
+	http.SetCookie(w, &http.Cookie{
+		Name: "refresh_token", Value: "", Path: "/v1/auth",
+		HttpOnly: true, Secure: secure, MaxAge: -1,
+	})
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    token,
-		Path:     "/v1/auth",
+		Path:     "/",
 		HttpOnly: true,
 		Secure:   secure,
-		SameSite: http.SameSiteStrictMode,
-		MaxAge:   int((7 * 24 * time.Hour).Seconds()),
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   maxAge,
 	})
 }
 
-func clearRefreshCookie(w http.ResponseWriter) {
+func (h *AuthHandler) clearRefreshCookie(w http.ResponseWriter) {
+	secure := h.appEnv == "production"
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    "",
-		Path:     "/v1/auth",
+		Path:     "/",
 		HttpOnly: true,
+		Secure:   secure,
 		MaxAge:   -1,
 	})
 }

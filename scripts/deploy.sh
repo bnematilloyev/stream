@@ -198,6 +198,15 @@ MEDIA_HOOK_SECRET=\$(openssl rand -hex 32)
 PLAYBACK_SIGNING_SECRET=\$(openssl rand -hex 32)
 SERVICE_TOKEN=\$(openssl rand -hex 32)
 
+if [[ -f "\${REMOTE_DIR}/.env" ]]; then
+  _read_env() { grep "^\$1=" "\${REMOTE_DIR}/.env" 2>/dev/null | cut -d= -f2- || true; }
+  _saved=\$(_read_env JWT_ACCESS_SECRET); [[ -n "\${_saved}" ]] && JWT_ACCESS_SECRET="\${_saved}"
+  _saved=\$(_read_env JWT_REFRESH_SECRET); [[ -n "\${_saved}" ]] && JWT_REFRESH_SECRET="\${_saved}"
+  _saved=\$(_read_env MEDIA_HOOK_SECRET); [[ -n "\${_saved}" ]] && MEDIA_HOOK_SECRET="\${_saved}"
+  _saved=\$(_read_env PLAYBACK_SIGNING_SECRET); [[ -n "\${_saved}" ]] && PLAYBACK_SIGNING_SECRET="\${_saved}"
+  _saved=\$(_read_env SERVICE_TOKEN); [[ -n "\${_saved}" ]] && SERVICE_TOKEN="\${_saved}"
+fi
+
 cat >"\${REMOTE_DIR}/.env" <<ENVFILE
 APP_ENV=production
 LOG_LEVEL=info
@@ -206,6 +215,8 @@ REDIS_URL=redis://127.0.0.1:16379/0
 NATS_URL=nats://127.0.0.1:14222
 JWT_ACCESS_SECRET=\${JWT_ACCESS_SECRET}
 JWT_REFRESH_SECRET=\${JWT_REFRESH_SECRET}
+JWT_ACCESS_TTL=24h
+JWT_REFRESH_TTL=720h
 MEDIA_HOOK_SECRET=\${MEDIA_HOOK_SECRET}
 PLAYBACK_SIGNING_SECRET=\${PLAYBACK_SIGNING_SECRET}
 PLAYBACK_BASE_URL=\${FRONTEND_URL}
@@ -245,7 +256,8 @@ docker compose -f docker-compose.prod.yml up -d --build
 sleep 12
 
 export DATABASE_URL="postgres://sahiy:sahiy_secret@127.0.0.1:15433/sahiy_stream?sslmode=disable"
-migrate -path "\${REMOTE_DIR}/migrations" -database "\${DATABASE_URL}" up 2>/dev/null || true
+bash "\${REMOTE_DIR}/scripts/prod-migrate.sh" up 2>/dev/null || \
+  migrate -path "\${REMOTE_DIR}/migrations" -database "\${DATABASE_URL}" up 2>/dev/null || true
 
 pkill -f "\${REMOTE_DIR}/bin/" 2>/dev/null || true
 for port in 50051 50052 50053 50054 "\${GATEWAY_PORT}" 9084 9085 "\${FRONTEND_PORT}"; do
