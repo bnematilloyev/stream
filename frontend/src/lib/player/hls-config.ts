@@ -155,3 +155,21 @@ export function createLowLatencyHlsConfig(): Partial<Hls["config"]> {
     maxMaxBufferLength: 40,
   };
 }
+
+/**
+ * LL-HLS + DVR (YouTube uslubi): orqaga seek qilganda live edge ga sakramaslik.
+ * Oddiy createLowLatencyHlsConfig liveMaxLatencyDurationCount=6 — 6 segmentdan
+ * ortda qolsa avtomatik LIVE ga qaytaradi.
+ */
+export function createDvrLowLatencyHlsConfig(
+  profile: NetworkProfile = getNetworkProfile(),
+): Partial<Hls["config"]> {
+  return {
+    ...createDvrHlsConfig(profile),
+    lowLatencyMode: true,
+    liveSyncDurationCount: 3,
+    maxLiveSyncPlaybackRate: 1,
+    maxBufferLength: 30,
+    maxMaxBufferLength: 60,
+  };
+}

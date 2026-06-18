@@ -18,6 +18,7 @@ import { endStream, startStream } from "@/lib/api/streams";
 import { ShareStreamLink } from "@/components/stream/ShareStreamLink";
 import { cameraBlockedReason, canUseCamera } from "@/lib/media";
 import { broadcastPageUrl, whipEndpoint } from "@/lib/whip";
+import { whipBroadcastMessage } from "@/lib/user-messages";
 
 interface CameraBroadcastProps {
   streamId: string;
@@ -114,17 +115,12 @@ export function CameraBroadcast({
         },
       });
 
+      await startStream(streamId);
       await client.ingest(media);
       whipRef.current = client;
-      await startStream(streamId);
       setLive(true);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Efir boshlanmadi";
-      setError(
-        msg.includes("fetch") || msg.includes("Failed")
-          ? `WHIP serverga ulanib bo'lmadi (${whipEndpoint(streamId, whipBaseUrl)}). MediaMTX ishlayotganini tekshiring: docker compose -f infra/docker/docker-compose.yml up -d mediamtx`
-          : msg,
-      );
+      setError(whipBroadcastMessage(e));
     } finally {
       setLoading(false);
     }
@@ -253,7 +249,7 @@ export function CameraBroadcast({
           </Button>
         )}
         {live && (
-          <Link href={`/live/${streamId}`} className="w-full sm:w-auto">
+          <Link href={`/live/${streamId}`} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
             <Button variant="secondary" className="w-full">
               Tomosha sahifasi
             </Button>

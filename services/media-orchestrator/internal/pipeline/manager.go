@@ -26,9 +26,13 @@ type StreamClient interface {
 	GetStream(ctx context.Context, streamID string) (channelID, latencyMode, status string, err error)
 }
 
+const whipEndIngestGrace = 90 * time.Second
+
 type Manager struct {
 	mu             sync.Mutex
 	active         map[string]*session
+	pendingEndMu   sync.Mutex
+	pendingEnd     map[string]*time.Timer
 	backend        transcode.Backend
 	encoder        string
 	quality        string
@@ -71,6 +75,7 @@ func NewManager(
 	}
 	return &Manager{
 		active:         make(map[string]*session),
+		pendingEnd:     make(map[string]*time.Timer),
 		backend:        backend,
 		encoder:        encoder,
 		quality:        quality,
@@ -93,7 +98,59 @@ func (m *Manager) PreparePublish(ctx context.Context, ingestName string) error {
 	return err
 }
 
+func isWhipIngestName(ingestName string) bool {
+	_, err := uuid.Parse(ingestName)
+	return err == nil
+}
+
+func (m *Manager) cancelPendingEndIngest(ingestName string) {
+	m.pendingEndMu.Lock()
+	defer m.pendingEndMu.Unlock()
+	if t, ok := m.pendingEnd[ingestName]; ok {
+		t.Stop()
+		delete(m.pendingEnd, ingestName)
+	}
+}
+
+func (m *Manager) scheduleWhipEndIngest(ingestName, streamID string) {
+	m.cancelPendingEndIngest(ingestName)
+	m.pendingEndMu.Lock()
+	defer m.pendingEndMu.Unlock()
+	t := time.AfterFunc(whipEndIngestGrace, func() {
+		m.pendingEndMu.Lock()
+		delete(m.pendingEnd, ingestName)
+		m.pendingEndMu.Unlock()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+
+		if sid, err := uuid.Parse(ingestName); err == nil {
+			now := time.Now()
+			outDir := filepath.Join(m.hlsDir, sid.String())
+			if err := m.media.Upsert(ctx, &domain.StreamMedia{
+				StreamID: sid, Status: domain.StatusStopped, StoppedAt: &now, HLSPath: &outDir,
+			}); err != nil {
+				m.log.Warn("whip grace media upsert failed", zap.Error(err))
+			}
+		}
+
+		if err := m.stream.EndIngest(ctx, streamID); err != nil {
+			m.log.Warn("delayed whip end ingest failed",
+				zap.String("stream_id", streamID),
+				zap.Error(err),
+			)
+		} else {
+			m.log.Info("whip ingest ended after grace period",
+				zap.String("stream_id", streamID),
+			)
+		}
+	})
+	m.pendingEnd[ingestName] = t
+}
+
 func (m *Manager) OnPublish(ctx context.Context, ingestName, source string) error {
+	m.cancelPendingEndIngest(ingestName)
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -109,6 +166,17 @@ func (m *Manager) OnPublish(ctx context.Context, ingestName, source string) erro
 	sid, err := uuid.Parse(streamID)
 	if err != nil {
 		return fmt.Errorf("invalid stream id: %w", err)
+	}
+
+	if source == "whip" {
+		now := time.Now()
+		name := ingestName
+		if err := m.media.Upsert(ctx, &domain.StreamMedia{
+			StreamID: sid, Status: domain.StatusIngesting,
+			IngestName: &name, StartedAt: &now,
+		}); err != nil {
+			m.log.Warn("whip early media upsert failed", zap.Error(err))
+		}
 	}
 
 	inputURL, latencyMode := m.buildInputURL(ingestName, source, latencyMode)
@@ -138,6 +206,16 @@ func (m *Manager) OnPublish(ctx context.Context, ingestName, source string) erro
 		Encoder: m.encoder, Storage: m.storageBackend,
 	})
 	if err != nil {
+		if source == "whip" && latencyMode == "ultra-low" {
+			m.log.Warn("whip hls transcode unavailable, keeping whep-only ingest",
+				zap.String("stream_id", sid.String()),
+				zap.Error(err),
+			)
+			m.active[ingestName] = &session{
+				streamID: sid, ingestName: ingestName, outputDir: outDir, startedAt: time.Now(),
+			}
+			return nil
+		}
 		return fmt.Errorf("start transcode for %s: %w", source, err)
 	}
 
@@ -185,14 +263,23 @@ func (m *Manager) OnPublish(ctx context.Context, ingestName, source string) erro
 }
 
 func (m *Manager) OnPublishDone(ctx context.Context, ingestName string) error {
+	whipIngest := isWhipIngestName(ingestName)
+
 	m.mu.Lock()
 	sess, ok := m.active[ingestName]
+	if ok {
+		delete(m.active, ingestName)
+	}
+	m.mu.Unlock()
+
 	if !ok {
-		m.mu.Unlock()
+		if whipIngest {
+			if sid, err := uuid.Parse(ingestName); err == nil {
+				m.scheduleWhipEndIngest(ingestName, sid.String())
+			}
+		}
 		return nil
 	}
-	delete(m.active, ingestName)
-	m.mu.Unlock()
 
 	if sess.uploaderCancel != nil {
 		sess.uploaderCancel()
@@ -202,8 +289,6 @@ func (m *Manager) OnPublishDone(ctx context.Context, ingestName string) error {
 	}
 	_ = m.backend.Stop(ctx, sess.streamID.String(), "publish_done")
 
-	now := time.Now()
-	stopped := domain.StatusStopped
 	outDir := sess.outputDir
 	if outDir == "" {
 		outDir = filepath.Join(m.hlsDir, sess.streamID.String())
@@ -212,17 +297,31 @@ func (m *Manager) OnPublishDone(ctx context.Context, ingestName string) error {
 	if err := hlsrecord.FinalizePlaylist(playlist); err != nil {
 		m.log.Warn("finalize hls playlist", zap.String("path", playlist), zap.Error(err))
 	}
+
+	streamID := sess.streamID.String()
+	if whipIngest {
+		// WHIP qisqa uzilsa WHEP tomoshabinlari saqlansin; qayta ulansa grace bekor.
+		m.scheduleWhipEndIngest(ingestName, streamID)
+		m.log.Info("whip publisher paused, grace before end ingest",
+			zap.String("stream_id", streamID),
+			zap.Duration("grace", whipEndIngestGrace),
+		)
+		return nil
+	}
+
+	now := time.Now()
+	stopped := domain.StatusStopped
 	if err := m.media.Upsert(ctx, &domain.StreamMedia{
 		StreamID: sess.streamID, Status: stopped, StoppedAt: &now, HLSPath: &outDir,
 	}); err != nil {
 		m.log.Warn("media upsert on stop failed", zap.Error(err))
 	}
 
-	if err := m.stream.EndIngest(ctx, sess.streamID.String()); err != nil {
+	if err := m.stream.EndIngest(ctx, streamID); err != nil {
 		m.log.Warn("end ingest failed", zap.Error(err))
 	}
 
-	m.log.Info("ingest stopped", zap.String("stream_id", sess.streamID.String()))
+	m.log.Info("ingest stopped", zap.String("stream_id", streamID))
 	return nil
 }
 

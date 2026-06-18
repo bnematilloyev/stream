@@ -136,7 +136,13 @@ func (r *PostgresStreamRepository) EndStaleLive(ctx context.Context) error {
 			    SELECT 1 FROM stream_media sm
 			    WHERE sm.stream_id = s.id AND sm.status = 'ingesting'
 			  )
-			  AND (s.started_at IS NULL OR s.started_at < NOW() - INTERVAL '90 seconds')
+			  AND (
+			    s.started_at IS NULL
+			    OR s.started_at < NOW() - CASE
+			      WHEN s.ingest_protocol = 'whip' THEN INTERVAL '5 minutes'
+			      ELSE INTERVAL '90 seconds'
+			    END
+			  )
 		),
 		ended AS (
 			UPDATE streams
@@ -168,7 +174,13 @@ func (r *PostgresStreamRepository) ReconcileLiveStream(ctx context.Context, id u
 			    SELECT 1 FROM stream_media sm
 			    WHERE sm.stream_id = s.id AND sm.status = 'ingesting'
 			  )
-			  AND (s.started_at IS NULL OR s.started_at < NOW() - INTERVAL '90 seconds')
+			  AND (
+			    s.started_at IS NULL
+			    OR s.started_at < NOW() - CASE
+			      WHEN s.ingest_protocol = 'whip' THEN INTERVAL '5 minutes'
+			      ELSE INTERVAL '90 seconds'
+			    END
+			  )
 			RETURNING channel_id
 		)
 		UPDATE channels c

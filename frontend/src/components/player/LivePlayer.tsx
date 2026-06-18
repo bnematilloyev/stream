@@ -15,12 +15,20 @@ import {
 import { cn } from "@/lib/utils";
 import {
   createDvrHlsConfig,
+  createDvrLowLatencyHlsConfig,
   createHlsConfig,
   createLowLatencyHlsConfig,
   createVodHlsConfig,
   minBufferBeforePlaySec,
 } from "@/lib/player/hls-config";
 import { getNetworkProfile, type NetworkProfile } from "@/lib/player/network";
+import { PlayerMessage } from "@/components/player/PlayerMessage";
+import {
+  browserNoHlsMessage,
+  formatUserError,
+  hlsPlaybackMessage,
+  type StreamStatus,
+} from "@/lib/user-messages";
 
 export type PlaybackMode = "live" | "dvr" | "vod";
 
@@ -31,6 +39,7 @@ interface LivePlayerProps {
   className?: string;
   playbackMode?: PlaybackMode;
   lowLatency?: boolean;
+  streamStatus?: StreamStatus;
 }
 
 type QualityLevel = { height: number; label: string; index: number };
@@ -134,6 +143,7 @@ export function LivePlayer({
   className,
   playbackMode = "live",
   lowLatency = false,
+  streamStatus = "live",
 }: LivePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -225,7 +235,7 @@ export function LivePlayer({
           ? createVodHlsConfig()
           : playbackMode === "dvr"
             ? lowLatency
-              ? createLowLatencyHlsConfig()
+              ? createDvrLowLatencyHlsConfig(networkProfile)
               : createDvrHlsConfig(networkProfile)
             : lowLatency
               ? createLowLatencyHlsConfig()
@@ -307,17 +317,23 @@ export function LivePlayer({
               break;
             default:
               setError(
-                data.details === "manifestLoadError" || data.response?.code === 404
-                  ? "LL-HLS hali tayyor emas. Ultra-low rejimini tanlang yoki bir necha soniya kuting."
-                  : "Stream uzildi. Qayta ulanmoqda...",
+                hlsPlaybackMessage({
+                  manifest404:
+                    data.details === "manifestLoadError" ||
+                    data.response?.code === 404,
+                  streamEnded: streamStatus === "ended",
+                  recovering: streamStatus === "live",
+                }),
               );
-              setTimeout(() => initPlayer(), 3000);
+              if (streamStatus === "live") {
+                setTimeout(() => initPlayer(), 3000);
+              }
               break;
           }
         });
       } catch (e) {
         setError(
-          e instanceof Error ? e.message : "Player ishga tushmadi",
+          formatUserError(e, "Videoni ishga tushirib bo'lmadi. Qayta urinib ko'ring."),
         );
         setWarming(false);
         return;
@@ -327,10 +343,10 @@ export function LivePlayer({
       setWarming(false);
       if (autoPlay) void video.play().catch(() => setPlaying(false));
     } else {
-      setError("Brauzeringiz HLS ni qo'llab-quvvatlamaydi");
+      setError(browserNoHlsMessage());
       setWarming(false);
     }
-  }, [src, autoPlay, tryStartPlayback, networkProfile, playbackMode, lowLatency]);
+  }, [src, autoPlay, tryStartPlayback, networkProfile, playbackMode, lowLatency, streamStatus]);
 
   useEffect(() => {
     if (!seekable) return;
@@ -421,9 +437,13 @@ export function LivePlayer({
 
       const target = clampSeekTime(time);
       const edge = getLiveEdge(hls, video);
-      behindLiveRef.current = edge - target > LIVE_EDGE_TOLERANCE_SEC;
+      const behind = edge - target > LIVE_EDGE_TOLERANCE_SEC;
+      behindLiveRef.current = behind;
       video.currentTime = target;
       setPlayhead(target);
+      if (hls && behind) {
+        hls.startLoad(target);
+      }
     },
     [clampSeekTime],
   );
@@ -633,15 +653,12 @@ export function LivePlayer({
       )}
 
       {error && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 p-6 text-center">
-          <p className="text-sm text-white/80">{error}</p>
-          <button
-            onClick={initPlayer}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white"
-          >
-            Qayta urinish
-          </button>
-        </div>
+        <PlayerMessage
+          message={error}
+          onRetry={
+            streamStatus === "live" ? () => initPlayer() : undefined
+          }
+        />
       )}
 
       <div
