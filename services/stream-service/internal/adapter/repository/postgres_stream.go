@@ -222,8 +222,16 @@ func (r *PostgresStreamRepository) GetActiveLiveByChannel(ctx context.Context, c
 	return r.scanOne(ctx, streamSelect+` WHERE s.channel_id = $1 AND s.status = 'live' ORDER BY s.started_at DESC LIMIT 1`, channelID)
 }
 
+func (r *PostgresStreamRepository) GetActiveLiveByChannelAndProtocol(ctx context.Context, channelID uuid.UUID, ingestProtocol string) (*domain.Stream, error) {
+	return r.scanOneArgs(ctx, streamSelect+` WHERE s.channel_id = $1 AND s.status = 'live' AND s.ingest_protocol = $2 ORDER BY s.started_at DESC LIMIT 1`, channelID, ingestProtocol)
+}
+
 func (r *PostgresStreamRepository) GetLatestScheduledByChannel(ctx context.Context, channelID uuid.UUID) (*domain.Stream, error) {
 	return r.scanOne(ctx, streamSelect+` WHERE s.channel_id = $1 AND s.status = 'scheduled' ORDER BY s.created_at DESC LIMIT 1`, channelID)
+}
+
+func (r *PostgresStreamRepository) GetLatestScheduledByChannelAndProtocol(ctx context.Context, channelID uuid.UUID, ingestProtocol string) (*domain.Stream, error) {
+	return r.scanOneArgs(ctx, streamSelect+` WHERE s.channel_id = $1 AND s.status = 'scheduled' AND s.ingest_protocol = $2 ORDER BY s.created_at DESC LIMIT 1`, channelID, ingestProtocol)
 }
 
 func (r *PostgresStreamRepository) CountLiveByChannel(ctx context.Context, channelID uuid.UUID) (int, error) {
@@ -261,7 +269,11 @@ func (r *PostgresStreamRepository) ListLiveStreamIDs(ctx context.Context) ([]uui
 }
 
 func (r *PostgresStreamRepository) scanOne(ctx context.Context, query string, arg any) (*domain.Stream, error) {
-	rows, err := r.db.Read().Query(ctx, query, arg)
+	return r.scanOneArgs(ctx, query, arg)
+}
+
+func (r *PostgresStreamRepository) scanOneArgs(ctx context.Context, query string, args ...any) (*domain.Stream, error) {
+	rows, err := r.db.Read().Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

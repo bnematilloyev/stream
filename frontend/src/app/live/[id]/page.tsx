@@ -44,8 +44,9 @@ export default function WatchPage() {
     enabled: !!streamQuery.data?.channel_slug,
   });
 
-  const [ultraLow, setUltraLow] = useState(false);
   const playback = playbackQuery.data;
+  const isUltraLow = playback?.latency_mode === "ultra-low";
+  const [ultraLow, setUltraLow] = useState(true);
   const playbackReady = !!(playback?.url || playback?.whep_url);
 
   useEffect(() => {
@@ -81,19 +82,20 @@ export default function WatchPage() {
               <Skeleton className="aspect-video w-full rounded-2xl" />
             ) : playback?.url || playback?.whep_url ? (
               <div className="space-y-3">
-                {isLive && playback.playback_mode === "dual" && (
+                {isLive && playback.playback_mode === "dual" && playback.url && (
                   <div className="flex gap-2">
                     <Button
                       size="sm"
-                      variant={ultraLow ? "secondary" : "default"}
+                      variant={ultraLow ? "default" : "secondary"}
                       onClick={() => setUltraLow(true)}
                     >
                       Ultra-low (&lt;2s)
                     </Button>
                     <Button
                       size="sm"
-                      variant={!ultraLow ? "secondary" : "default"}
+                      variant={!ultraLow ? "default" : "secondary"}
                       onClick={() => setUltraLow(false)}
+                      disabled={!playback.url}
                     >
                       LL-HLS (CDN scale)
                     </Button>
@@ -102,7 +104,7 @@ export default function WatchPage() {
                 <WatchPlayer
                   playback={playback}
                   title={stream?.title ?? ""}
-                  preferUltraLow={ultraLow || playback.latency_mode === "ultra-low"}
+                  preferUltraLow={isUltraLow ? ultraLow : false}
                   playbackMode={playerMode}
                 />
               </div>

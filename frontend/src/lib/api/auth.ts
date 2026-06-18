@@ -56,38 +56,45 @@ export async function getMe() {
   return apiFetch<User>("/v1/auth/me", { auth: true });
 }
 
+async function tryRefresh(body: string): Promise<Response> {
+  return fetch(`${resolveApiUrl()}/v1/auth/refresh`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body,
+  });
+}
+
 /** Cookie yoki sessionStorage refresh_token orqali sessiyani tiklash. */
 export async function restoreSession(): Promise<boolean> {
-  if (useAuthStore.getState().accessToken) {
-    return true;
-  }
-
   const refreshToken = getStoredRefreshToken();
-  if (!refreshToken) {
-    // Cookie-only sessiya — body bo'sh, cookie yuboriladi.
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      let res = await tryRefresh(
+        JSON.stringify(refreshToken ? { refresh_token: refreshToken } : {}),
+      );
+      if (!res.ok && refreshToken) {
+        res = await tryRefresh("{}");
+      }
+      if (res.ok) {
+        const data: AuthResponse = await res.json();
+        persistAuth(data);
+        setAccessToken(data.access_token);
+        return true;
+      }
+      if (res.status === 401 || res.status === 403) {
+        break;
+      }
+    } catch {
+      /* tarmoq xatosi — qayta uriniladi */
+    }
+    if (attempt < 2) {
+      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+    }
   }
 
-  try {
-    const res = await fetch(`${resolveApiUrl()}/v1/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        refreshToken ? { refresh_token: refreshToken } : {},
-      ),
-    });
-    if (!res.ok) {
-      useAuthStore.getState().clearAuth();
-      clearStoredRefreshToken();
-      return false;
-    }
-    const data: AuthResponse = await res.json();
-    persistAuth(data);
-    setAccessToken(data.access_token);
-    return true;
-  } catch {
-    useAuthStore.getState().clearAuth();
-    clearStoredRefreshToken();
-    return false;
-  }
+  useAuthStore.getState().clearAuth();
+  clearStoredRefreshToken();
+  return false;
 }

@@ -21,7 +21,6 @@ import { broadcastPageUrl, whipEndpoint } from "@/lib/whip";
 
 interface CameraBroadcastProps {
   streamId: string;
-  streamKey: string;
   title: string;
   whipBaseUrl?: string;
   onEnd: () => void;

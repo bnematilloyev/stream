@@ -27,11 +27,11 @@ export function WatchPlayer({
   preferUltraLow?: boolean;
   playbackMode?: PlaybackMode;
 }) {
+  const canWhep =
+    !!playback.whep_url && playback.latency_mode === "ultra-low";
   const useWhep =
-    playbackMode === "live" &&
-    preferUltraLow &&
-    playback.whep_url &&
-    playback.latency_mode === "ultra-low";
+    canWhep &&
+    (preferUltraLow || playback.playback_mode === "whep" || !playback.url);
 
   if (useWhep) {
     return <WhepPlayer whepUrl={playback.whep_url!} title={title} />;

@@ -10,14 +10,18 @@ import (
 )
 
 func (uc *StreamUseCase) GetScheduledForChannel(ctx context.Context, channelID uuid.UUID) (*domain.Stream, error) {
-	live, err := uc.streams.GetActiveLiveByChannel(ctx, channelID)
+	return uc.getScheduledForChannelProtocol(ctx, channelID, "rtmp")
+}
+
+func (uc *StreamUseCase) getScheduledForChannelProtocol(ctx context.Context, channelID uuid.UUID, ingestProtocol string) (*domain.Stream, error) {
+	live, err := uc.streams.GetActiveLiveByChannelAndProtocol(ctx, channelID, ingestProtocol)
 	if err != nil {
 		return nil, apperrors.Internal(err)
 	}
 	if live != nil {
 		return live, nil
 	}
-	scheduled, err := uc.streams.GetLatestScheduledByChannel(ctx, channelID)
+	scheduled, err := uc.streams.GetLatestScheduledByChannelAndProtocol(ctx, channelID, ingestProtocol)
 	if err != nil {
 		return nil, apperrors.Internal(err)
 	}

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
+  createDvrHlsConfig,
   createHlsConfig,
   createVodHlsConfig,
   minBufferBeforePlaySec,
@@ -33,6 +34,7 @@ interface LivePlayerProps {
 type QualityLevel = { height: number; label: string; index: number };
 
 const QUALITY_STORAGE_KEY = "sahiy-quality";
+const SEEK_STEP_SEC = 5;
 
 function lowestBitrateLevelIndex(hls: Hls): number {
   let idx = 0;
@@ -105,6 +107,8 @@ export function LivePlayer({
   const hlsRef = useRef<Hls | null>(null);
   const warmupDoneRef = useRef(false);
   const hasPlayedRef = useRef(false);
+  const behindLiveRef = useRef(false);
+  const holdPositionRef = useRef<number | null>(null);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -180,11 +184,14 @@ export function LivePlayer({
     }
 
     if (Hls.isSupported()) {
-      const hls = new Hls(
+      const hlsConfig =
         playbackMode === "vod"
           ? createVodHlsConfig()
-          : createHlsConfig(networkProfile),
-      );
+          : playbackMode === "dvr"
+            ? createDvrHlsConfig(networkProfile)
+            : createHlsConfig(networkProfile);
+
+      const hls = new Hls(hlsConfig);
 
       hlsRef.current = hls;
       hls.loadSource(src);
@@ -318,17 +325,79 @@ export function LivePlayer({
     localStorage.setItem("sahiy-volume", String(volume));
   }, [volume, muted]);
 
-  function togglePlay() {
+  const clampSeekTime = useCallback(
+    (time: number) => {
+      const video = videoRef.current;
+      const hls = hlsRef.current;
+      if (!video) return time;
+
+      let start = 0;
+      let end = time;
+
+      if (video.seekable.length > 0) {
+        start = video.seekable.start(0);
+        end = video.seekable.end(video.seekable.length - 1);
+      } else if (playbackMode === "vod" && Number.isFinite(video.duration)) {
+        end = video.duration;
+      } else if (hls?.liveSyncPosition) {
+        end = hls.liveSyncPosition;
+      }
+
+      return Math.max(start, Math.min(end, time));
+    },
+    [playbackMode],
+  );
+
+  const seekBy = useCallback(
+    (delta: number) => {
+      const video = videoRef.current;
+      if (!video) return;
+
+      behindLiveRef.current = true;
+      const target = clampSeekTime(video.currentTime + delta);
+      holdPositionRef.current = target;
+      video.currentTime = target;
+      setPlayhead(target);
+    },
+    [clampSeekTime],
+  );
+
+  const resumeFromHold = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const held = holdPositionRef.current;
+    if (held != null && playbackMode !== "vod") {
+      const target = clampSeekTime(held);
+      video.currentTime = target;
+      holdPositionRef.current = target;
+      requestAnimationFrame(() => {
+        if (
+          behindLiveRef.current &&
+          holdPositionRef.current != null &&
+          Math.abs(video.currentTime - holdPositionRef.current) > 0.35
+        ) {
+          video.currentTime = holdPositionRef.current;
+        }
+      });
+    }
+
+    void video.play().catch(() => setPlaying(false));
+    setPlaying(true);
+  }, [clampSeekTime, playbackMode]);
+
+  const togglePlay = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
-      void video.play();
-      setPlaying(true);
+      resumeFromHold();
     } else {
+      holdPositionRef.current = video.currentTime;
+      behindLiveRef.current = true;
       video.pause();
       setPlaying(false);
     }
-  }
+  }, [resumeFromHold]);
 
   function toggleFullscreen() {
     const el = containerRef.current;
@@ -360,13 +429,15 @@ export function LivePlayer({
     setShowQualityMenu(false);
   }
 
-  function jumpToLive() {
+  const jumpToLive = useCallback(() => {
     const hls = hlsRef.current;
     const video = videoRef.current;
     if (hls?.liveSyncPosition && video) {
+      behindLiveRef.current = false;
+      holdPositionRef.current = null;
       video.currentTime = hls.liveSyncPosition - 2;
     }
-  }
+  }, []);
 
   function resetHideTimer() {
     setShowControls(true);
@@ -378,12 +449,25 @@ export function LivePlayer({
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.target instanceof HTMLInputElement) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
       switch (e.key) {
         case " ":
         case "k":
           e.preventDefault();
           togglePlay();
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          seekBy(-SEEK_STEP_SEC);
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          seekBy(SEEK_STEP_SEC);
           break;
         case "f":
           toggleFullscreen();
@@ -398,7 +482,7 @@ export function LivePlayer({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, [togglePlay, seekBy, jumpToLive]);
 
   return (
     <div
@@ -433,8 +517,39 @@ export function LivePlayer({
           setBuffering(false);
           setWarming(false);
           setPlaying(true);
+
+          const video = videoRef.current;
+          const hls = hlsRef.current;
+          if (video && hls?.liveSyncPosition && behindLiveRef.current) {
+            const edge = hls.liveSyncPosition;
+            if (edge - video.currentTime < 2) {
+              behindLiveRef.current = false;
+              holdPositionRef.current = null;
+            }
+          }
         }}
-        onPause={() => setPlaying(false)}
+        onPause={() => {
+          const video = videoRef.current;
+          if (video) {
+            holdPositionRef.current = video.currentTime;
+            behindLiveRef.current = true;
+          }
+          setPlaying(false);
+        }}
+        onTimeUpdate={() => {
+          const video = videoRef.current;
+          const hls = hlsRef.current;
+          if (!video || !behindLiveRef.current || holdPositionRef.current == null) {
+            return;
+          }
+          if (playbackMode === "vod") return;
+
+          const held = holdPositionRef.current;
+          const edge = hls?.liveSyncPosition ?? 0;
+          if (edge > 0 && video.currentTime > held + 2 && edge - video.currentTime < 3) {
+            video.currentTime = held;
+          }
+        }}
       />
 
       {latencySec !== null && playing && !warming && playbackMode !== "vod" && (
@@ -499,7 +614,11 @@ export function LivePlayer({
               onChange={(e) => {
                 const t = parseFloat(e.target.value);
                 const video = videoRef.current;
-                if (video) video.currentTime = t;
+                if (video) {
+                  behindLiveRef.current = true;
+                  holdPositionRef.current = t;
+                  video.currentTime = t;
+                }
                 setPlayhead(t);
               }}
               className="h-1 w-full cursor-pointer accent-live"

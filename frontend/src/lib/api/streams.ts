@@ -84,6 +84,7 @@ export async function createStream(data: {
   description?: string;
   visibility?: string;
   latency_mode?: string;
+  ingest_protocol?: string;
 }) {
   return apiFetch<Stream>("/v1/streams", {
     method: "POST",

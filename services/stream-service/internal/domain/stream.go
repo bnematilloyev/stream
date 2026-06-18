@@ -66,8 +66,10 @@ type StreamRepository interface {
 	ListByChannel(ctx context.Context, channelID uuid.UUID, status string, p pagination.Params) ([]Stream, int, error)
 	SetStatus(ctx context.Context, id uuid.UUID, status string, startedAt, endedAt *time.Time) error
 	GetActiveLiveByChannel(ctx context.Context, channelID uuid.UUID) (*Stream, error)
+	GetActiveLiveByChannelAndProtocol(ctx context.Context, channelID uuid.UUID, ingestProtocol string) (*Stream, error)
 	CountLiveByChannel(ctx context.Context, channelID uuid.UUID) (int, error)
 	GetLatestScheduledByChannel(ctx context.Context, channelID uuid.UUID) (*Stream, error)
+	GetLatestScheduledByChannelAndProtocol(ctx context.Context, channelID uuid.UUID, ingestProtocol string) (*Stream, error)
 	UpdateViewerStats(ctx context.Context, id uuid.UUID, concurrent, unique int) error
 	ListLiveStreamIDs(ctx context.Context) ([]uuid.UUID, error)
 }

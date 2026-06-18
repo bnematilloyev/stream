@@ -112,6 +112,23 @@ export function minBufferBeforePlaySec(profile: NetworkProfile): number {
   }
 }
 
+/**
+ * Jonli efir + DVR (pause, orqaga/oldinga surish).
+ * liveMaxLatencyDurationCount cheklanmasa, pause yoki seek dan keyin HLS.live edge ga sakraydi.
+ */
+export function createDvrHlsConfig(
+  profile: NetworkProfile = getNetworkProfile(),
+): Partial<Hls["config"]> {
+  return {
+    ...createHlsConfig(profile),
+    liveMaxLatencyDurationCount: Infinity,
+    liveMaxLatencyDuration: Infinity,
+    maxLiveSyncPlaybackRate: 1,
+    backBufferLength: 90,
+    liveBackBufferLength: 90,
+  };
+}
+
 /** Tugagan yozuvlar (VOD) — boshidan ko‘rish, seek bar. */
 export function createVodHlsConfig(): Partial<Hls["config"]> {
   return {

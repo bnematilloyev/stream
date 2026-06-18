@@ -48,6 +48,8 @@ export const useAuthStore = create<AuthState>()(
       // Faqat user saqlanadi — access token memory + refresh cookie orqali tiklanadi.
       partialize: (s) => ({ user: s.user }),
       onRehydrateStorage: () => (state) => {
+        setAccessToken(null);
+        if (state) state.accessToken = null;
         state?.setHydrated(true);
       },
     },

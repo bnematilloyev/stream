@@ -336,7 +336,7 @@ func (uc *StreamUseCase) ValidateStreamKey(ctx context.Context, plainKey string)
 		return &ValidateKeyResult{Valid: false}, nil
 	}
 	res := &ValidateKeyResult{Valid: true, ChannelID: ch.ID, ChannelSlug: ch.Slug}
-	if live, err := uc.streams.GetActiveLiveByChannel(ctx, ch.ID); err != nil {
+	if live, err := uc.streams.GetActiveLiveByChannelAndProtocol(ctx, ch.ID, "rtmp"); err != nil {
 		return nil, apperrors.Internal(err)
 	} else if live != nil {
 		res.StreamID = live.ID.String()

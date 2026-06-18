@@ -71,24 +71,32 @@ function notifyAuthCleared() {
   authClearListeners.forEach((listener) => listener());
 }
 
-function refreshRequestBody() {
+function refreshRequestBody(useCookieOnly = false) {
+  if (useCookieOnly) return "{}";
   const refreshToken = getStoredRefreshToken();
   return JSON.stringify(refreshToken ? { refresh_token: refreshToken } : {});
+}
+
+async function postRefresh(body: string) {
+  return fetch(`${resolveApiUrl()}/v1/auth/refresh`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body,
+  });
 }
 
 async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
-      const hadToken = !!accessToken;
       try {
-        const res = await fetch(`${resolveApiUrl()}/v1/auth/refresh`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: refreshRequestBody(),
-        });
+        let res = await postRefresh(refreshRequestBody());
+        // Boshqa tabda token yangilangan — eski sessionStorage body 401 qaytaradi.
+        if (!res.ok && getStoredRefreshToken()) {
+          res = await postRefresh(refreshRequestBody(true));
+        }
         if (!res.ok) {
-          if (!hadToken) notifyAuthCleared();
+          notifyAuthCleared();
           return null;
         }
         const data = await res.json();
@@ -97,7 +105,7 @@ async function refreshAccessToken(): Promise<string | null> {
         notifyTokenRefreshed(data.access_token);
         return accessToken;
       } catch {
-        if (!hadToken) notifyAuthCleared();
+        notifyAuthCleared();
         return null;
       } finally {
         refreshPromise = null;
@@ -139,6 +147,8 @@ export async function apiFetch<T>(
         headers: reqHeaders,
         credentials: "include",
       });
+    } else {
+      notifyAuthCleared();
     }
   }
 

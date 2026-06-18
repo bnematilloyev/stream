@@ -2,12 +2,8 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getMyChannel, rotateIngestKey } from "@/lib/api/channels";
-import {
-  createStream,
-  endChannelLiveStreams,
-  endStream,
-} from "@/lib/api/streams";
+import { getMyChannel, getIngestKey } from "@/lib/api/channels";
+import { createStream, endStream } from "@/lib/api/streams";
 import { CameraBroadcast } from "@/components/broadcast/CameraBroadcast";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +15,6 @@ import type { Stream } from "@/types";
 export default function BroadcastPage() {
   const [title, setTitle] = useState("Kamera efir");
   const [activeStream, setActiveStream] = useState<Stream | null>(null);
-  const [streamKey, setStreamKey] = useState("");
   const [whipBaseUrl, setWhipBaseUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -36,19 +31,18 @@ export default function BroadcastPage() {
     setLoading(true);
     setError("");
     try {
-      const keyRes = await rotateIngestKey(channel.slug);
-      if (!keyRes.stream_key) {
-        throw new Error("Stream key olinmadi");
+      const ingest = await getIngestKey(channel.slug);
+      if (!ingest.whip_base_url) {
+        throw new Error("WHIP server sozlanmagan");
       }
-      await endChannelLiveStreams(channel.slug);
       const stream = await createStream({
         channel_slug: channel.slug,
         title,
         visibility: "public",
         latency_mode: "ultra-low",
+        ingest_protocol: "whip",
       });
-      setStreamKey(keyRes.stream_key);
-      setWhipBaseUrl(keyRes.whip_base_url ?? "");
+      setWhipBaseUrl(ingest.whip_base_url);
       setActiveStream(stream);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Xatolik");
@@ -63,7 +57,6 @@ export default function BroadcastPage() {
       await endStream(activeStream.id);
     } finally {
       setActiveStream(null);
-      setStreamKey("");
       setWhipBaseUrl("");
     }
   }
@@ -85,7 +78,7 @@ export default function BroadcastPage() {
     );
   }
 
-  if (!activeStream || !streamKey) {
+  if (!activeStream || !whipBaseUrl) {
     return (
       <div className="mx-auto w-full max-w-lg space-y-6">
         <div>
@@ -123,7 +116,6 @@ export default function BroadcastPage() {
       </div>
       <CameraBroadcast
         streamId={activeStream.id}
-        streamKey={streamKey}
         title={activeStream.title}
         whipBaseUrl={whipBaseUrl}
         onEnd={handleEnd}
