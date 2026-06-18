@@ -63,6 +63,21 @@ func (uc *PlaybackUseCase) GetPlayback(ctx context.Context, streamID uuid.UUID) 
 	if !isPlaybackAllowed(st.Status) {
 		return nil, apperrors.NotFound("playback not available")
 	}
+
+	// Jonli efir: HLS manifest hali tayyor bo‘lmasa ham URL qaytaramiz — player manifestni kutadi.
+	if st.Status == domain.StatusLive {
+		resource := "master.m3u8"
+		unsigned := fmt.Sprintf("%s/playback/%s", uc.playbackBase, streamID.String())
+		signedURL, expiresAt := uc.signer.Sign(unsigned, streamID.String(), resource)
+		return &PlaybackResult{
+			StreamID:  streamID,
+			URL:       signedURL,
+			Format:    "hls",
+			Status:    status,
+			ExpiresAt: expiresAt,
+		}, nil
+	}
+
 	if !isMediaPlayable(m, st.Status) {
 		return nil, apperrors.NotFound("playback not available")
 	}

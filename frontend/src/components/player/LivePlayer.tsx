@@ -25,6 +25,7 @@ interface LivePlayerProps {
 type QualityLevel = { height: number; label: string; index: number };
 
 const QUALITY_STORAGE_KEY = "sahiy-quality";
+const MIN_BUFFER_BEFORE_PLAY_SEC = 4;
 
 function readSavedQuality(): "auto" | number {
   if (typeof window === "undefined") return "auto";
@@ -56,6 +57,12 @@ function applyQualityChoice(hls: Hls, levels: QualityLevel[]): "auto" | number {
   return "auto";
 }
 
+function bufferedAhead(video: HTMLVideoElement): number {
+  const ranges = video.buffered;
+  if (!ranges.length) return 0;
+  return Math.max(0, ranges.end(ranges.length - 1) - video.currentTime);
+}
+
 export function LivePlayer({
   src,
   title,
@@ -65,13 +72,16 @@ export function LivePlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const warmupDoneRef = useRef(false);
+  const hasPlayedRef = useRef(false);
 
-  const [playing, setPlaying] = useState(autoPlay);
+  const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(0.8);
   const [fullscreen, setFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [buffering, setBuffering] = useState(false);
+  const [warming, setWarming] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [qualities, setQualities] = useState<QualityLevel[]>([]);
   const [currentQuality, setCurrentQuality] = useState<"auto" | number>("auto");
@@ -79,6 +89,7 @@ export function LivePlayer({
   const [latencySec, setLatencySec] = useState<number | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const latencyTimer = useRef<ReturnType<typeof setInterval>>(null);
+  const warmupTimer = useRef<ReturnType<typeof setTimeout>>(null);
 
   const measureLatency = useCallback(() => {
     const hls = hlsRef.current;
@@ -90,11 +101,38 @@ export function LivePlayer({
     }
   }, []);
 
+  const tryStartPlayback = useCallback(() => {
+    const video = videoRef.current;
+    const hls = hlsRef.current;
+    if (!video || !hls || warmupDoneRef.current || !autoPlay) return;
+
+    const ahead = bufferedAhead(video);
+    if (ahead >= MIN_BUFFER_BEFORE_PLAY_SEC) {
+      warmupDoneRef.current = true;
+      setWarming(false);
+      void video.play().catch(() => setPlaying(false));
+      return;
+    }
+
+    if (warmupTimer.current) clearTimeout(warmupTimer.current);
+    warmupTimer.current = setTimeout(() => {
+      if (warmupDoneRef.current) return;
+      warmupDoneRef.current = true;
+      setWarming(false);
+      void video.play().catch(() => setPlaying(false));
+    }, 12_000);
+  }, [autoPlay]);
+
   const initPlayer = useCallback(() => {
     const video = videoRef.current;
     if (!video || !src) return;
 
     setError(null);
+    setWarming(true);
+    setBuffering(false);
+    warmupDoneRef.current = false;
+    hasPlayedRef.current = false;
+    if (warmupTimer.current) clearTimeout(warmupTimer.current);
 
     if (hlsRef.current) {
       hlsRef.current.destroy();
@@ -118,20 +156,25 @@ export function LivePlayer({
           .filter((l) => l.height > 0)
           .sort((a, b) => b.height - a.height);
 
-        // Passthrough / single-rendition: no manual quality picker (Auto only).
         if (levels.length <= 1) {
           hls.currentLevel = -1;
           setQualities([]);
           setCurrentQuality("auto");
-          if (autoPlay) void video.play().catch(() => setPlaying(false));
-          return;
+        } else {
+          setQualities(levels);
+          const choice = applyQualityChoice(hls, levels);
+          setCurrentQuality(choice === "auto" ? "auto" : choice);
         }
 
-        setQualities(levels);
-        const choice = applyQualityChoice(hls, levels);
-        setCurrentQuality(choice === "auto" ? "auto" : choice);
-        if (autoPlay) void video.play().catch(() => setPlaying(false));
+        if (autoPlay) {
+          tryStartPlayback();
+        } else {
+          setWarming(false);
+        }
       });
+
+      hls.on(Hls.Events.FRAG_BUFFERED, tryStartPlayback);
+      hls.on(Hls.Events.BUFFER_APPENDED, tryStartPlayback);
 
       hls.on(Hls.Events.LEVEL_SWITCHED, (_, data) => {
         const level = hls.levels[data.level];
@@ -143,34 +186,36 @@ export function LivePlayer({
       });
 
       hls.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              hls.recoverMediaError();
-              break;
-            default:
-              setError("Stream uzildi. Qayta ulanmoqda...");
-              setTimeout(() => initPlayer(), 2000);
-              break;
-          }
+        if (!data.fatal) return;
+        switch (data.type) {
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            hls.startLoad();
+            break;
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            hls.recoverMediaError();
+            break;
+          default:
+            setError("Stream uzildi. Qayta ulanmoqda...");
+            setTimeout(() => initPlayer(), 3000);
+            break;
         }
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = src;
+      setWarming(false);
       if (autoPlay) void video.play().catch(() => setPlaying(false));
     } else {
       setError("Brauzeringiz HLS ni qo'llab-quvvatlamaydi");
+      setWarming(false);
     }
-  }, [src, autoPlay]);
+  }, [src, autoPlay, tryStartPlayback]);
 
   useEffect(() => {
     initPlayer();
     return () => {
       hlsRef.current?.destroy();
       if (latencyTimer.current) clearInterval(latencyTimer.current);
+      if (warmupTimer.current) clearTimeout(warmupTimer.current);
     };
   }, [initPlayer]);
 
@@ -240,7 +285,7 @@ export function LivePlayer({
     const hls = hlsRef.current;
     const video = videoRef.current;
     if (hls?.liveSyncPosition && video) {
-      video.currentTime = hls.liveSyncPosition - 0.5;
+      video.currentTime = hls.liveSyncPosition - 2;
     }
   }
 
@@ -291,20 +336,24 @@ export function LivePlayer({
         className="h-full w-full"
         playsInline
         onClick={togglePlay}
-        onWaiting={() => setBuffering(true)}
+        onWaiting={() => {
+          if (hasPlayedRef.current) setBuffering(true);
+        }}
         onPlaying={() => {
+          hasPlayedRef.current = true;
           setBuffering(false);
+          setWarming(false);
           setPlaying(true);
         }}
         onPause={() => setPlaying(false)}
       />
 
-      {latencySec !== null && playing && (
+      {latencySec !== null && playing && !warming && (
         <button
           onClick={jumpToLive}
           className={cn(
             "absolute left-3 top-3 flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium backdrop-blur-md transition-colors",
-            latencySec > 5
+            latencySec > 8
               ? "bg-amber-500/20 text-amber-300 hover:bg-amber-500/30"
               : "bg-black/50 text-white/90 hover:bg-black/70",
           )}
@@ -314,9 +363,16 @@ export function LivePlayer({
         </button>
       )}
 
-      {buffering && !error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-white border-t-transparent" />
+      {warming && !error && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70">
+          <div className="h-9 w-9 animate-pulse rounded-full bg-white/20" />
+          <p className="text-sm text-white/80">Efir tayyorlanmoqda...</p>
+        </div>
+      )}
+
+      {buffering && !warming && !error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/60 border-t-transparent" />
         </div>
       )}
 

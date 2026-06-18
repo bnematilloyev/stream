@@ -14,12 +14,12 @@ type Profile struct {
 
 func LLHLSProfile() Profile {
 	return Profile{
-		SegmentSec: 2.0,
+		SegmentSec: 3.0,
 		PartSec:    0,
 		UseLLHLS:   true,
 		UseFMP4:    true,
 		Preset:     "veryfast",
-		GOP:        60,
+		GOP:        90,
 		AudioRate:  48000,
 	}
 }

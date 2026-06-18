@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { getPlayback, getStream, recordViewerHeartbeat } from "@/lib/api/streams";
+import { getPlaybackWhenLive, getStream, recordViewerHeartbeat } from "@/lib/api/streams";
 import { getChannel } from "@/lib/api/channels";
 import { WatchPlayer } from "@/components/player/WatchPlayer";
 import { Button } from "@/components/ui/button";
@@ -26,10 +26,10 @@ export default function WatchPage() {
 
   const playbackQuery = useQuery({
     queryKey: ["playback", id],
-    queryFn: () => getPlayback(id),
+    queryFn: ({ signal }) => getPlaybackWhenLive(id, signal),
     enabled: !!id && streamQuery.data?.status === "live",
-    refetchInterval: 60_000,
-    retry: 3,
+    staleTime: 30_000,
+    retry: 2,
   });
 
   const channelQuery = useQuery({
@@ -100,13 +100,14 @@ export default function WatchPage() {
                   preferUltraLow={ultraLow || playback.latency_mode === "ultra-low"}
                 />
               </div>
+            ) : stream?.status === "live" ? (
+              <div className="flex aspect-video flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-surface-1">
+                <div className="h-9 w-9 animate-pulse rounded-full bg-brand/30" />
+                <p className="text-muted">Efir tayyorlanmoqda...</p>
+              </div>
             ) : (
               <div className="flex aspect-video items-center justify-center rounded-2xl border border-border bg-surface-1">
-                <p className="text-muted">
-                  {stream?.status === "live"
-                    ? "Stream yuklanmoqda..."
-                    : "Bu stream hozir jonli emas"}
-                </p>
+                <p className="text-muted">Bu stream hozir jonli emas</p>
               </div>
             )}
 

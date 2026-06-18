@@ -1,4 +1,4 @@
-import { apiFetch } from "./client";
+import { apiFetch, ApiClientError } from "./client";
 import type { PaginatedStreams, Playback, Stream } from "@/types";
 
 export async function getLiveStreams(page = 1, limit = 24) {
@@ -13,6 +13,37 @@ export async function getStream(id: string) {
 
 export async function getPlayback(id: string) {
   return apiFetch<Playback>(`/v1/streams/${id}/playback`);
+}
+
+/** Jonli efir boshida manifest tayyor bo‘lishini kutadi. */
+export async function getPlaybackWhenLive(
+  id: string,
+  signal?: AbortSignal,
+): Promise<Playback> {
+  const maxAttempts = 40;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (signal?.aborted) {
+      throw new DOMException("Aborted", "AbortError");
+    }
+    try {
+      return await getPlayback(id);
+    } catch (e) {
+      lastError = e;
+      if (
+        e instanceof ApiClientError &&
+        e.status === 404 &&
+        attempt < maxAttempts - 1
+      ) {
+        await new Promise((r) => setTimeout(r, 2000));
+        continue;
+      }
+      throw e;
+    }
+  }
+
+  throw lastError;
 }
 
 export async function recordViewerHeartbeat(streamId: string, sessionId: string) {
