@@ -191,86 +191,93 @@ export function LivePlayer({
             ? createDvrHlsConfig(networkProfile)
             : createHlsConfig(networkProfile);
 
-      const hls = new Hls(hlsConfig);
+      try {
+        const hls = new Hls(hlsConfig);
+        hlsRef.current = hls;
+        hls.loadSource(src);
+        hls.attachMedia(video);
 
-      hlsRef.current = hls;
-      hls.loadSource(src);
-      hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          const levels = hls.levels
+            .map((l, i) => ({
+              index: i,
+              height: l.height,
+              label: l.height ? `${l.height}p` : `Level ${i}`,
+            }))
+            .filter((l) => l.height > 0)
+            .sort((a, b) => b.height - a.height);
 
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        const levels = hls.levels
-          .map((l, i) => ({
-            index: i,
-            height: l.height,
-            label: l.height ? `${l.height}p` : `Level ${i}`,
-          }))
-          .filter((l) => l.height > 0)
-          .sort((a, b) => b.height - a.height);
-
-        if (levels.length <= 1) {
-          hls.currentLevel = -1;
-          setQualities([]);
-          setCurrentQuality("auto");
-          setSingleQuality(true);
-        } else {
-          setSingleQuality(false);
-          setQualities(levels);
-          const choice = applyQualityChoice(hls, levels);
-          setCurrentQuality(choice === "auto" ? "auto" : choice);
-          applySlowStartAbr(hls, networkProfile);
-        }
-
-        if (autoPlay) {
-          if (playbackMode === "vod") {
-            warmupDoneRef.current = true;
-            setWarming(false);
-            video.currentTime = 0;
-            void video.play().catch(() => setPlaying(false));
+          if (levels.length <= 1) {
+            hls.currentLevel = -1;
+            setQualities([]);
+            setCurrentQuality("auto");
+            setSingleQuality(true);
           } else {
-            tryStartPlayback();
+            setSingleQuality(false);
+            setQualities(levels);
+            const choice = applyQualityChoice(hls, levels);
+            setCurrentQuality(choice === "auto" ? "auto" : choice);
+            applySlowStartAbr(hls, networkProfile);
           }
-        } else {
-          setWarming(false);
-        }
-      });
 
-      hls.on(Hls.Events.FRAG_BUFFERED, tryStartPlayback);
-      hls.on(Hls.Events.BUFFER_APPENDED, tryStartPlayback);
-
-      hls.on(Hls.Events.LEVEL_SWITCHED, (_, data) => {
-        const level = hls.levels[data.level];
-        if (hls.currentLevel === -1) {
-          setCurrentQuality("auto");
-        } else if (level?.height) {
-          setCurrentQuality(level.height);
-        }
-      });
-
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        if (!data.fatal) {
-          if (
-            data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR &&
-            hls.levels.length > 1 &&
-            readSavedQuality() === "auto" &&
-            hls.currentLevel > 0
-          ) {
-            hls.nextLevel = hls.currentLevel - 1;
+          if (autoPlay) {
+            if (playbackMode === "vod") {
+              warmupDoneRef.current = true;
+              setWarming(false);
+              video.currentTime = 0;
+              void video.play().catch(() => setPlaying(false));
+            } else {
+              tryStartPlayback();
+            }
+          } else {
+            setWarming(false);
           }
-          return;
-        }
-        switch (data.type) {
-          case Hls.ErrorTypes.NETWORK_ERROR:
-            hls.startLoad();
-            break;
-          case Hls.ErrorTypes.MEDIA_ERROR:
-            hls.recoverMediaError();
-            break;
-          default:
-            setError("Stream uzildi. Qayta ulanmoqda...");
-            setTimeout(() => initPlayer(), 3000);
-            break;
-        }
-      });
+        });
+
+        hls.on(Hls.Events.FRAG_BUFFERED, tryStartPlayback);
+        hls.on(Hls.Events.BUFFER_APPENDED, tryStartPlayback);
+
+        hls.on(Hls.Events.LEVEL_SWITCHED, (_, data) => {
+          const level = hls.levels[data.level];
+          if (hls.currentLevel === -1) {
+            setCurrentQuality("auto");
+          } else if (level?.height) {
+            setCurrentQuality(level.height);
+          }
+        });
+
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          if (!data.fatal) {
+            if (
+              data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR &&
+              hls.levels.length > 1 &&
+              readSavedQuality() === "auto" &&
+              hls.currentLevel > 0
+            ) {
+              hls.nextLevel = hls.currentLevel - 1;
+            }
+            return;
+          }
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              hls.recoverMediaError();
+              break;
+            default:
+              setError("Stream uzildi. Qayta ulanmoqda...");
+              setTimeout(() => initPlayer(), 3000);
+              break;
+          }
+        });
+      } catch (e) {
+        setError(
+          e instanceof Error ? e.message : "Player ishga tushmadi",
+        );
+        setWarming(false);
+        return;
+      }
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = src;
       setWarming(false);

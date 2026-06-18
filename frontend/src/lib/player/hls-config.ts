@@ -121,8 +121,8 @@ export function createDvrHlsConfig(
 ): Partial<Hls["config"]> {
   return {
     ...createHlsConfig(profile),
+    // Faqat *Count variant — Duration bilan aralashtirish hls.js da xato beradi.
     liveMaxLatencyDurationCount: Infinity,
-    liveMaxLatencyDuration: Infinity,
     maxLiveSyncPlaybackRate: 1,
     backBufferLength: 90,
     liveBackBufferLength: 90,
