@@ -37,6 +37,36 @@ type QualityLevel = { height: number; label: string; index: number };
 
 const QUALITY_STORAGE_KEY = "sahiy-quality";
 const SEEK_STEP_SEC = 5;
+const LIVE_EDGE_TOLERANCE_SEC = 4;
+
+function formatLiveOffset(secondsBehind: number): string {
+  if (secondsBehind < LIVE_EDGE_TOLERANCE_SEC) return "LIVE";
+  const total = Math.floor(secondsBehind);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) {
+    return `-${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+  return `-${m}:${String(s).padStart(2, "0")}`;
+}
+
+function getLiveEdge(hls: Hls | null, video: HTMLVideoElement): number {
+  if (hls?.liveSyncPosition && hls.liveSyncPosition > 0) {
+    return hls.liveSyncPosition;
+  }
+  if (video.seekable.length > 0) {
+    return video.seekable.end(video.seekable.length - 1);
+  }
+  return video.duration || 0;
+}
+
+function getSeekStart(video: HTMLVideoElement): number {
+  if (video.seekable.length > 0) {
+    return video.seekable.start(0);
+  }
+  return 0;
+}
 
 function lowestBitrateLevelIndex(hls: Hls): number {
   let idx = 0;
@@ -111,7 +141,7 @@ export function LivePlayer({
   const warmupDoneRef = useRef(false);
   const hasPlayedRef = useRef(false);
   const behindLiveRef = useRef(false);
-  const holdPositionRef = useRef<number | null>(null);
+  const userPausedRef = useRef(false);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -128,7 +158,10 @@ export function LivePlayer({
   const [networkProfile] = useState<NetworkProfile>(() => getNetworkProfile());
   const [singleQuality, setSingleQuality] = useState(false);
   const [playhead, setPlayhead] = useState(0);
+  const [seekStart, setSeekStart] = useState(0);
   const [seekEnd, setSeekEnd] = useState(0);
+  const [scrubHover, setScrubHover] = useState<number | null>(null);
+  const [offsetLabel, setOffsetLabel] = useState("LIVE");
   const seekable = playbackMode !== "live";
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const latencyTimer = useRef<ReturnType<typeof setInterval>>(null);
@@ -303,16 +336,36 @@ export function LivePlayer({
     if (!seekable) return;
     const timer = setInterval(() => {
       const video = videoRef.current;
+      const hls = hlsRef.current;
       if (!video) return;
-      setPlayhead(video.currentTime);
+
+      const edge = getLiveEdge(hls, video);
+      const start = getSeekStart(video);
+      const current = video.currentTime;
+
+      setPlayhead(current);
+      setSeekStart(start);
+      setSeekEnd(edge > start ? edge : start);
+
       if (playbackMode === "vod" && Number.isFinite(video.duration)) {
-        setSeekEnd(video.duration);
-      } else if (video.seekable.length > 0) {
-        setSeekEnd(video.seekable.end(video.seekable.length - 1));
+        setOffsetLabel(formatDuration(current));
+      } else {
+        const behind = Math.max(0, edge - current);
+        setOffsetLabel(formatLiveOffset(behind));
+        if (!userPausedRef.current && behind < LIVE_EDGE_TOLERANCE_SEC) {
+          behindLiveRef.current = false;
+        }
       }
-    }, 400);
+    }, 250);
     return () => clearInterval(timer);
   }, [seekable, playbackMode]);
+
+  function formatDuration(sec: number): string {
+    const s = Math.floor(sec);
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return `${m}:${String(r).padStart(2, "0")}`;
+  }
 
   useEffect(() => {
     initPlayer();
@@ -349,73 +402,64 @@ export function LivePlayer({
       const hls = hlsRef.current;
       if (!video) return time;
 
-      let start = 0;
-      let end = time;
-
-      if (video.seekable.length > 0) {
-        start = video.seekable.start(0);
-        end = video.seekable.end(video.seekable.length - 1);
-      } else if (playbackMode === "vod" && Number.isFinite(video.duration)) {
-        end = video.duration;
-      } else if (hls?.liveSyncPosition) {
-        end = hls.liveSyncPosition;
-      }
+      const start = getSeekStart(video);
+      const end =
+        playbackMode === "vod" && Number.isFinite(video.duration)
+          ? video.duration
+          : getLiveEdge(hls, video);
 
       return Math.max(start, Math.min(end, time));
     },
     [playbackMode],
   );
 
-  const seekBy = useCallback(
-    (delta: number) => {
+  const seekTo = useCallback(
+    (time: number) => {
       const video = videoRef.current;
+      const hls = hlsRef.current;
       if (!video) return;
 
-      behindLiveRef.current = true;
-      const target = clampSeekTime(video.currentTime + delta);
-      holdPositionRef.current = target;
+      const target = clampSeekTime(time);
+      const edge = getLiveEdge(hls, video);
+      behindLiveRef.current = edge - target > LIVE_EDGE_TOLERANCE_SEC;
       video.currentTime = target;
       setPlayhead(target);
     },
     [clampSeekTime],
   );
 
-  const resumeFromHold = useCallback(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const held = holdPositionRef.current;
-    if (held != null && playbackMode !== "vod") {
-      const target = clampSeekTime(held);
-      video.currentTime = target;
-      holdPositionRef.current = target;
-      requestAnimationFrame(() => {
-        if (
-          behindLiveRef.current &&
-          holdPositionRef.current != null &&
-          Math.abs(video.currentTime - holdPositionRef.current) > 0.35
-        ) {
-          video.currentTime = holdPositionRef.current;
-        }
-      });
-    }
-
-    void video.play().catch(() => setPlaying(false));
-    setPlaying(true);
-  }, [clampSeekTime, playbackMode]);
+  const seekBy = useCallback(
+    (delta: number) => {
+      const video = videoRef.current;
+      if (!video) return;
+      seekTo(video.currentTime + delta);
+    },
+    [seekTo],
+  );
 
   const togglePlay = useCallback(() => {
     const video = videoRef.current;
+    const hls = hlsRef.current;
     if (!video) return;
     if (video.paused) {
-      resumeFromHold();
+      userPausedRef.current = false;
+      void video.play().catch(() => setPlaying(false));
+      setPlaying(true);
     } else {
-      holdPositionRef.current = video.currentTime;
-      behindLiveRef.current = true;
+      userPausedRef.current = true;
+      const edge = getLiveEdge(hls, video);
+      behindLiveRef.current = edge - video.currentTime > LIVE_EDGE_TOLERANCE_SEC;
       video.pause();
       setPlaying(false);
     }
-  }, [resumeFromHold]);
+  }, []);
+
+  function scrubHoverTime(clientX: number, input: HTMLInputElement): number {
+    const rect = input.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const span = seekEnd - seekStart;
+    return seekStart + ratio * span;
+  }
 
   function toggleFullscreen() {
     const el = containerRef.current;
@@ -450,12 +494,16 @@ export function LivePlayer({
   const jumpToLive = useCallback(() => {
     const hls = hlsRef.current;
     const video = videoRef.current;
-    if (hls?.liveSyncPosition && video) {
+    if (!video) return;
+    const edge = getLiveEdge(hls, video);
+    if (edge > 0) {
       behindLiveRef.current = false;
-      holdPositionRef.current = null;
-      video.currentTime = hls.liveSyncPosition - 2;
+      userPausedRef.current = false;
+      seekTo(Math.max(getSeekStart(video), edge - 2));
+      void video.play().catch(() => setPlaying(false));
+      setPlaying(true);
     }
-  }, []);
+  }, [seekTo]);
 
   function resetHideTimer() {
     setShowControls(true);
@@ -535,38 +583,19 @@ export function LivePlayer({
           setBuffering(false);
           setWarming(false);
           setPlaying(true);
-
-          const video = videoRef.current;
-          const hls = hlsRef.current;
-          if (video && hls?.liveSyncPosition && behindLiveRef.current) {
-            const edge = hls.liveSyncPosition;
-            if (edge - video.currentTime < 2) {
-              behindLiveRef.current = false;
-              holdPositionRef.current = null;
-            }
-          }
+          userPausedRef.current = false;
         }}
         onPause={() => {
-          const video = videoRef.current;
-          if (video) {
-            holdPositionRef.current = video.currentTime;
-            behindLiveRef.current = true;
+          if (userPausedRef.current) {
+            const video = videoRef.current;
+            const hls = hlsRef.current;
+            if (video) {
+              const edge = getLiveEdge(hls, video);
+              behindLiveRef.current =
+                edge - video.currentTime > LIVE_EDGE_TOLERANCE_SEC;
+            }
           }
           setPlaying(false);
-        }}
-        onTimeUpdate={() => {
-          const video = videoRef.current;
-          const hls = hlsRef.current;
-          if (!video || !behindLiveRef.current || holdPositionRef.current == null) {
-            return;
-          }
-          if (playbackMode === "vod") return;
-
-          const held = holdPositionRef.current;
-          const edge = hls?.liveSyncPosition ?? 0;
-          if (edge > 0 && video.currentTime > held + 2 && edge - video.currentTime < 3) {
-            video.currentTime = held;
-          }
         }}
       />
 
@@ -622,25 +651,52 @@ export function LivePlayer({
         )}
       >
         <div className="mb-3">
-          {seekable && seekEnd > 0 ? (
-            <input
-              type="range"
-              min={0}
-              max={seekEnd}
-              step={0.1}
-              value={Math.min(playhead, seekEnd)}
-              onChange={(e) => {
-                const t = parseFloat(e.target.value);
-                const video = videoRef.current;
-                if (video) {
-                  behindLiveRef.current = true;
-                  holdPositionRef.current = t;
-                  video.currentTime = t;
+          {seekable && seekEnd > seekStart ? (
+            <div
+              className="relative pt-6"
+              onMouseLeave={() => setScrubHover(null)}
+            >
+              {scrubHover != null && playbackMode !== "vod" && (
+                <div
+                  className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 rounded-md bg-black/90 px-2.5 py-1 text-xs font-semibold tabular-nums text-white shadow-lg"
+                  style={{
+                    left: `${((scrubHover - seekStart) / (seekEnd - seekStart)) * 100}%`,
+                  }}
+                >
+                  {formatLiveOffset(Math.max(0, seekEnd - scrubHover))}
+                </div>
+              )}
+              {scrubHover != null && playbackMode === "vod" && (
+                <div
+                  className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 rounded-md bg-black/90 px-2.5 py-1 text-xs font-semibold tabular-nums text-white shadow-lg"
+                  style={{
+                    left: `${((scrubHover - seekStart) / (seekEnd - seekStart)) * 100}%`,
+                  }}
+                >
+                  {formatDuration(scrubHover)}
+                </div>
+              )}
+              <input
+                type="range"
+                min={seekStart}
+                max={seekEnd}
+                step={0.1}
+                value={Math.min(Math.max(playhead, seekStart), seekEnd)}
+                onChange={(e) => seekTo(parseFloat(e.target.value))}
+                onMouseMove={(e) =>
+                  setScrubHover(scrubHoverTime(e.clientX, e.currentTarget))
                 }
-                setPlayhead(t);
-              }}
-              className="h-1 w-full cursor-pointer accent-live"
-            />
+                onTouchMove={(e) => {
+                  const touch = e.touches[0];
+                  if (touch) {
+                    setScrubHover(
+                      scrubHoverTime(touch.clientX, e.currentTarget),
+                    );
+                  }
+                }}
+                className="h-1.5 w-full cursor-pointer accent-live"
+              />
+            </div>
           ) : (
             <div className="h-1 overflow-hidden rounded-full bg-white/20">
               <div className="h-full w-full rounded-full bg-live animate-pulse" />
@@ -666,6 +722,25 @@ export function LivePlayer({
               <Volume2 className="h-5 w-5" />
             )}
           </button>
+
+          {seekable && playbackMode !== "vod" && (
+            <button
+              type="button"
+              onClick={jumpToLive}
+              className={cn(
+                "rounded-md px-2 py-1 text-xs font-semibold tabular-nums transition-colors",
+                offsetLabel === "LIVE"
+                  ? "bg-live/90 text-white"
+                  : "bg-white/15 text-white hover:bg-white/25",
+              )}
+            >
+              {offsetLabel}
+            </button>
+          )}
+
+          {seekable && playbackMode === "vod" && (
+            <span className="text-xs tabular-nums text-white/80">{offsetLabel}</span>
+          )}
 
           <input
             type="range"
