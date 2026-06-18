@@ -118,6 +118,7 @@ tar -czf "${ARCHIVE}" -C "${ROOT}" \
   scripts/wait-for-api.sh \
   scripts/deploy-remote-only.sh \
   scripts/build-frontend-server.sh \
+  scripts/fix-frontend-404.sh \
   scripts/setup-nginx-ssl.sh \
   scripts/check-server-ports.sh \
   scripts/ensure-gpu-queue.sh \
@@ -153,6 +154,8 @@ CERTBOT_EMAIL="${CERTBOT_EMAIL}"
 GPU_TRANSCODE="${GPU_TRANSCODE}"
 
 cd "\${REMOTE_DIR}"
+# Eski .next qoldiq chunklar yangi HTML bilan aralashib 404 beradi.
+rm -rf frontend/.next
 tar -xzf deploy.tar.gz
 rm -f deploy.tar.gz
 mv -f Makefile.prod Makefile 2>/dev/null || true
@@ -285,8 +288,8 @@ start_svc media-orchestrator; sleep 2
 start_svc api-gateway; sleep 3
 
 cd "\${REMOTE_DIR}/frontend"
-if [[ ! -d .next ]]; then
-  echo "Xato: frontend/.next yo'q"
+if [[ ! -f .next/BUILD_ID ]]; then
+  echo "Xato: frontend/.next noto'g'ri yoki yo'q (BUILD_ID topilmadi)"
   exit 1
 fi
 npm ci --omit=dev 2>/dev/null || npm ci

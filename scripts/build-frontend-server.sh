@@ -28,6 +28,8 @@ if ! command -v node >/dev/null 2>&1; then
 fi
 
 cd "${FRONTEND_DIR}"
+echo "==> Eski build tozalanmoqda..."
+rm -rf .next
 echo "==> npm ci..."
 npm ci
 echo "==> next build..."
