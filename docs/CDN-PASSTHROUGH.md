@@ -18,6 +18,8 @@ In this setup:
 - `stream-service` serves signed `/playback/{streamID}/master.m3u8`.
 - Cloudflare CDN caches `/playback/*` on `stream.vibrant.uz` (proxied / orange cloud).
 
+**Important:** passthrough = **one quality only**. Slow mobile viewers get the same bitrate OBS sends. For mixed audiences (WiFi + 4G/3G), use `TRANSCODE_MODE=local` (ABR ladder 1080p→360p) or lower OBS output to ~2500 kbps.
+
 ## CDN Origin
 
 Point CDN origin to:

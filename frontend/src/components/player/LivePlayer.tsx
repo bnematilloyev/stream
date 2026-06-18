@@ -13,7 +13,11 @@ import {
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { createHlsConfig } from "@/lib/player/hls-config";
+import {
+  createHlsConfig,
+  minBufferBeforePlaySec,
+} from "@/lib/player/hls-config";
+import { getNetworkProfile, type NetworkProfile } from "@/lib/player/network";
 
 interface LivePlayerProps {
   src: string;
@@ -25,7 +29,29 @@ interface LivePlayerProps {
 type QualityLevel = { height: number; label: string; index: number };
 
 const QUALITY_STORAGE_KEY = "sahiy-quality";
-const MIN_BUFFER_BEFORE_PLAY_SEC = 4;
+
+function lowestBitrateLevelIndex(hls: Hls): number {
+  let idx = 0;
+  let min = Infinity;
+  hls.levels.forEach((level, i) => {
+    const br = level.bitrate ?? 0;
+    if (br > 0 && br < min) {
+      min = br;
+      idx = i;
+    }
+  });
+  return idx;
+}
+
+function applySlowStartAbr(hls: Hls, profile: NetworkProfile) {
+  if (readSavedQuality() !== "auto") return;
+  if (hls.levels.length <= 1) return;
+  if (profile !== "slow" && profile !== "medium") return;
+
+  const low = lowestBitrateLevelIndex(hls);
+  hls.autoLevelCapping = low;
+  hls.currentLevel = low;
+}
 
 function readSavedQuality(): "auto" | number {
   if (typeof window === "undefined") return "auto";
@@ -87,6 +113,8 @@ export function LivePlayer({
   const [currentQuality, setCurrentQuality] = useState<"auto" | number>("auto");
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [latencySec, setLatencySec] = useState<number | null>(null);
+  const [networkProfile] = useState<NetworkProfile>(() => getNetworkProfile());
+  const [singleQuality, setSingleQuality] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const latencyTimer = useRef<ReturnType<typeof setInterval>>(null);
   const warmupTimer = useRef<ReturnType<typeof setTimeout>>(null);
@@ -107,9 +135,13 @@ export function LivePlayer({
     if (!video || !hls || warmupDoneRef.current || !autoPlay) return;
 
     const ahead = bufferedAhead(video);
-    if (ahead >= MIN_BUFFER_BEFORE_PLAY_SEC) {
+    const minBuf = minBufferBeforePlaySec(networkProfile);
+    if (ahead >= minBuf) {
       warmupDoneRef.current = true;
       setWarming(false);
+      if (hls.autoLevelCapping >= 0 && ahead >= minBuf + 4) {
+        hls.autoLevelCapping = -1;
+      }
       void video.play().catch(() => setPlaying(false));
       return;
     }
@@ -121,7 +153,7 @@ export function LivePlayer({
       setWarming(false);
       void video.play().catch(() => setPlaying(false));
     }, 12_000);
-  }, [autoPlay]);
+  }, [autoPlay, networkProfile]);
 
   const initPlayer = useCallback(() => {
     const video = videoRef.current;
@@ -140,7 +172,7 @@ export function LivePlayer({
     }
 
     if (Hls.isSupported()) {
-      const hls = new Hls(createHlsConfig());
+      const hls = new Hls(createHlsConfig(networkProfile));
 
       hlsRef.current = hls;
       hls.loadSource(src);
@@ -160,10 +192,13 @@ export function LivePlayer({
           hls.currentLevel = -1;
           setQualities([]);
           setCurrentQuality("auto");
+          setSingleQuality(true);
         } else {
+          setSingleQuality(false);
           setQualities(levels);
           const choice = applyQualityChoice(hls, levels);
           setCurrentQuality(choice === "auto" ? "auto" : choice);
+          applySlowStartAbr(hls, networkProfile);
         }
 
         if (autoPlay) {
@@ -186,7 +221,17 @@ export function LivePlayer({
       });
 
       hls.on(Hls.Events.ERROR, (_, data) => {
-        if (!data.fatal) return;
+        if (!data.fatal) {
+          if (
+            data.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR &&
+            hls.levels.length > 1 &&
+            readSavedQuality() === "auto" &&
+            hls.currentLevel > 0
+          ) {
+            hls.nextLevel = hls.currentLevel - 1;
+          }
+          return;
+        }
         switch (data.type) {
           case Hls.ErrorTypes.NETWORK_ERROR:
             hls.startLoad();
@@ -208,7 +253,7 @@ export function LivePlayer({
       setError("Brauzeringiz HLS ni qo'llab-quvvatlamaydi");
       setWarming(false);
     }
-  }, [src, autoPlay, tryStartPlayback]);
+  }, [src, autoPlay, tryStartPlayback, networkProfile]);
 
   useEffect(() => {
     initPlayer();
@@ -337,7 +382,17 @@ export function LivePlayer({
         playsInline
         onClick={togglePlay}
         onWaiting={() => {
-          if (hasPlayedRef.current) setBuffering(true);
+          if (!hasPlayedRef.current) return;
+          setBuffering(true);
+          const hls = hlsRef.current;
+          if (
+            hls &&
+            hls.levels.length > 1 &&
+            readSavedQuality() === "auto" &&
+            hls.currentLevel > 0
+          ) {
+            hls.nextLevel = hls.currentLevel - 1;
+          }
         }}
         onPlaying={() => {
           hasPlayedRef.current = true;
@@ -367,6 +422,11 @@ export function LivePlayer({
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70">
           <div className="h-9 w-9 animate-pulse rounded-full bg-white/20" />
           <p className="text-sm text-white/80">Efir tayyorlanmoqda...</p>
+          {singleQuality && networkProfile === "slow" && (
+            <p className="max-w-xs px-4 text-center text-xs text-white/50">
+              Sekin internet — OBS bitrate 2500 kbps dan past bo‘lishi tavsiya etiladi
+            </p>
+          )}
         </div>
       )}
 

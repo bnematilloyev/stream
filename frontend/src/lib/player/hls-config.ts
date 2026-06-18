@@ -1,31 +1,24 @@
 import type Hls from "hls.js";
+import type { NetworkProfile } from "./network";
+import { getNetworkProfile, isMobileViewport } from "./network";
 
-/** Barqaror jonli efir — biroz kechikish, kam uzilish (mijoz UX uchun). */
-export function createHlsConfig(): Partial<Hls["config"]> {
-  return {
+/** YouTube/Twitch uslubi: tarmoq tezligiga qarab buffer va ABR aggressivligi. */
+export function createHlsConfig(
+  profile: NetworkProfile = getNetworkProfile(),
+): Partial<Hls["config"]> {
+  const mobile = isMobileViewport();
+
+  const base: Partial<Hls["config"]> = {
     enableWorker: true,
     lowLatencyMode: false,
-
-    // Live edgedan 4 segment orqada (~8s @ 2s segment) — buffer to‘lib boshlaydi.
-    liveSyncDurationCount: 4,
-    liveMaxLatencyDurationCount: 12,
-    maxLiveSyncPlaybackRate: 1.0,
     liveDurationInfinity: true,
-
-    backBufferLength: 45,
-    liveBackBufferLength: 0,
-    maxBufferLength: 50,
-    maxMaxBufferLength: 90,
-    maxBufferSize: 64 * 1000 * 1000,
-    maxBufferHole: 0.5,
+    maxLiveSyncPlaybackRate: 1.0,
 
     startLevel: -1,
-    capLevelToPlayerSize: false,
-    abrEwmaDefaultEstimate: 5_000_000,
-    abrBandWidthFactor: 0.8,
-    abrBandWidthUpFactor: 0.7,
+    capLevelToPlayerSize: mobile,
     abrMaxWithRealBitrate: true,
-    minAutoBitrate: 1_400_000,
+    startFragPrefetch: true,
+    testBandwidth: true,
 
     fragLoadingMaxRetry: 24,
     fragLoadingRetryDelay: 1000,
@@ -33,18 +26,96 @@ export function createHlsConfig(): Partial<Hls["config"]> {
     manifestLoadingRetryDelay: 1500,
     levelLoadingMaxRetry: 16,
     levelLoadingRetryDelay: 1000,
-    startFragPrefetch: true,
-    testBandwidth: true,
-
     nudgeMaxRetry: 8,
     highBufferWatchdogPeriod: 2,
   };
+
+  switch (profile) {
+    case "slow":
+      return {
+        ...base,
+        // Sekin mobil / 3G: katta buffer, pastdan boshlash, sekin yuqoriga chiqish.
+        liveSyncDurationCount: 6,
+        liveMaxLatencyDurationCount: 14,
+        backBufferLength: 30,
+        liveBackBufferLength: 0,
+        maxBufferLength: 70,
+        maxMaxBufferLength: 120,
+        maxBufferSize: 80 * 1000 * 1000,
+        maxBufferHole: 0.35,
+        abrEwmaDefaultEstimate: 900_000,
+        abrBandWidthFactor: 0.65,
+        abrBandWidthUpFactor: 0.45,
+        minAutoBitrate: 400_000,
+      };
+    case "medium":
+      return {
+        ...base,
+        liveSyncDurationCount: 5,
+        liveMaxLatencyDurationCount: 12,
+        backBufferLength: 40,
+        liveBackBufferLength: 0,
+        maxBufferLength: 55,
+        maxMaxBufferLength: 90,
+        maxBufferSize: 64 * 1000 * 1000,
+        maxBufferHole: 0.45,
+        abrEwmaDefaultEstimate: 2_500_000,
+        abrBandWidthFactor: 0.72,
+        abrBandWidthUpFactor: 0.55,
+        minAutoBitrate: 700_000,
+      };
+    case "fast":
+      return {
+        ...base,
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 8,
+        backBufferLength: 35,
+        liveBackBufferLength: 0,
+        maxBufferLength: 40,
+        maxMaxBufferLength: 60,
+        maxBufferSize: 48 * 1000 * 1000,
+        maxBufferHole: 0.5,
+        abrEwmaDefaultEstimate: 8_000_000,
+        abrBandWidthFactor: 0.85,
+        abrBandWidthUpFactor: 0.8,
+        minAutoBitrate: 1_400_000,
+      };
+    default:
+      return {
+        ...base,
+        liveSyncDurationCount: 4,
+        liveMaxLatencyDurationCount: 12,
+        backBufferLength: 45,
+        liveBackBufferLength: 0,
+        maxBufferLength: 50,
+        maxMaxBufferLength: 90,
+        maxBufferSize: 64 * 1000 * 1000,
+        maxBufferHole: 0.5,
+        abrEwmaDefaultEstimate: 2_000_000,
+        abrBandWidthFactor: 0.75,
+        abrBandWidthUpFactor: 0.6,
+        minAutoBitrate: 700_000,
+      };
+  }
+}
+
+export function minBufferBeforePlaySec(profile: NetworkProfile): number {
+  switch (profile) {
+    case "slow":
+      return 6;
+    case "medium":
+      return 5;
+    case "fast":
+      return 3;
+    default:
+      return 4;
+  }
 }
 
 /** Ultra-low latency (WHEP bo‘lmaganda ixtiyoriy). */
 export function createLowLatencyHlsConfig(): Partial<Hls["config"]> {
   return {
-    ...createHlsConfig(),
+    ...createHlsConfig("fast"),
     lowLatencyMode: true,
     liveSyncDurationCount: 3,
     liveMaxLatencyDurationCount: 6,
