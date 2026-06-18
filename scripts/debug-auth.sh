@@ -52,6 +52,18 @@ if [[ -f "${LOG}/api-gateway.log" ]]; then
   echo ""
 fi
 
+echo "=== Redis ==="
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx sahiy-redis; then
+  if docker exec sahiy-redis redis-cli ping 2>/dev/null | grep -q PONG; then
+    echo "  OK  redis-cli ping (parolsiz)"
+  else
+    echo "  FAIL redis NOAUTH — fix: bash ${REMOTE_DIR}/scripts/fix-redis-auth.sh"
+  fi
+else
+  echo "  sahiy-redis container yo'q"
+fi
+echo ""
+
 if [[ -f "${ENV_FILE}" ]]; then
   DATABASE_URL="$(grep -E '^DATABASE_URL=' "${ENV_FILE}" | cut -d= -f2- | sed 's/\r$//')"
   JWT_ACCESS="$(grep -E '^JWT_ACCESS_SECRET=' "${ENV_FILE}" | cut -d= -f2- | sed 's/\r$//')"

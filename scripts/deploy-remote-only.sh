@@ -42,6 +42,7 @@ ensure_env() {
     return 0
   fi
   local jwt_access jwt_refresh media_hook playback_signing service_token market_webhook_url market_webhook_secret
+  local redis_url database_url
   if [[ -f "${env_file}" ]]; then
     jwt_access="$(grep -E '^JWT_ACCESS_SECRET=' "${env_file}" | cut -d= -f2- | sed 's/\r$//' || true)"
     jwt_refresh="$(grep -E '^JWT_REFRESH_SECRET=' "${env_file}" | cut -d= -f2- | sed 's/\r$//' || true)"
@@ -50,6 +51,8 @@ ensure_env() {
     service_token="$(grep -E '^SERVICE_TOKEN=' "${env_file}" | cut -d= -f2- | sed 's/\r$//' || true)"
     market_webhook_url="$(grep -E '^MARKET_WEBHOOK_URL=' "${env_file}" | cut -d= -f2- | sed 's/\r$//' || true)"
     market_webhook_secret="$(grep -E '^MARKET_WEBHOOK_SECRET=' "${env_file}" | cut -d= -f2- | sed 's/\r$//' || true)"
+    redis_url="$(grep -E '^REDIS_URL=' "${env_file}" | cut -d= -f2- | sed 's/\r$//' || true)"
+    database_url="$(grep -E '^DATABASE_URL=' "${env_file}" | cut -d= -f2- | sed 's/\r$//' || true)"
   fi
   jwt_access="${jwt_access:-$(openssl rand -hex 32)}"
   jwt_refresh="${jwt_refresh:-$(openssl rand -hex 32)}"
@@ -57,12 +60,14 @@ ensure_env() {
   playback_signing="${playback_signing:-$(openssl rand -hex 32)}"
   service_token="${service_token:-$(openssl rand -hex 32)}"
   market_webhook_secret="${market_webhook_secret:-${service_token}}"
+  redis_url="${redis_url:-redis://127.0.0.1:16379/0}"
+  database_url="${database_url:-postgres://sahiy:sahiy_secret@127.0.0.1:15433/sahiy_stream?sslmode=disable}"
 
   cat >"${env_file}" <<ENVFILE
 APP_ENV=production
 LOG_LEVEL=info
-DATABASE_URL=postgres://sahiy:sahiy_secret@127.0.0.1:15433/sahiy_stream?sslmode=disable
-REDIS_URL=redis://127.0.0.1:16379/0
+DATABASE_URL=${database_url}
+REDIS_URL=${redis_url}
 NATS_URL=nats://127.0.0.1:14222
 JWT_ACCESS_SECRET=${jwt_access}
 JWT_REFRESH_SECRET=${jwt_refresh}
@@ -123,6 +128,10 @@ cd "${REMOTE_DIR}/infra/docker"
 docker compose -f docker-compose.prod.yml up -d
 sleep 8
 
+if [[ -x "${REMOTE_DIR}/scripts/fix-redis-auth.sh" ]]; then
+  bash "${REMOTE_DIR}/scripts/fix-redis-auth.sh" || true
+fi
+
 if [[ -x "${REMOTE_DIR}/scripts/prod-migrate.sh" ]]; then
   if ! bash "${REMOTE_DIR}/scripts/prod-migrate.sh" up; then
     echo "XATO: DB migratsiya muvaffaqiyatsiz — /v1/auth/refresh 500 berishi mumkin"
@@ -145,7 +154,12 @@ LOG="${REMOTE_DIR}/.logs"
 mkdir -p "${LOG}" "${REMOTE_DIR}/data/hls"
 
 start_svc() {
-  nohup bash -c "REMOTE_DIR='${REMOTE_DIR}'; source '${REMOTE_DIR}/scripts/load-prod-env.sh'; exec '${REMOTE_DIR}/bin/$1'" >"${LOG}/$1.log" 2>&1 &
+  local loader="${REMOTE_DIR}/scripts/load-prod-env.sh"
+  if [[ -f "${loader}" ]]; then
+    nohup bash -c "REMOTE_DIR='${REMOTE_DIR}'; source '${loader}'; exec '${REMOTE_DIR}/bin/$1'" >"${LOG}/$1.log" 2>&1 &
+  else
+    nohup bash -c "REMOTE_DIR='${REMOTE_DIR}'; set -a; source <(grep -v '^#' \"\${REMOTE_DIR}/.env\" | sed 's/\r\$//'); set +a; exec \"\${REMOTE_DIR}/bin/$1\"" >"${LOG}/$1.log" 2>&1 &
+  fi
   echo "  $1 pid=$!"
 }
 

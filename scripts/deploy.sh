@@ -119,6 +119,9 @@ tar -czf "${ARCHIVE}" -C "${ROOT}" \
   scripts/deploy-remote-only.sh \
   scripts/build-frontend-server.sh \
   scripts/fix-frontend-404.sh \
+  scripts/load-prod-env.sh \
+  scripts/debug-auth.sh \
+  scripts/fix-redis-auth.sh \
   scripts/setup-nginx-ssl.sh \
   scripts/check-server-ports.sh \
   scripts/ensure-gpu-queue.sh \
@@ -276,7 +279,12 @@ sleep 2
 
 LOG="\${REMOTE_DIR}/.logs"
 start_svc() {
-  nohup bash -c "REMOTE_DIR='\${REMOTE_DIR}'; source '\${REMOTE_DIR}/scripts/load-prod-env.sh'; exec '\${REMOTE_DIR}/bin/\$1'" >"\${LOG}/\$1.log" 2>&1 &
+  local loader="\${REMOTE_DIR}/scripts/load-prod-env.sh"
+  if [[ -f "\${loader}" ]]; then
+    nohup bash -c "REMOTE_DIR='\${REMOTE_DIR}'; source '\${loader}'; exec '\${REMOTE_DIR}/bin/\$1'" >"\${LOG}/\$1.log" 2>&1 &
+  else
+    nohup bash -c "REMOTE_DIR='\${REMOTE_DIR}'; set -a; source <(grep -v '^#' \"\${REMOTE_DIR}/.env\" | sed 's/\r\$//'); set +a; exec \"\${REMOTE_DIR}/bin/\$1\"" >"\${LOG}/\$1.log" 2>&1 &
+  fi
   echo "  \$1 pid=\$!"
 }
 

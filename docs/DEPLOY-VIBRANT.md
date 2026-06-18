@@ -119,6 +119,7 @@ Agar **Flexible** bo'lsa — origin HTTP, lekin kamera/WHIP uchun **Full** tavsi
 | Kamera ishlamaydi | HTTPS + `mediamtx.yml` da to'g'ri `__SERVER_IP__` |
 | 502 Bad Gateway | `next start` port 3002, nginx `__FRONTEND_PORT__` |
 | `/v1/auth/refresh` 500 | `bash scripts/debug-auth.sh` — `auth-service` OFF, `sessions` jadvali yo'q, yoki migratsiya o'tmagan |
+| `auth-service` redis NOAUTH | `bash scripts/fix-redis-auth.sh` yoki redis volume qayta yaratish |
 | Studio: missing authorization token | Refresh 500 → access token yo'q; serverda auth tuzatilsa yoki qayta login |
 
 ---
