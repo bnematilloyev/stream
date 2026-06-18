@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { restoreSession } from "@/lib/api/auth";
+import { getAccessToken } from "@/lib/api/client";
 import { useAuthStore } from "@/stores/authStore";
 
 export function AuthHydrator({ children }: { children: React.ReactNode }) {
@@ -13,6 +14,11 @@ export function AuthHydrator({ children }: { children: React.ReactNode }) {
     if (!hydrated) return;
 
     if (!user) {
+      setSessionReady(true);
+      return;
+    }
+
+    if (getAccessToken()) {
       setSessionReady(true);
       return;
     }

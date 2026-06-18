@@ -4,7 +4,8 @@ import {
   getStoredRefreshToken,
   setStoredRefreshToken,
 } from "@/lib/refresh-token";
-import type { ApiError } from "@/types";
+import { useAuthStore } from "@/stores/authStore";
+import type { ApiError, AuthResponse } from "@/types";
 
 /** Production: NEXT_PUBLIC_API_URL yoki brauzer origin. Dev: localhost:8080. */
 export function resolveApiUrl(): string {
@@ -91,21 +92,25 @@ async function refreshAccessToken(): Promise<string | null> {
     refreshPromise = (async () => {
       try {
         let res = await postRefresh(refreshRequestBody());
-        // Boshqa tabda token yangilangan — eski sessionStorage body 401 qaytaradi.
         if (!res.ok && getStoredRefreshToken()) {
           res = await postRefresh(refreshRequestBody(true));
         }
         if (!res.ok) {
-          notifyAuthCleared();
+          if (res.status === 401 || res.status === 403) {
+            notifyAuthCleared();
+          }
           return null;
         }
-        const data = await res.json();
+        const data: AuthResponse = await res.json();
         accessToken = data.access_token;
         if (data.refresh_token) setStoredRefreshToken(data.refresh_token);
-        notifyTokenRefreshed(data.access_token);
+        if (data.user) {
+          useAuthStore.getState().setAuth(data.user, data.access_token);
+        } else {
+          notifyTokenRefreshed(data.access_token);
+        }
         return accessToken;
       } catch {
-        notifyAuthCleared();
         return null;
       } finally {
         refreshPromise = null;
@@ -114,6 +119,8 @@ async function refreshAccessToken(): Promise<string | null> {
   }
   return refreshPromise;
 }
+
+export { refreshAccessToken };
 
 export async function apiFetch<T>(
   path: string,
@@ -147,8 +154,6 @@ export async function apiFetch<T>(
         headers: reqHeaders,
         credentials: "include",
       });
-    } else {
-      notifyAuthCleared();
     }
   }
 

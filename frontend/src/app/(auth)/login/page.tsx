@@ -6,7 +6,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { login } from "@/lib/api/auth";
-import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -21,7 +20,6 @@ type Form = z.infer<typeof schema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const setAuth = useAuthStore((s) => s.setAuth);
   const [error, setError] = useState("");
 
   const {
@@ -33,8 +31,7 @@ export default function LoginPage() {
   async function onSubmit(data: Form) {
     setError("");
     try {
-      const res = await login(data);
-      setAuth(res.user, res.access_token);
+      await login(data);
       router.push("/");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Kirish muvaffaqiyatsiz");

@@ -189,6 +189,9 @@ func (uc *AuthUseCase) Refresh(ctx context.Context, refreshToken string) (*AuthR
 	if err != nil {
 		return nil, apperrors.New(apperrors.CodeTokenInvalid, "invalid token subject", 401)
 	}
+	if session.UserID != userID {
+		return nil, apperrors.New(apperrors.CodeTokenInvalid, "refresh token mismatch", 401)
+	}
 
 	user, err := uc.users.GetByID(ctx, userID)
 	if err != nil {
@@ -198,7 +201,6 @@ func (uc *AuthUseCase) Refresh(ctx context.Context, refreshToken string) (*AuthR
 		return nil, apperrors.Forbidden("account is not active")
 	}
 
-	// Rotate refresh token — yangi session yaratilgandan keyin eskisini o'chirish.
 	var ip *string
 	if session.IPAddress != nil {
 		ip = session.IPAddress
@@ -207,7 +209,9 @@ func (uc *AuthUseCase) Refresh(ctx context.Context, refreshToken string) (*AuthR
 	if err != nil {
 		return nil, err
 	}
-	_ = uc.sessions.DeleteByRefreshToken(ctx, refreshToken)
+	if err := uc.sessions.DeleteByRefreshToken(ctx, refreshToken); err != nil {
+		return nil, apperrors.Internal(err)
+	}
 
 	uc.cacheUserSession(ctx, user)
 
