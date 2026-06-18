@@ -111,8 +111,8 @@ func isMediaPlayable(m *domain.StreamMedia, streamStatus string) bool {
 	if streamStatus == domain.StatusLive {
 		return m.Status == domain.MediaStatusIngesting || m.Status == domain.MediaStatusReady
 	}
-	if st.Status == domain.StatusEnded {
-		if m == nil || m.HLSPath == nil || *m.HLSPath == "" {
+	if streamStatus == domain.StatusEnded {
+		if m.HLSPath == nil || *m.HLSPath == "" {
 			return false
 		}
 		return m.Status == domain.MediaStatusStopped || m.Status == domain.MediaStatusReady || m.Status == domain.MediaStatusIngesting
