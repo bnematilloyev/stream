@@ -4,7 +4,6 @@ import {
   getStoredRefreshToken,
   setStoredRefreshToken,
 } from "@/lib/refresh-token";
-import { useAuthStore } from "@/stores/authStore";
 import type { ApiError, AuthResponse } from "@/types";
 
 /** Production: NEXT_PUBLIC_API_URL yoki brauzer origin. Dev: localhost:8080. */
@@ -39,11 +38,13 @@ export class ApiClientError extends Error {
 type RequestOptions = RequestInit & { auth?: boolean };
 
 type TokenRefreshListener = (accessToken: string) => void;
+type AuthRefreshListener = (data: AuthResponse) => void;
 type AuthClearListener = () => void;
 
 let accessToken: string | null = null;
 let refreshPromise: Promise<string | null> | null = null;
 const tokenRefreshListeners = new Set<TokenRefreshListener>();
+const authRefreshListeners = new Set<AuthRefreshListener>();
 const authClearListeners = new Set<AuthClearListener>();
 
 export function setAccessToken(token: string | null) {
@@ -59,6 +60,11 @@ export function onAccessTokenRefreshed(listener: TokenRefreshListener) {
   return () => tokenRefreshListeners.delete(listener);
 }
 
+export function onAuthRefreshed(listener: AuthRefreshListener) {
+  authRefreshListeners.add(listener);
+  return () => authRefreshListeners.delete(listener);
+}
+
 export function onAuthCleared(listener: AuthClearListener) {
   authClearListeners.add(listener);
   return () => authClearListeners.delete(listener);
@@ -66,6 +72,10 @@ export function onAuthCleared(listener: AuthClearListener) {
 
 function notifyTokenRefreshed(token: string) {
   tokenRefreshListeners.forEach((listener) => listener(token));
+}
+
+function notifyAuthRefreshed(data: AuthResponse) {
+  authRefreshListeners.forEach((listener) => listener(data));
 }
 
 function notifyAuthCleared() {
@@ -105,7 +115,7 @@ async function refreshAccessToken(): Promise<string | null> {
         accessToken = data.access_token;
         if (data.refresh_token) setStoredRefreshToken(data.refresh_token);
         if (data.user) {
-          useAuthStore.getState().setAuth(data.user, data.access_token);
+          notifyAuthRefreshed(data);
         } else {
           notifyTokenRefreshed(data.access_token);
         }

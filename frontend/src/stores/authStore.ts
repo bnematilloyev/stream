@@ -5,6 +5,7 @@ import { persist } from "zustand/middleware";
 import {
   onAccessTokenRefreshed,
   onAuthCleared,
+  onAuthRefreshed,
   setAccessToken,
 } from "@/lib/api/client";
 import { clearStoredRefreshToken } from "@/lib/refresh-token";
@@ -57,6 +58,9 @@ export const useAuthStore = create<AuthState>()(
 );
 
 if (typeof window !== "undefined") {
+  onAuthRefreshed((data) => {
+    useAuthStore.getState().setAuth(data.user, data.access_token);
+  });
   onAccessTokenRefreshed((token) => {
     useAuthStore.getState().setAccessTokenOnly(token);
   });
