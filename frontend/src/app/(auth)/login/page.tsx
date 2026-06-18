@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { login } from "@/lib/api/auth";
+import { formatUserError } from "@/lib/user-messages";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -20,6 +21,8 @@ type Form = z.infer<typeof schema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next");
   const [error, setError] = useState("");
 
   const {
@@ -32,9 +35,9 @@ export default function LoginPage() {
     setError("");
     try {
       await login(data);
-      router.push("/");
+      router.push(nextPath && nextPath.startsWith("/") ? nextPath : "/");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Kirish muvaffaqiyatsiz");
+      setError(formatUserError(e, "Kirish muvaffaqiyatsiz. Email va parolni tekshiring."));
     }
   }
 

@@ -1,11 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   chatWebSocketUrl,
   getChatHistory,
   type ChatMessage,
 } from "@/lib/api/chat";
+import {
+  chatHistoryFailedMessage,
+  chatLoginRequiredMessage,
+  chatServerMessage,
+  chatUnavailableMessage,
+} from "@/lib/user-messages";
 import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,9 +33,16 @@ type WsEvent = {
   ts?: number;
 };
 
+const MAX_WS_RETRIES = 6;
+
 export function ChatPanel({ streamId, live = false }: ChatPanelProps) {
+  const hydrated = useAuthStore((s) => s.hydrated);
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
+  const canChat = hydrated && !!user && !!accessToken;
+  const sessionPending = hydrated && !!user && !accessToken;
+  const showLoginPrompt = hydrated && !user;
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [connected, setConnected] = useState(false);
@@ -52,18 +66,22 @@ export function ChatPanel({ streamId, live = false }: ChatPanelProps) {
   }, [streamId]);
 
   useEffect(() => {
+    if (!hydrated) return;
     let cancelled = false;
     loadHistory()
+      .then(() => {
+        if (!cancelled) setError(null);
+      })
       .catch(() => {
-        if (!cancelled) setError("Chat tarixi yuklanmadi");
+        if (!cancelled) setError(chatHistoryFailedMessage());
       });
     return () => {
       cancelled = true;
     };
-  }, [loadHistory]);
+  }, [loadHistory, hydrated]);
 
   useEffect(() => {
-    if (!live) return;
+    if (!live || !hydrated) return;
 
     let ws: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -83,18 +101,30 @@ export function ChatPanel({ streamId, live = false }: ChatPanelProps) {
         setConnected(false);
         wsRef.current = null;
         if (closed) return;
+
         retryRef.current += 1;
+        if (retryRef.current >= MAX_WS_RETRIES) {
+          if (canChat) {
+            setError(chatUnavailableMessage());
+          }
+          return;
+        }
+
         const delay = Math.min(1000 * 2 ** retryRef.current, 30_000);
         reconnectTimer = setTimeout(connect, delay);
       };
 
-      ws.onerror = () => setError("Chat ulanishi uzildi");
+      ws.onerror = () => {
+        // onclose qayta ulanishni boshqaradi; mehmon uchun xato ko'rsatmaymiz.
+      };
 
       ws.onmessage = (evt) => {
         try {
           const data = JSON.parse(evt.data) as WsEvent;
           if (data.type === "error") {
-            setError(data.content ?? "Xatolik");
+            if (canChat) {
+              setError(chatServerMessage(data.content ?? ""));
+            }
             return;
           }
           if (data.type === "delete" && data.message_id) {
@@ -130,8 +160,9 @@ export function ChatPanel({ streamId, live = false }: ChatPanelProps) {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       ws?.close();
       wsRef.current = null;
+      setConnected(false);
     };
-  }, [streamId, live, accessToken]);
+  }, [streamId, live, accessToken, hydrated, canChat]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
@@ -149,23 +180,23 @@ export function ChatPanel({ streamId, live = false }: ChatPanelProps) {
 
   const send = useCallback(() => {
     const text = input.trim();
-    if (!text || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
-    if (!accessToken) {
-      setError("Xabar yuborish uchun tizimga kiring");
-      return;
-    }
+    if (!text) return;
+    if (!canChat) return;
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     wsRef.current.send(JSON.stringify({ type: "message", content: text }));
     setInput("");
     setError(null);
-  }, [input, accessToken]);
+  }, [input, canChat]);
+
+  const loginHref = `/login?next=${encodeURIComponent(`/live/${streamId}`)}`;
 
   return (
     <div className="flex h-[480px] flex-col rounded-2xl border border-border bg-surface-1">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h3 className="font-semibold">Chat</h3>
-        {live && (
+        {live && canChat && (
           <span className={`text-xs ${connected ? "text-green-500" : "text-muted"}`}>
-            {connected ? "Jonli" : "Qayta ulanmoqda..."}
+            {connected ? "Jonli" : "Qayta ulanmoqda…"}
           </span>
         )}
       </div>
@@ -188,20 +219,38 @@ export function ChatPanel({ streamId, live = false }: ChatPanelProps) {
         ))}
       </div>
 
-      {error && <p className="px-4 pb-1 text-xs text-red-400">{error}</p>}
+      {error && canChat && (
+        <p className="px-4 pb-1 text-xs text-amber-600 dark:text-amber-400">{error}</p>
+      )}
 
-      <div className="flex gap-2 border-t border-border p-3">
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={user ? "Xabar yozing..." : "Xabar uchun login qiling"}
-          disabled={!live || !user}
-          onKeyDown={(e) => e.key === "Enter" && send()}
-        />
-        <Button size="sm" onClick={send} disabled={!live || !user || !input.trim()}>
-          Yuborish
-        </Button>
-      </div>
+      {canChat ? (
+        <div className="flex gap-2 border-t border-border p-3">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Xabar yozing..."
+            disabled={!live}
+            onKeyDown={(e) => e.key === "Enter" && send()}
+          />
+          <Button size="sm" onClick={send} disabled={!live || !input.trim()}>
+            Yuborish
+          </Button>
+        </div>
+      ) : sessionPending ? (
+        <div className="border-t border-border p-4 text-center">
+          <p className="text-sm text-muted">Chat tayyorlanmoqda…</p>
+        </div>
+      ) : showLoginPrompt ? (
+        <div className="border-t border-border p-4 text-center">
+          <p className="text-sm text-muted">{chatLoginRequiredMessage()}</p>
+          <Link
+            href={loginHref}
+            className="mt-3 inline-flex rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+          >
+            Kirish
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }

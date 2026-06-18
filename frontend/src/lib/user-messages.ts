@@ -102,6 +102,32 @@ export function connectionLostMessage(): string {
   return "Ulanish uzildi. Qayta urinib ko'ring.";
 }
 
+export function chatLoginRequiredMessage(): string {
+  return "Chatda yozish uchun avval tizimga kiring.";
+}
+
+export function chatHistoryFailedMessage(): string {
+  return "Chat xabarlari yuklanmadi. Sahifani yangilab ko'ring.";
+}
+
+export function chatUnavailableMessage(): string {
+  return "Chat vaqtincha ishlamayapti. Video tomoshasi davom etadi.";
+}
+
+export function chatServerMessage(raw: string): string {
+  const msg = raw.toLowerCase();
+  if (msg.includes("authentication required") || msg.includes("auth")) {
+    return chatLoginRequiredMessage();
+  }
+  if (msg.includes("rate") || msg.includes("slow")) {
+    return "Juda tez xabar yuboryapsiz. Biroz kuting.";
+  }
+  if (msg.includes("invalid message")) {
+    return "Xabar yuborib bo'lmadi. Qayta urinib ko'ring.";
+  }
+  return "Xabar yuborib bo'lmadi. Qayta urinib ko'ring.";
+}
+
 export function whipBroadcastMessage(err: unknown): string {
   if (err instanceof Error) {
     const msg = err.message.toLowerCase();
