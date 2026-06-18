@@ -15,15 +15,19 @@ import {
 import { cn } from "@/lib/utils";
 import {
   createHlsConfig,
+  createVodHlsConfig,
   minBufferBeforePlaySec,
 } from "@/lib/player/hls-config";
 import { getNetworkProfile, type NetworkProfile } from "@/lib/player/network";
+
+export type PlaybackMode = "live" | "dvr" | "vod";
 
 interface LivePlayerProps {
   src: string;
   title?: string;
   autoPlay?: boolean;
   className?: string;
+  playbackMode?: PlaybackMode;
 }
 
 type QualityLevel = { height: number; label: string; index: number };
@@ -94,6 +98,7 @@ export function LivePlayer({
   title,
   autoPlay = true,
   className,
+  playbackMode = "live",
 }: LivePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -115,6 +120,9 @@ export function LivePlayer({
   const [latencySec, setLatencySec] = useState<number | null>(null);
   const [networkProfile] = useState<NetworkProfile>(() => getNetworkProfile());
   const [singleQuality, setSingleQuality] = useState(false);
+  const [playhead, setPlayhead] = useState(0);
+  const [seekEnd, setSeekEnd] = useState(0);
+  const seekable = playbackMode !== "live";
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const latencyTimer = useRef<ReturnType<typeof setInterval>>(null);
   const warmupTimer = useRef<ReturnType<typeof setTimeout>>(null);
@@ -172,7 +180,11 @@ export function LivePlayer({
     }
 
     if (Hls.isSupported()) {
-      const hls = new Hls(createHlsConfig(networkProfile));
+      const hls = new Hls(
+        playbackMode === "vod"
+          ? createVodHlsConfig()
+          : createHlsConfig(networkProfile),
+      );
 
       hlsRef.current = hls;
       hls.loadSource(src);
@@ -202,7 +214,14 @@ export function LivePlayer({
         }
 
         if (autoPlay) {
-          tryStartPlayback();
+          if (playbackMode === "vod") {
+            warmupDoneRef.current = true;
+            setWarming(false);
+            video.currentTime = 0;
+            void video.play().catch(() => setPlaying(false));
+          } else {
+            tryStartPlayback();
+          }
         } else {
           setWarming(false);
         }
@@ -253,7 +272,22 @@ export function LivePlayer({
       setError("Brauzeringiz HLS ni qo'llab-quvvatlamaydi");
       setWarming(false);
     }
-  }, [src, autoPlay, tryStartPlayback, networkProfile]);
+  }, [src, autoPlay, tryStartPlayback, networkProfile, playbackMode]);
+
+  useEffect(() => {
+    if (!seekable) return;
+    const timer = setInterval(() => {
+      const video = videoRef.current;
+      if (!video) return;
+      setPlayhead(video.currentTime);
+      if (playbackMode === "vod" && Number.isFinite(video.duration)) {
+        setSeekEnd(video.duration);
+      } else if (video.seekable.length > 0) {
+        setSeekEnd(video.seekable.end(video.seekable.length - 1));
+      }
+    }, 400);
+    return () => clearInterval(timer);
+  }, [seekable, playbackMode]);
 
   useEffect(() => {
     initPlayer();
@@ -403,7 +437,7 @@ export function LivePlayer({
         onPause={() => setPlaying(false)}
       />
 
-      {latencySec !== null && playing && !warming && (
+      {latencySec !== null && playing && !warming && playbackMode !== "vod" && (
         <button
           onClick={jumpToLive}
           className={cn(
@@ -454,8 +488,27 @@ export function LivePlayer({
           showControls ? "opacity-100" : "opacity-0",
         )}
       >
-        <div className="mb-3 h-1 overflow-hidden rounded-full bg-white/20">
-          <div className="h-full w-full rounded-full bg-live animate-pulse" />
+        <div className="mb-3">
+          {seekable && seekEnd > 0 ? (
+            <input
+              type="range"
+              min={0}
+              max={seekEnd}
+              step={0.1}
+              value={Math.min(playhead, seekEnd)}
+              onChange={(e) => {
+                const t = parseFloat(e.target.value);
+                const video = videoRef.current;
+                if (video) video.currentTime = t;
+                setPlayhead(t);
+              }}
+              className="h-1 w-full cursor-pointer accent-live"
+            />
+          ) : (
+            <div className="h-1 overflow-hidden rounded-full bg-white/20">
+              <div className="h-full w-full rounded-full bg-live animate-pulse" />
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3">

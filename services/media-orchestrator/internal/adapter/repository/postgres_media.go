@@ -34,9 +34,9 @@ func (r *PostgresStreamMediaRepository) Upsert(ctx context.Context, m *domain.St
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
 		ON CONFLICT (stream_id) DO UPDATE SET
 			status = EXCLUDED.status,
-			hls_path = EXCLUDED.hls_path,
-			playback_url = EXCLUDED.playback_url,
-			ingest_name = EXCLUDED.ingest_name,
+			hls_path = COALESCE(EXCLUDED.hls_path, stream_media.hls_path),
+			playback_url = COALESCE(EXCLUDED.playback_url, stream_media.playback_url),
+			ingest_name = COALESCE(EXCLUDED.ingest_name, stream_media.ingest_name),
 			ffmpeg_pid = EXCLUDED.ffmpeg_pid,
 			started_at = COALESCE(EXCLUDED.started_at, stream_media.started_at),
 			stopped_at = EXCLUDED.stopped_at,

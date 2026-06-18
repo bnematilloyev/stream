@@ -112,7 +112,21 @@ export function minBufferBeforePlaySec(profile: NetworkProfile): number {
   }
 }
 
-/** Ultra-low latency (WHEP bo‘lmaganda ixtiyoriy). */
+/** Tugagan yozuvlar (VOD) — boshidan ko‘rish, seek bar. */
+export function createVodHlsConfig(): Partial<Hls["config"]> {
+  return {
+    enableWorker: true,
+    lowLatencyMode: false,
+    maxBufferLength: 60,
+    maxMaxBufferLength: 120,
+    backBufferLength: 30,
+    startLevel: -1,
+    capLevelToPlayerSize: true,
+    fragLoadingMaxRetry: 12,
+    manifestLoadingMaxRetry: 8,
+  };
+}
+
 export function createLowLatencyHlsConfig(): Partial<Hls["config"]> {
   return {
     ...createHlsConfig("fast"),

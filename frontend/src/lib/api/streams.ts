@@ -15,12 +15,13 @@ export async function getPlayback(id: string) {
   return apiFetch<Playback>(`/v1/streams/${id}/playback`);
 }
 
-/** Jonli efir boshida manifest tayyor bo‘lishini kutadi. */
-export async function getPlaybackWhenLive(
+/** Jonli yoki yozilgan stream playback. */
+export async function getStreamPlayback(
   id: string,
   signal?: AbortSignal,
-): Promise<Playback> {
-  const maxAttempts = 40;
+  opts?: { warmup?: boolean },
+) {
+  const maxAttempts = opts?.warmup === false ? 1 : 40;
   let lastError: unknown;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -44,6 +45,14 @@ export async function getPlaybackWhenLive(
   }
 
   throw lastError;
+}
+
+/** @deprecated use getStreamPlayback */
+export async function getPlaybackWhenLive(
+  id: string,
+  signal?: AbortSignal,
+): Promise<Playback> {
+  return getStreamPlayback(id, signal);
 }
 
 export async function recordViewerHeartbeat(streamId: string, sessionId: string) {

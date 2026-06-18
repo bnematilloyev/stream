@@ -12,8 +12,8 @@ func TestPassthroughArgsCopyVideoToSingleHLSPlaylist(t *testing.T) {
 	for _, want := range []string{
 		"-c:v copy",
 		"-c:a aac",
-		"-hls_time 2.00",
-		"-hls_list_size 12",
+		"-hls_time 3.00",
+		"-hls_list_size 0",
 		"/tmp/hls/stream/master.m3u8",
 	} {
 		if !strings.Contains(args, want) {

@@ -5,6 +5,7 @@ import type { Stream } from "@/types";
 
 export function StreamCard({ stream }: { stream: Stream }) {
   const isLive = stream.status === "live";
+  const isReplay = stream.status === "ended";
 
   return (
     <Link
@@ -21,6 +22,11 @@ export function StreamCard({ stream }: { stream: Stream }) {
         {isLive && (
           <div className="absolute left-3 top-3">
             <Badge variant="live">Live</Badge>
+          </div>
+        )}
+        {isReplay && (
+          <div className="absolute left-3 top-3">
+            <Badge variant="outline">Yozuv</Badge>
           </div>
         )}
         {stream.viewer_count > 0 && (

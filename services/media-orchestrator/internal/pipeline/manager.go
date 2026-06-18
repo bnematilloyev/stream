@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sahiy/sahiy-stream/pkg/hlsrecord"
 	"github.com/sahiy/sahiy-stream/pkg/hlssync"
 	"github.com/sahiy/sahiy-stream/pkg/storage"
 	"github.com/sahiy/sahiy-stream/services/media-orchestrator/internal/domain"
@@ -48,6 +49,7 @@ type session struct {
 	streamID       uuid.UUID
 	ingestName     string
 	jobID          string
+	outputDir      string
 	cmd            *exec.Cmd
 	uploaderCancel context.CancelFunc
 	startedAt      time.Time
@@ -170,7 +172,7 @@ func (m *Manager) OnPublish(ctx context.Context, ingestName, source string) erro
 	}
 
 	m.active[ingestName] = &session{
-		streamID: sid, ingestName: ingestName, jobID: job.JobID, cmd: job.Cmd,
+		streamID: sid, ingestName: ingestName, jobID: job.JobID, outputDir: outDir, cmd: job.Cmd,
 		uploaderCancel: uploaderCancel, startedAt: now,
 	}
 	m.log.Info("ingest started",
@@ -204,8 +206,16 @@ func (m *Manager) OnPublishDone(ctx context.Context, ingestName string) error {
 
 	now := time.Now()
 	stopped := domain.StatusStopped
+	outDir := sess.outputDir
+	if outDir == "" {
+		outDir = filepath.Join(m.hlsDir, sess.streamID.String())
+	}
+	playlist := filepath.Join(outDir, "master.m3u8")
+	if err := hlsrecord.FinalizePlaylist(playlist); err != nil {
+		m.log.Warn("finalize hls playlist", zap.String("path", playlist), zap.Error(err))
+	}
 	if err := m.media.Upsert(ctx, &domain.StreamMedia{
-		StreamID: sess.streamID, Status: stopped, StoppedAt: &now,
+		StreamID: sess.streamID, Status: stopped, StoppedAt: &now, HLSPath: &outDir,
 	}); err != nil {
 		m.log.Warn("media upsert on stop failed", zap.Error(err))
 	}

@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { getPlaybackWhenLive, getStream, recordViewerHeartbeat } from "@/lib/api/streams";
+import { getStreamPlayback, getStream, recordViewerHeartbeat } from "@/lib/api/streams";
 import { getChannel } from "@/lib/api/channels";
-import { WatchPlayer } from "@/components/player/WatchPlayer";
+import { WatchPlayer, type PlaybackMode } from "@/components/player/WatchPlayer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,12 +24,18 @@ export default function WatchPage() {
     enabled: !!id,
   });
 
+  const stream = streamQuery.data;
+  const isLive = stream?.status === "live";
+  const isReplay = stream?.status === "ended";
+  const playerMode: PlaybackMode = isLive ? "dvr" : "vod";
+
   const playbackQuery = useQuery({
-    queryKey: ["playback", id],
-    queryFn: ({ signal }) => getPlaybackWhenLive(id, signal),
-    enabled: !!id && streamQuery.data?.status === "live",
-    staleTime: 30_000,
-    retry: 2,
+    queryKey: ["playback", id, stream?.status],
+    queryFn: ({ signal }) =>
+      getStreamPlayback(id, signal, { warmup: isLive }),
+    enabled: !!id && (isLive || isReplay),
+    staleTime: isReplay ? 300_000 : 30_000,
+    retry: isReplay ? 1 : 2,
   });
 
   const channelQuery = useQuery({
@@ -39,12 +45,11 @@ export default function WatchPage() {
   });
 
   const [ultraLow, setUltraLow] = useState(false);
-  const stream = streamQuery.data;
   const playback = playbackQuery.data;
   const playbackReady = !!(playback?.url || playback?.whep_url);
 
   useEffect(() => {
-    if (!id || stream?.status !== "live" || !playbackReady) return;
+    if (!id || !isLive || !playbackReady) return;
 
     const key = "sahiy-viewer-session";
     let sessionID = localStorage.getItem(key);
@@ -64,7 +69,7 @@ export default function WatchPage() {
     send();
     const timer = setInterval(send, 25_000);
     return () => clearInterval(timer);
-  }, [id, stream?.status, playbackReady]);
+  }, [id, isLive, playbackReady]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -76,7 +81,7 @@ export default function WatchPage() {
               <Skeleton className="aspect-video w-full rounded-2xl" />
             ) : playback?.url || playback?.whep_url ? (
               <div className="space-y-3">
-                {playback.playback_mode === "dual" && (
+                {isLive && playback.playback_mode === "dual" && (
                   <div className="flex gap-2">
                     <Button
                       size="sm"
@@ -98,12 +103,17 @@ export default function WatchPage() {
                   playback={playback}
                   title={stream?.title ?? ""}
                   preferUltraLow={ultraLow || playback.latency_mode === "ultra-low"}
+                  playbackMode={playerMode}
                 />
               </div>
-            ) : stream?.status === "live" ? (
+            ) : isLive ? (
               <div className="flex aspect-video flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-surface-1">
                 <div className="h-9 w-9 animate-pulse rounded-full bg-brand/30" />
                 <p className="text-muted">Efir tayyorlanmoqda...</p>
+              </div>
+            ) : isReplay ? (
+              <div className="flex aspect-video items-center justify-center rounded-2xl border border-border bg-surface-1">
+                <p className="text-muted">Yozuv topilmadi yoki hali tayyor emas</p>
               </div>
             ) : (
               <div className="flex aspect-video items-center justify-center rounded-2xl border border-border bg-surface-1">
@@ -115,9 +125,11 @@ export default function WatchPage() {
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl font-bold sm:text-2xl">{stream.title}</h1>
-                  {stream.status === "live" &&
-                    playbackReady && (
+                  {isLive && playbackReady && (
                       <Badge variant="live">Live</Badge>
+                    )}
+                  {isReplay && playbackReady && (
+                      <Badge variant="outline">Yozuv</Badge>
                     )}
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted">
@@ -168,7 +180,7 @@ export default function WatchPage() {
 
             <ChatPanel
               streamId={id}
-              live={stream?.status === "live" && playbackReady}
+              live={isLive && playbackReady}
             />
           </aside>
         </div>

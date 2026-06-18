@@ -62,12 +62,11 @@ func (r *Runner) passthroughArgs(inputURL, outputDir, latencyMode string) []stri
 		"-ar", strconv.Itoa(profile.AudioRate),
 		"-f", "hls",
 		"-hls_time", fmt.Sprintf("%.2f", profile.SegmentSec),
-		"-hls_list_size", "12",
-		"-hls_delete_threshold", "6",
+		"-hls_list_size", "0",
 		"-max_interleave_delta", "0",
 		"-muxdelay", "0",
 		"-muxpreload", "0",
-		"-hls_flags", "delete_segments+append_list+program_date_time+independent_segments+temp_file",
+		"-hls_flags", "append_list+program_date_time+independent_segments+temp_file",
 	)
 
 	if profile.UseFMP4 {

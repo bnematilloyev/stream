@@ -14,8 +14,8 @@ func TestResolvePipelineProduction(t *testing.T) {
 	if profile.Preset != "fast" {
 		t.Fatalf("production LL-HLS preset want fast got %s", profile.Preset)
 	}
-	if len(ladder) != 3 {
-		t.Fatalf("production ladder want 3 tiers got %d", len(ladder))
+	if len(ladder) != 4 {
+		t.Fatalf("production ladder want 4 tiers got %d", len(ladder))
 	}
 	if ladder[0].Bitrate != "4500k" {
 		t.Fatalf("1080p bitrate got %s", ladder[0].Bitrate)

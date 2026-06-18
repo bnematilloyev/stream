@@ -49,7 +49,38 @@ export default function ChannelPage() {
           {streamsQuery.isLoading ? (
             <StreamGridSkeleton />
           ) : (
-            <StreamGrid streams={streamsQuery.data?.data ?? []} />
+            <>
+              {(() => {
+                const all = streamsQuery.data?.data ?? [];
+                const live = all.filter((s) => s.status === "live");
+                const replays = all.filter((s) => s.status === "ended");
+                const other = all.filter(
+                  (s) => s.status !== "live" && s.status !== "ended",
+                );
+                return (
+                  <div className="space-y-8">
+                    {live.length > 0 && (
+                      <div>
+                        <h3 className="mb-3 text-sm font-medium text-muted">Jonli</h3>
+                        <StreamGrid streams={live} />
+                      </div>
+                    )}
+                    {replays.length > 0 && (
+                      <div>
+                        <h3 className="mb-3 text-sm font-medium text-muted">
+                          Yozuvlar
+                        </h3>
+                        <StreamGrid streams={replays} />
+                      </div>
+                    )}
+                    {other.length > 0 && <StreamGrid streams={other} />}
+                    {all.length === 0 && (
+                      <p className="text-sm text-muted">Hali stream yo&apos;q</p>
+                    )}
+                  </div>
+                );
+              })()}
+            </>
           )}
         </section>
       </div>
