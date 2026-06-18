@@ -11,7 +11,6 @@ export function createHlsConfig(): Partial<Hls["config"]> {
     liveMaxLatencyDurationCount: 12,
     maxLiveSyncPlaybackRate: 1.0,
     liveDurationInfinity: true,
-    liveStartIndex: -1,
 
     backBufferLength: 45,
     liveBackBufferLength: 0,
