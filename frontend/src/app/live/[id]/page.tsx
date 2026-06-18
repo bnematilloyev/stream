@@ -14,6 +14,12 @@ import { Header } from "@/components/layout/Header";
 import { formatViewerCount, timeAgo } from "@/lib/utils";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { Eye } from "lucide-react";
+import {
+  replayNotReadyMessage,
+  streamEndedMessage,
+  streamNotLiveMessage,
+  streamPreparingMessage,
+} from "@/lib/user-messages";
 
 export default function WatchPage() {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +28,8 @@ export default function WatchPage() {
     queryKey: ["stream", id],
     queryFn: () => getStream(id),
     enabled: !!id,
+    refetchInterval: (query) =>
+      query.state.data?.status === "live" ? 5000 : false,
   });
 
   const stream = streamQuery.data;
@@ -55,6 +63,9 @@ export default function WatchPage() {
   const hlsReady = playback?.hls_ready !== false;
   const [ultraLow, setUltraLow] = useState(true);
   const playbackReady = !!(playback?.whep_url || (playback?.url && hlsReady));
+  const showPlayer = isLive
+    ? !!(playback?.url || playback?.whep_url)
+    : isReplay && !!playback?.url && hlsReady;
 
   useEffect(() => {
     if (!id || !isLive || !playbackReady) return;
@@ -87,7 +98,7 @@ export default function WatchPage() {
           <div className="space-y-4">
             {playbackQuery.isLoading || streamQuery.isLoading ? (
               <Skeleton className="aspect-video w-full rounded-2xl" />
-            ) : playback?.url || playback?.whep_url ? (
+            ) : showPlayer && playback ? (
               <div className="space-y-3">
                 {isLive && playback.playback_mode === "dual" && playback.url && (
                   <div className="flex gap-2">
@@ -103,7 +114,7 @@ export default function WatchPage() {
                       variant={!ultraLow ? "default" : "secondary"}
                       onClick={() => setUltraLow(false)}
                       disabled={!hlsReady}
-                      title={!hlsReady ? "HLS hali tayyorlanmoqda" : undefined}
+                      title={!hlsReady ? "Video hali tayyorlanmoqda" : undefined}
                     >
                       LL-HLS (CDN scale)
                     </Button>
@@ -114,20 +125,25 @@ export default function WatchPage() {
                   title={stream?.title ?? ""}
                   preferUltraLow={isUltraLow ? ultraLow : false}
                   playbackMode={playerMode}
+                  streamStatus={stream?.status ?? "live"}
                 />
               </div>
             ) : isLive ? (
-              <div className="flex aspect-video flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-surface-1">
+              <div className="flex aspect-video flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-surface-1 px-6 text-center">
                 <div className="h-9 w-9 animate-pulse rounded-full bg-brand/30" />
-                <p className="text-muted">Efir tayyorlanmoqda...</p>
+                <p className="text-muted">{streamPreparingMessage()}</p>
+                <p className="text-xs text-muted">
+                  Efir boshlangach video bir necha soniyada paydo bo&apos;ladi
+                </p>
               </div>
             ) : isReplay ? (
-              <div className="flex aspect-video items-center justify-center rounded-2xl border border-border bg-surface-1">
-                <p className="text-muted">Yozuv topilmadi yoki hali tayyor emas</p>
+              <div className="flex aspect-video flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-surface-1 px-6 text-center">
+                <p className="font-medium text-foreground">{streamEndedMessage()}</p>
+                <p className="text-sm text-muted">{replayNotReadyMessage()}</p>
               </div>
             ) : (
-              <div className="flex aspect-video items-center justify-center rounded-2xl border border-border bg-surface-1">
-                <p className="text-muted">Bu stream hozir jonli emas</p>
+              <div className="flex aspect-video items-center justify-center rounded-2xl border border-border bg-surface-1 px-6 text-center">
+                <p className="text-muted">{streamNotLiveMessage()}</p>
               </div>
             )}
 
@@ -136,10 +152,10 @@ export default function WatchPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl font-bold sm:text-2xl">{stream.title}</h1>
                   {isLive && playbackReady && (
-                      <Badge variant="live">Live</Badge>
+                      <Badge variant="live">Jonli</Badge>
                     )}
-                  {isReplay && playbackReady && (
-                      <Badge variant="outline">Yozuv</Badge>
+                  {isReplay && (
+                      <Badge variant="outline">Tugagan</Badge>
                     )}
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-muted">

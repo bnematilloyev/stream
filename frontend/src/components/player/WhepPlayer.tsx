@@ -3,15 +3,27 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize, Minimize, Pause, Play, Volume2, VolumeX, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PlayerMessage } from "@/components/player/PlayerMessage";
+import {
+  connectionLostMessage,
+  type StreamStatus,
+  whepPlaybackMessage,
+} from "@/lib/user-messages";
 
 interface WhepPlayerProps {
   whepUrl: string;
   title?: string;
   className?: string;
+  streamStatus?: StreamStatus;
 }
 
-/** Ultra-low latency WebRTC playback via WHEP (~0.5–2s). */
-export function WhepPlayer({ whepUrl, title, className }: WhepPlayerProps) {
+/** Ultra-low latency WebRTC playback (~0.5–2s). */
+export function WhepPlayer({
+  whepUrl,
+  title,
+  className,
+  streamStatus = "live",
+}: WhepPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -22,11 +34,18 @@ export function WhepPlayer({ whepUrl, title, className }: WhepPlayerProps) {
   const [fullscreen, setFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+  const [canRetry, setCanRetry] = useState(true);
 
   const connect = useCallback(async () => {
     setError(null);
     const video = videoRef.current;
     if (!video) return;
+
+    if (streamStatus === "ended") {
+      setCanRetry(false);
+      setError(whepPlaybackMessage(404, "ended"));
+      return;
+    }
 
     try {
       await pcRef.current?.close();
@@ -46,7 +65,8 @@ export function WhepPlayer({ whepUrl, title, className }: WhepPlayerProps) {
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === "connected") setConnected(true);
         if (pc.connectionState === "failed") {
-          setError("WebRTC ulanishi uzildi");
+          setCanRetry(true);
+          setError(connectionLostMessage());
         }
       };
 
@@ -62,7 +82,11 @@ export function WhepPlayer({ whepUrl, title, className }: WhepPlayerProps) {
         body: offer.sdp,
       });
 
-      if (!res.ok) throw new Error(`WHEP ${res.status}`);
+      if (!res.ok) {
+        setCanRetry(streamStatus === "live" && res.status !== 404);
+        setError(whepPlaybackMessage(res.status, streamStatus));
+        return;
+      }
 
       const answer = await res.text();
       const location = res.headers.get("Location");
@@ -70,10 +94,12 @@ export function WhepPlayer({ whepUrl, title, className }: WhepPlayerProps) {
 
       await pc.setRemoteDescription({ type: "answer", sdp: answer });
       setConnected(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "WHEP ulanmadi");
+      setCanRetry(true);
+    } catch {
+      setCanRetry(streamStatus === "live");
+      setError(whepPlaybackMessage(null, streamStatus));
     }
-  }, [whepUrl]);
+  }, [whepUrl, streamStatus]);
 
   useEffect(() => {
     void connect();
@@ -122,7 +148,7 @@ export function WhepPlayer({ whepUrl, title, className }: WhepPlayerProps) {
         onClick={togglePlay}
       />
 
-      {connected && (
+      {connected && !error && (
         <div className="absolute left-3 top-3 flex items-center gap-1 rounded-lg bg-emerald-500/20 px-2 py-1 text-xs font-medium text-emerald-300 backdrop-blur-md">
           <Zap className="h-3 w-3" />
           Ultra-low (&lt;2s)
@@ -130,15 +156,10 @@ export function WhepPlayer({ whepUrl, title, className }: WhepPlayerProps) {
       )}
 
       {error && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80">
-          <p className="text-sm text-white/80">{error}</p>
-          <button
-            onClick={() => void connect()}
-            className="rounded-lg bg-accent px-4 py-2 text-sm text-white"
-          >
-            Qayta urinish
-          </button>
-        </div>
+        <PlayerMessage
+          message={error}
+          onRetry={canRetry ? () => void connect() : undefined}
+        />
       )}
 
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-4">

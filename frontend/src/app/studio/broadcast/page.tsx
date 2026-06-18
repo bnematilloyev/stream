@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getMyChannel, getIngestKey } from "@/lib/api/channels";
 import { createStream, endStream } from "@/lib/api/streams";
+import { formatUserError } from "@/lib/user-messages";
 import { CameraBroadcast } from "@/components/broadcast/CameraBroadcast";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ export default function BroadcastPage() {
       setWhipBaseUrl(ingest.whip_base_url);
       setActiveStream(stream);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Xatolik");
+      setError(formatUserError(e));
     } finally {
       setLoading(false);
     }
