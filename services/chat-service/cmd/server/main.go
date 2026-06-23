@@ -92,10 +92,14 @@ func main() {
 	moderator := streamclient.NewStreamModerator(streamClient, userClient)
 	chatUC := usecase.NewChatUseCase(chatRepo, streamClient, moderator, bus, limiter)
 
+	featuredStore := repository.NewRedisFeaturedStore(redisClient)
+	featuredUC := usecase.NewFeaturedUseCase(featuredStore, moderator, bus)
+
 	validator := newValidator(cfg, redisClient, authadapter.NewGRPCUserFetcher(authClient))
 
 	hub := wshandler.NewHub()
 	wsHandler := wshandler.NewHandler(chatUC, hub, validator, cfg.CORSOrigins, cfg.AppEnv, log)
+	featuredHandler := wshandler.NewFeaturedHandler(featuredUC, validator, log)
 
 	if _, err := bus.Subscribe(func(streamID string, payload []byte) {
 		wsHandler.Broadcast(streamID, payload)
@@ -121,7 +125,12 @@ func main() {
 	httpRouter := chi.NewRouter()
 	httpRouter.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer)
 	httpRouter.Mount("/", httphandler.NewHealthHandler(pool, redisClient, bus).Routes())
-	httpRouter.Mount("/v1/chat", wsHandler.Routes())
+	httpRouter.Route("/v1/chat", func(chat chi.Router) {
+		chat.Get("/{streamID}", wsHandler.ServeWS)
+		chat.Get("/{streamID}/featured", featuredHandler.Get)
+		chat.Post("/{streamID}/featured", featuredHandler.Set)
+		chat.Delete("/{streamID}/featured", featuredHandler.Clear)
+	})
 	httpServer := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           httpRouter,

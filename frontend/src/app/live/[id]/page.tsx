@@ -13,6 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Header } from "@/components/layout/Header";
 import { formatViewerCount, timeAgo } from "@/lib/utils";
 import { ChatPanel } from "@/components/chat/ChatPanel";
+import { FeaturedProductCard } from "@/components/stream/FeaturedProductCard";
+import { getFeaturedProduct, type FeaturedProduct } from "@/lib/api/featured";
 import { Eye } from "lucide-react";
 import {
   replayNotReadyMessage,
@@ -63,6 +65,7 @@ export default function WatchPage() {
   const hlsReady = playback?.hls_ready !== false;
   const [ultraLow, setUltraLow] = useState(true);
   const [chatPlaybackSec, setChatPlaybackSec] = useState(0);
+  const [featured, setFeatured] = useState<FeaturedProduct | null>(null);
   const playbackReady = !!(playback?.whep_url || (playback?.url && hlsReady));
   const showPlayer = isLive
     ? !!(playback?.url || playback?.whep_url)
@@ -70,7 +73,22 @@ export default function WatchPage() {
 
   useEffect(() => {
     setChatPlaybackSec(0);
+    setFeatured(null);
   }, [id]);
+
+  // Kech qo'shilganlar uchun joriy ajratilgan mahsulotni yuklash.
+  useEffect(() => {
+    if (!id || !isLive) return;
+    let cancelled = false;
+    getFeaturedProduct(id)
+      .then((p) => {
+        if (!cancelled) setFeatured(p);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [id, isLive]);
 
   useEffect(() => {
     if (!id || !isLive || !playbackReady) return;
@@ -125,14 +143,19 @@ export default function WatchPage() {
                     </Button>
                   </div>
                 )}
-                <WatchPlayer
-                  playback={playback}
-                  title={stream?.title ?? ""}
-                  preferUltraLow={isUltraLow ? ultraLow : false}
-                  playbackMode={playerMode}
-                  streamStatus={stream?.status ?? "live"}
-                  onTimeUpdate={isReplay ? setChatPlaybackSec : undefined}
-                />
+                <div className="relative">
+                  <WatchPlayer
+                    playback={playback}
+                    title={stream?.title ?? ""}
+                    preferUltraLow={isUltraLow ? ultraLow : false}
+                    playbackMode={playerMode}
+                    streamStatus={stream?.status ?? "live"}
+                    onTimeUpdate={isReplay ? setChatPlaybackSec : undefined}
+                  />
+                  {isLive && featured && (
+                    <FeaturedProductCard product={featured} />
+                  )}
+                </div>
               </div>
             ) : isLive ? (
               <div className="flex aspect-video flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-surface-1 px-6 text-center">
@@ -216,6 +239,7 @@ export default function WatchPage() {
               replay={isReplay && playbackReady}
               streamStartedAtUnix={stream?.started_at_unix ?? 0}
               playbackSec={chatPlaybackSec}
+              onFeaturedProduct={setFeatured}
             />
           </aside>
         </div>

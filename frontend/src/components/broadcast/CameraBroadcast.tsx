@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { endStream, startStream } from "@/lib/api/streams";
 import { ShareStreamLink } from "@/components/stream/ShareStreamLink";
+import { FeaturedProductControl } from "@/components/broadcast/FeaturedProductControl";
 import { cameraBlockedReason, canUseCamera } from "@/lib/media";
 import { broadcastPageUrl, whipEndpoint } from "@/lib/whip";
 import { whipBroadcastMessage } from "@/lib/user-messages";
@@ -342,6 +343,8 @@ export function CameraBroadcast({
       )}
 
       {live && <ShareStreamLink streamId={streamId} title={title} />}
+
+      {live && <FeaturedProductControl streamId={streamId} />}
 
       <div className="rounded-xl border border-border bg-surface-2 p-4 text-xs text-muted">
         <p className="font-medium text-foreground mb-1">Telefonda ishlatish:</p>

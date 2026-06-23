@@ -10,8 +10,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sahiy/sahiy-stream/pkg/httputil"
-	"github.com/sahiy/sahiy-stream/services/api-gateway/internal/client"
 	chatv1 "github.com/sahiy/sahiy-stream/proto/gen/chat/v1"
+	"github.com/sahiy/sahiy-stream/services/api-gateway/internal/client"
 )
 
 type ChatHandler struct {
@@ -60,6 +60,14 @@ func (h *ChatHandler) History(w http.ResponseWriter, r *http.Request) {
 func (h *ChatHandler) WebSocket(w http.ResponseWriter, r *http.Request) {
 	streamID := chi.URLParam(r, "streamID")
 	r.URL.Path = "/v1/chat/" + streamID
+	h.proxy.ServeHTTP(w, r)
+}
+
+// Featured proxies the live-shopping spotlight endpoints (GET/POST/DELETE) to
+// chat-service, which authenticates the broadcaster and relays to viewers.
+func (h *ChatHandler) Featured(w http.ResponseWriter, r *http.Request) {
+	streamID := chi.URLParam(r, "streamID")
+	r.URL.Path = "/v1/chat/" + streamID + "/featured"
 	h.proxy.ServeHTTP(w, r)
 }
 

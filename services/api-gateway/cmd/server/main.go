@@ -123,6 +123,9 @@ func main() {
 			// WebSocket chat — no request timeout (long-lived connections).
 			v1.Route("/chat", func(chat chi.Router) {
 				chat.Get("/{streamID}/history", chatHandler.History)
+				chat.Get("/{streamID}/featured", chatHandler.Featured)
+				chat.Post("/{streamID}/featured", chatHandler.Featured)
+				chat.Delete("/{streamID}/featured", chatHandler.Featured)
 				chat.Get("/{streamID}", chatHandler.WebSocket)
 				chat.With(middleware.Authenticate(tokenValidator)).Delete("/{streamID}/messages/{messageID}", chatHandler.DeleteMessage)
 			})

@@ -18,6 +18,7 @@ import { refreshAccessToken } from "@/lib/api/client";
 import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { FeaturedProduct } from "@/lib/api/featured";
 
 interface ChatPanelProps {
   streamId: string;
@@ -25,6 +26,8 @@ interface ChatPanelProps {
   replay?: boolean;
   streamStartedAtUnix?: number;
   playbackSec?: number;
+  /** Efir egasi mahsulot ajratganda real-vaqtda chaqiriladi (null = bekor qilindi). */
+  onFeaturedProduct?: (product: FeaturedProduct | null) => void;
 }
 
 type WsEvent = {
@@ -36,6 +39,7 @@ type WsEvent = {
   content?: string;
   message_id?: number;
   ts?: number;
+  product?: FeaturedProduct | null;
 };
 
 const MAX_WS_RETRIES = 6;
@@ -51,6 +55,7 @@ export function ChatPanel({
   replay = false,
   streamStartedAtUnix = 0,
   playbackSec = 0,
+  onFeaturedProduct,
 }: ChatPanelProps) {
   const hydrated = useAuthStore((s) => s.hydrated);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -72,6 +77,11 @@ export function ChatPanel({
   const retryRef = useRef(0);
   const accessTokenRef = useRef(accessToken);
   const canChatRef = useRef(canChat);
+  const featuredCbRef = useRef(onFeaturedProduct);
+
+  useEffect(() => {
+    featuredCbRef.current = onFeaturedProduct;
+  }, [onFeaturedProduct]);
 
   useEffect(() => {
     accessTokenRef.current = accessToken;
@@ -189,6 +199,10 @@ export function ChatPanel({
           }
           if (data.type === "delete" && data.message_id) {
             setMessages((prev) => prev.filter((m) => m.id !== data.message_id));
+            return;
+          }
+          if (data.type === "featured_product") {
+            featuredCbRef.current?.(data.product ?? null);
             return;
           }
           if (data.type === "message" && data.id) {
