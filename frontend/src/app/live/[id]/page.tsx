@@ -62,10 +62,15 @@ export default function WatchPage() {
   const isUltraLow = playback?.latency_mode === "ultra-low";
   const hlsReady = playback?.hls_ready !== false;
   const [ultraLow, setUltraLow] = useState(true);
+  const [chatPlaybackSec, setChatPlaybackSec] = useState(0);
   const playbackReady = !!(playback?.whep_url || (playback?.url && hlsReady));
   const showPlayer = isLive
     ? !!(playback?.url || playback?.whep_url)
     : isReplay && !!playback?.url && hlsReady;
+
+  useEffect(() => {
+    setChatPlaybackSec(0);
+  }, [id]);
 
   useEffect(() => {
     if (!id || !isLive || !playbackReady) return;
@@ -126,6 +131,7 @@ export default function WatchPage() {
                   preferUltraLow={isUltraLow ? ultraLow : false}
                   playbackMode={playerMode}
                   streamStatus={stream?.status ?? "live"}
+                  onTimeUpdate={isReplay ? setChatPlaybackSec : undefined}
                 />
               </div>
             ) : isLive ? (
@@ -207,6 +213,9 @@ export default function WatchPage() {
             <ChatPanel
               streamId={id}
               live={isLive && playbackReady}
+              replay={isReplay && playbackReady}
+              streamStartedAtUnix={stream?.started_at_unix ?? 0}
+              playbackSec={chatPlaybackSec}
             />
           </aside>
         </div>

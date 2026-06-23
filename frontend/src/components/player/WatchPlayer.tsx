@@ -23,12 +23,14 @@ export function WatchPlayer({
   preferUltraLow = false,
   playbackMode = "live",
   streamStatus = "live",
+  onTimeUpdate,
 }: {
   playback: Playback;
   title: string;
   preferUltraLow?: boolean;
   playbackMode?: PlaybackMode;
   streamStatus?: StreamStatus;
+  onTimeUpdate?: (currentSec: number) => void;
 }) {
   const canWhep =
     !!playback.whep_url && playback.latency_mode === "ultra-low";
@@ -56,6 +58,7 @@ export function WatchPlayer({
         playbackMode={playbackMode}
         lowLatency={playback.playback_mode === "dual" || playback.format === "ll-hls"}
         streamStatus={streamStatus}
+        onTimeUpdate={onTimeUpdate}
       />
     );
   }

@@ -33,6 +33,22 @@ export async function getChatHistory(
   return apiFetch<ChatHistoryResponse>(`/v1/chat/${streamId}/history?${params}`);
 }
 
+/** Barcha chat tarixini (eski → yangi) yuklaydi — replay uchun. */
+export async function getAllChatHistory(streamId: string): Promise<ChatMessage[]> {
+  const all: ChatMessage[] = [];
+  let cursor: number | undefined;
+
+  for (;;) {
+    const resp = await getChatHistory(streamId, cursor, 100);
+    if (resp.data.length === 0) break;
+    all.push(...resp.data);
+    if (!resp.has_more) break;
+    cursor = resp.data[resp.data.length - 1]?.id;
+  }
+
+  return all.sort((a, b) => a.id - b.id);
+}
+
 export function chatWebSocketUrl(streamId: string, token?: string | null): string {
   const base = `${resolveWsUrl()}/v1/chat/${streamId}`;
   if (!token) return base;

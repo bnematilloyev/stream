@@ -40,6 +40,7 @@ interface LivePlayerProps {
   playbackMode?: PlaybackMode;
   lowLatency?: boolean;
   streamStatus?: StreamStatus;
+  onTimeUpdate?: (currentSec: number) => void;
 }
 
 type QualityLevel = { height: number; label: string; index: number };
@@ -47,6 +48,17 @@ type QualityLevel = { height: number; label: string; index: number };
 const QUALITY_STORAGE_KEY = "sahiy-quality";
 const SEEK_STEP_SEC = 5;
 const LIVE_EDGE_TOLERANCE_SEC = 4;
+
+function formatMediaTime(sec: number): string {
+  const total = Math.floor(Math.max(0, sec));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
 
 function formatLiveOffset(secondsBehind: number): string {
   if (secondsBehind < LIVE_EDGE_TOLERANCE_SEC) return "LIVE";
@@ -144,6 +156,7 @@ export function LivePlayer({
   playbackMode = "live",
   lowLatency = false,
   streamStatus = "live",
+  onTimeUpdate,
 }: LivePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -172,6 +185,7 @@ export function LivePlayer({
   const [seekEnd, setSeekEnd] = useState(0);
   const [scrubHover, setScrubHover] = useState<number | null>(null);
   const [offsetLabel, setOffsetLabel] = useState("LIVE");
+  const [duration, setDuration] = useState(0);
   const seekable = playbackMode !== "live";
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const latencyTimer = useRef<ReturnType<typeof setInterval>>(null);
@@ -364,7 +378,9 @@ export function LivePlayer({
       setSeekEnd(edge > start ? edge : start);
 
       if (playbackMode === "vod" && Number.isFinite(video.duration)) {
-        setOffsetLabel(formatDuration(current));
+        setDuration(video.duration);
+        setOffsetLabel(formatMediaTime(current));
+        onTimeUpdate?.(current);
       } else {
         const behind = Math.max(0, edge - current);
         setOffsetLabel(formatLiveOffset(behind));
@@ -374,14 +390,7 @@ export function LivePlayer({
       }
     }, 250);
     return () => clearInterval(timer);
-  }, [seekable, playbackMode]);
-
-  function formatDuration(sec: number): string {
-    const s = Math.floor(sec);
-    const m = Math.floor(s / 60);
-    const r = s % 60;
-    return `${m}:${String(r).padStart(2, "0")}`;
-  }
+  }, [seekable, playbackMode, onTimeUpdate]);
 
   useEffect(() => {
     initPlayer();
@@ -441,11 +450,14 @@ export function LivePlayer({
       behindLiveRef.current = behind;
       video.currentTime = target;
       setPlayhead(target);
+      if (playbackMode === "vod") {
+        onTimeUpdate?.(target);
+      }
       if (hls && behind) {
         hls.startLoad(target);
       }
     },
-    [clampSeekTime],
+    [clampSeekTime, playbackMode, onTimeUpdate],
   );
 
   const seekBy = useCallback(
@@ -690,7 +702,7 @@ export function LivePlayer({
                     left: `${((scrubHover - seekStart) / (seekEnd - seekStart)) * 100}%`,
                   }}
                 >
-                  {formatDuration(scrubHover)}
+                  {formatMediaTime(scrubHover)}
                 </div>
               )}
               <input
@@ -721,42 +733,56 @@ export function LivePlayer({
           )}
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={togglePlay}
-            className="rounded-lg p-2 text-white transition-colors hover:bg-white/10"
-          >
-            {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
-          </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-full bg-white/10 px-1 py-1 backdrop-blur-md">
+            <button
+              onClick={togglePlay}
+              className="rounded-full p-2 text-white transition-colors hover:bg-white/15"
+            >
+              {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+            </button>
+            <button
+              onClick={() => setMuted(!muted)}
+              className="rounded-full p-2 text-white transition-colors hover:bg-white/15"
+            >
+              {muted || volume === 0 ? (
+                <VolumeX className="h-5 w-5" />
+              ) : (
+                <Volume2 className="h-5 w-5" />
+              )}
+            </button>
+          </div>
 
-          <button
-            onClick={() => setMuted(!muted)}
-            className="rounded-lg p-2 text-white transition-colors hover:bg-white/10"
-          >
-            {muted || volume === 0 ? (
-              <VolumeX className="h-5 w-5" />
-            ) : (
-              <Volume2 className="h-5 w-5" />
-            )}
-          </button>
+          {seekable && playbackMode === "vod" && (
+            <div className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium tabular-nums text-white backdrop-blur-md">
+              {formatMediaTime(playhead)}
+              {duration > 0 && (
+                <span className="text-white/60"> / {formatMediaTime(duration)}</span>
+              )}
+            </div>
+          )}
 
           {seekable && playbackMode !== "vod" && (
             <button
               type="button"
               onClick={jumpToLive}
               className={cn(
-                "rounded-md px-2 py-1 text-xs font-semibold tabular-nums transition-colors",
+                "rounded-full px-3 py-1.5 text-xs font-semibold tabular-nums backdrop-blur-md transition-colors",
                 offsetLabel === "LIVE"
                   ? "bg-live/90 text-white"
-                  : "bg-white/15 text-white hover:bg-white/25",
+                  : "bg-white/10 text-white hover:bg-white/20",
               )}
             >
               {offsetLabel}
             </button>
           )}
 
-          {seekable && playbackMode === "vod" && (
-            <span className="text-xs tabular-nums text-white/80">{offsetLabel}</span>
+          {title && (
+            <div className="hidden min-w-0 flex-1 sm:block">
+              <div className="truncate rounded-full bg-white/10 px-3 py-1.5 text-xs text-white/90 backdrop-blur-md">
+                {title}
+              </div>
+            </div>
           )}
 
           <input
@@ -769,14 +795,8 @@ export function LivePlayer({
               setVolume(parseFloat(e.target.value));
               setMuted(false);
             }}
-            className="hidden w-20 accent-accent sm:block"
+            className="hidden w-20 accent-accent md:block"
           />
-
-          {title && (
-            <span className="ml-2 hidden truncate text-sm text-white/80 sm:block">
-              {title}
-            </span>
-          )}
 
           <div className="ml-auto flex items-center gap-1">
             {qualities.length > 1 && (

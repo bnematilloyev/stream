@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getMyChannel, getIngestKey } from "@/lib/api/channels";
-import { createStream, endStream } from "@/lib/api/streams";
+import { createStream } from "@/lib/api/streams";
 import { formatUserError } from "@/lib/user-messages";
 import { CameraBroadcast } from "@/components/broadcast/CameraBroadcast";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -52,14 +52,9 @@ export default function BroadcastPage() {
     }
   }
 
-  async function handleEnd() {
-    if (!activeStream) return;
-    try {
-      await endStream(activeStream.id);
-    } finally {
-      setActiveStream(null);
-      setWhipBaseUrl("");
-    }
+  function handleEnd() {
+    setActiveStream(null);
+    setWhipBaseUrl("");
   }
 
   if (channelQuery.isLoading) {

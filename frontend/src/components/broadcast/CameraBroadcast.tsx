@@ -20,6 +20,10 @@ import { cameraBlockedReason, canUseCamera } from "@/lib/media";
 import { broadcastPageUrl, whipEndpoint } from "@/lib/whip";
 import { whipBroadcastMessage } from "@/lib/user-messages";
 
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_BASE_DELAY_MS = 2000;
+const RECONNECT_MAX_DELAY_MS = 30000;
+
 interface CameraBroadcastProps {
   streamId: string;
   title: string;
@@ -36,22 +40,29 @@ export function CameraBroadcast({
   const videoRef = useRef<HTMLVideoElement>(null);
   const whipRef = useRef<WHIPClient | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLiveRef = useRef(false);
 
   const [live, setLive] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(true);
 
+  function clearReconnectTimer() {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+  }
+
   const getMedia = useCallback(async (facing: "user" | "environment") => {
     const blocked = cameraBlockedReason();
-    if (blocked) {
-      throw new Error(blocked);
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-    }
+    if (blocked) throw new Error(blocked);
+    streamRef.current?.getTracks().forEach((t) => t.stop());
     const media = await navigator.mediaDevices!.getUserMedia({
       video: {
         facingMode: facing,
@@ -66,11 +77,67 @@ export function CameraBroadcast({
       },
     });
     streamRef.current = media;
-    if (videoRef.current) {
-      videoRef.current.srcObject = media;
-    }
+    if (videoRef.current) videoRef.current.srcObject = media;
     return media;
   }, []);
+
+  function buildWhipClient(endpoint: string): WHIPClient {
+    return new WHIPClient({
+      endpoint,
+      opts: {
+        debug: process.env.NODE_ENV === "development",
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+        ],
+        iceGatheringTimeout: 3000,
+      },
+    });
+  }
+
+  function setupConnectionMonitor(client: WHIPClient, endpoint: string) {
+    const pc = (client as unknown as { pc?: RTCPeerConnection }).pc;
+    if (!pc) return;
+    pc.addEventListener("connectionstatechange", () => {
+      if (!isLiveRef.current) return;
+      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
+        scheduleReconnect(endpoint);
+      }
+    });
+  }
+
+  function scheduleReconnect(endpoint: string) {
+    if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+      setLive(false);
+      isLiveRef.current = false;
+      setReconnecting(false);
+      setError("Ulanish uzildi. Sahifani yangilab, qayta urinib ko'ring.");
+      return;
+    }
+
+    const delay = Math.min(
+      RECONNECT_BASE_DELAY_MS * 2 ** reconnectAttemptsRef.current,
+      RECONNECT_MAX_DELAY_MS,
+    );
+    reconnectAttemptsRef.current += 1;
+    setReconnecting(true);
+    setError("");
+
+    reconnectTimerRef.current = setTimeout(async () => {
+      if (!isLiveRef.current || !streamRef.current) return;
+      try {
+        await whipRef.current?.destroy();
+        const client = buildWhipClient(endpoint);
+        await client.ingest(streamRef.current);
+        whipRef.current = client;
+        reconnectAttemptsRef.current = 0;
+        setReconnecting(false);
+        setupConnectionMonitor(client, endpoint);
+      } catch {
+        scheduleReconnect(endpoint);
+      }
+    }, delay);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -79,8 +146,7 @@ export function CameraBroadcast({
         await getMedia(facingMode);
       } catch (e) {
         if (!cancelled) {
-          const msg =
-            e instanceof Error ? e.message : "Kameraga ruxsat berilmadi";
+          const msg = e instanceof Error ? e.message : "Kameraga ruxsat berilmadi";
           setError(
             msg.includes("HTTPS") || msg.includes("qo'llab-quvvatlamaydi")
               ? msg
@@ -103,22 +169,21 @@ export function CameraBroadcast({
       const media = streamRef.current ?? (await getMedia(facingMode));
       const endpoint = whipEndpoint(streamId, whipBaseUrl);
 
-      const client = new WHIPClient({
-        endpoint,
-        opts: {
-          debug: process.env.NODE_ENV === "development",
-          iceServers: [
-            { urls: "stun:stun.l.google.com:19302" },
-            { urls: "stun:stun1.l.google.com:19302" },
-          ],
-          iceGatheringTimeout: 3000,
-        },
-      });
-
-      await startStream(streamId);
+      const client = buildWhipClient(endpoint);
       await client.ingest(media);
+
+      try {
+        await startStream(streamId);
+      } catch (e) {
+        await client.destroy();
+        throw e;
+      }
+
       whipRef.current = client;
+      reconnectAttemptsRef.current = 0;
+      isLiveRef.current = true;
       setLive(true);
+      setupConnectionMonitor(client, endpoint);
     } catch (e) {
       setError(whipBroadcastMessage(e));
     } finally {
@@ -129,11 +194,15 @@ export function CameraBroadcast({
   async function stopBroadcast() {
     setLoading(true);
     setError("");
+    clearReconnectTimer();
+    isLiveRef.current = false;
     try {
       await whipRef.current?.destroy();
       whipRef.current = null;
       streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
       setLive(false);
+      setReconnecting(false);
       try {
         await endStream(streamId);
       } catch (e) {
@@ -162,7 +231,7 @@ export function CameraBroadcast({
     }
   }
 
-  async function flipCamera() {
+  function flipCamera() {
     if (live) return;
     setFacingMode((f) => (f === "user" ? "environment" : "user"));
   }
@@ -192,8 +261,13 @@ export function CameraBroadcast({
           className="h-full w-full object-cover mirror"
         />
         {live && (
-          <div className="absolute left-4 top-4">
+          <div className="absolute left-4 top-4 flex items-center gap-2">
             <Badge variant="live">LIVE</Badge>
+            {reconnecting && (
+              <span className="rounded-full bg-yellow-500/80 px-2 py-0.5 text-xs font-medium text-black">
+                Qayta ulanmoqda…
+              </span>
+            )}
           </div>
         )}
         <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2">

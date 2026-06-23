@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   chatWebSocketUrl,
+  getAllChatHistory,
   getChatHistory,
   type ChatMessage,
 } from "@/lib/api/chat";
@@ -13,6 +14,7 @@ import {
   chatServerMessage,
   chatUnavailableMessage,
 } from "@/lib/user-messages";
+import { refreshAccessToken } from "@/lib/api/client";
 import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +22,9 @@ import { Input } from "@/components/ui/input";
 interface ChatPanelProps {
   streamId: string;
   live?: boolean;
+  replay?: boolean;
+  streamStartedAtUnix?: number;
+  playbackSec?: number;
 }
 
 type WsEvent = {
@@ -35,23 +40,46 @@ type WsEvent = {
 
 const MAX_WS_RETRIES = 6;
 
-export function ChatPanel({ streamId, live = false }: ChatPanelProps) {
+function messageStreamOffset(msg: ChatMessage, streamStartedAtUnix: number): number {
+  if (streamStartedAtUnix <= 0) return 0;
+  return Math.max(0, msg.created_at_unix - streamStartedAtUnix);
+}
+
+export function ChatPanel({
+  streamId,
+  live = false,
+  replay = false,
+  streamStartedAtUnix = 0,
+  playbackSec = 0,
+}: ChatPanelProps) {
   const hydrated = useAuthStore((s) => s.hydrated);
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
-  const canChat = hydrated && !!user && !!accessToken;
-  const sessionPending = hydrated && !!user && !accessToken;
-  const showLoginPrompt = hydrated && !user;
+  const canChat = hydrated && !!user && !!accessToken && live && !replay;
+  const sessionPending = hydrated && !!user && !accessToken && live && !replay;
+  const showLoginPrompt = hydrated && !user && live && !replay;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [replayMessages, setReplayMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [replayLoading, setReplayLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef(0);
+  const accessTokenRef = useRef(accessToken);
+  const canChatRef = useRef(canChat);
+
+  useEffect(() => {
+    accessTokenRef.current = accessToken;
+  }, [accessToken]);
+
+  useEffect(() => {
+    canChatRef.current = canChat;
+  }, [canChat]);
 
   const loadHistory = useCallback(async (cursor?: number, prepend = false) => {
     const resp = await getChatHistory(streamId, cursor);
@@ -66,7 +94,7 @@ export function ChatPanel({ streamId, live = false }: ChatPanelProps) {
   }, [streamId]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || replay) return;
     let cancelled = false;
     loadHistory()
       .then(() => {
@@ -78,17 +106,47 @@ export function ChatPanel({ streamId, live = false }: ChatPanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [loadHistory, hydrated]);
+  }, [loadHistory, hydrated, replay]);
 
   useEffect(() => {
-    if (!live || !hydrated) return;
+    if (!hydrated || !replay) return;
+    let cancelled = false;
+    setReplayLoading(true);
+    getAllChatHistory(streamId)
+      .then((list) => {
+        if (!cancelled) {
+          setReplayMessages(list);
+          setError(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setError(chatHistoryFailedMessage());
+      })
+      .finally(() => {
+        if (!cancelled) setReplayLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [streamId, hydrated, replay]);
+
+  useEffect(() => {
+    if (!live || !hydrated || replay) return;
 
     let ws: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let closed = false;
 
-    const connect = () => {
-      ws = new WebSocket(chatWebSocketUrl(streamId, accessToken));
+    const connect = async () => {
+      if (closed) return;
+
+      let token = accessTokenRef.current;
+      if (user && !token) {
+        token = await refreshAccessToken();
+        if (token) accessTokenRef.current = token;
+      }
+
+      ws = new WebSocket(chatWebSocketUrl(streamId, token));
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -104,25 +162,27 @@ export function ChatPanel({ streamId, live = false }: ChatPanelProps) {
 
         retryRef.current += 1;
         if (retryRef.current >= MAX_WS_RETRIES) {
-          if (canChat) {
+          if (canChatRef.current) {
             setError(chatUnavailableMessage());
           }
           return;
         }
 
         const delay = Math.min(1000 * 2 ** retryRef.current, 30_000);
-        reconnectTimer = setTimeout(connect, delay);
+        reconnectTimer = setTimeout(() => {
+          void connect();
+        }, delay);
       };
 
       ws.onerror = () => {
-        // onclose qayta ulanishni boshqaradi; mehmon uchun xato ko'rsatmaymiz.
+        // onclose qayta ulanishni boshqaradi
       };
 
       ws.onmessage = (evt) => {
         try {
           const data = JSON.parse(evt.data) as WsEvent;
           if (data.type === "error") {
-            if (canChat) {
+            if (canChatRef.current) {
               setError(chatServerMessage(data.content ?? ""));
             }
             return;
@@ -153,7 +213,7 @@ export function ChatPanel({ streamId, live = false }: ChatPanelProps) {
       };
     };
 
-    connect();
+    void connect();
 
     return () => {
       closed = true;
@@ -162,27 +222,38 @@ export function ChatPanel({ streamId, live = false }: ChatPanelProps) {
       wsRef.current = null;
       setConnected(false);
     };
-  }, [streamId, live, accessToken, hydrated, canChat]);
+  }, [streamId, live, hydrated, user, replay]);
+
+  const displayMessages = useMemo(() => {
+    if (!replay) return messages;
+    if (streamStartedAtUnix <= 0) return replayMessages;
+    return replayMessages.filter(
+      (m) => messageStreamOffset(m, streamStartedAtUnix) <= playbackSec + 0.25,
+    );
+  }, [replay, messages, replayMessages, streamStartedAtUnix, playbackSec]);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
-  }, [messages.length]);
+  }, [displayMessages.length]);
 
   const loadMore = useCallback(async () => {
-    if (!hasMore || loadingMore || messages.length === 0) return;
+    if (!hasMore || loadingMore || messages.length === 0 || replay) return;
     setLoadingMore(true);
     try {
       await loadHistory(messages[0].id, true);
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, messages, loadHistory]);
+  }, [hasMore, loadingMore, messages, loadHistory, replay]);
 
   const send = useCallback(() => {
     const text = input.trim();
     if (!text) return;
     if (!canChat) return;
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      setError("Chat hali ulanmagan. Bir oz kuting yoki sahifani yangilang.");
+      return;
+    }
     wsRef.current.send(JSON.stringify({ type: "message", content: text }));
     setInput("");
     setError(null);
@@ -194,36 +265,54 @@ export function ChatPanel({ streamId, live = false }: ChatPanelProps) {
     <div className="flex h-[480px] flex-col rounded-2xl border border-border bg-surface-1">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <h3 className="font-semibold">Chat</h3>
-        {live && canChat && (
-          <span className={`text-xs ${connected ? "text-green-500" : "text-muted"}`}>
-            {connected ? "Jonli" : "Qayta ulanmoqda…"}
-          </span>
+        {replay ? (
+          <span className="text-xs text-muted">Chat takrori</span>
+        ) : (
+          live &&
+          canChat && (
+            <span className={`text-xs ${connected ? "text-green-500" : "text-muted"}`}>
+              {connected ? "Jonli" : "Qayta ulanmoqda…"}
+            </span>
+          )
         )}
       </div>
 
       <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto px-4 py-3">
-        {hasMore && (
+        {!replay && hasMore && (
           <Button variant="ghost" size="sm" className="w-full" onClick={loadMore} disabled={loadingMore}>
             {loadingMore ? "Yuklanmoqda..." : "Eski xabarlar"}
           </Button>
         )}
-        {messages.length === 0 && (
-          <p className="text-sm text-muted">Hali xabar yo&apos;q. Birinchi bo&apos;ling!</p>
+        {replayLoading && (
+          <p className="text-sm text-muted">Chat yuklanmoqda…</p>
         )}
-        {messages.map((m) => (
-          <div key={m.id} className="text-sm">
-            <span className="font-medium text-brand-secondary">{m.display_name || m.username}</span>
+        {!replayLoading && displayMessages.length === 0 && (
+          <p className="text-sm text-muted">
+            {replay ? "Bu vaqtga chat xabari yo'q." : "Hali xabar yo'q. Birinchi bo'ling!"}
+          </p>
+        )}
+        {displayMessages.map((m) => (
+          <div key={m.id} className="text-sm leading-snug">
+            <span className="font-medium text-brand-secondary">
+              {m.display_name || m.username}
+            </span>
             <span className="text-muted">: </span>
             <span>{m.content}</span>
           </div>
         ))}
       </div>
 
-      {error && canChat && (
+      {error && (canChat || replay) && (
         <p className="px-4 pb-1 text-xs text-amber-600 dark:text-amber-400">{error}</p>
       )}
 
-      {canChat ? (
+      {replay ? (
+        <div className="border-t border-border p-4 text-center">
+          <p className="text-sm text-muted">
+            Efir tugagan — chat faqat ko&apos;rish uchun
+          </p>
+        </div>
+      ) : canChat ? (
         <div className="flex gap-2 border-t border-border p-3">
           <Input
             value={input}
@@ -232,7 +321,11 @@ export function ChatPanel({ streamId, live = false }: ChatPanelProps) {
             disabled={!live}
             onKeyDown={(e) => e.key === "Enter" && send()}
           />
-          <Button size="sm" onClick={send} disabled={!live || !input.trim()}>
+          <Button
+            size="sm"
+            onClick={send}
+            disabled={!live || !connected || !input.trim()}
+          >
             Yuborish
           </Button>
         </div>
