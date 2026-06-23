@@ -42,7 +42,22 @@ export function FeaturedProductCard({ product }: FeaturedProductCardProps) {
           Hozir efirda
         </p>
         <p className="truncate text-sm font-semibold text-white">{product.title}</p>
-        {price && <p className="text-sm font-bold text-white">{price}</p>}
+        <div className="flex items-center gap-2">
+          {price && <p className="text-sm font-bold text-white">{price}</p>}
+          {typeof product.stock === "number" && (
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                product.stock <= 0
+                  ? "bg-red-500/80 text-white"
+                  : product.stock <= 5
+                    ? "bg-amber-500/90 text-black"
+                    : "bg-white/15 text-white"
+              }`}
+            >
+              {product.stock <= 0 ? "Tugadi" : `Qoldi: ${product.stock}`}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

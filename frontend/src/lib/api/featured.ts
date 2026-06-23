@@ -3,11 +3,14 @@ import { apiFetch } from "@/lib/api/client";
 /** Efir vaqtida ekranda ajratib ko'rsatilayotgan mahsulot kartasi. */
 export interface FeaturedProduct {
   product_id: string;
+  sku_id?: string;
   title: string;
   image_url?: string;
   price?: number;
   currency?: string;
   url?: string;
+  /** Qoldiq (amount_on_sale). undefined = ko'rsatilmaydi. */
+  stock?: number;
 }
 
 /** Joriy ajratilgan mahsulotni oladi (efirga kech qo'shilganlar uchun). */

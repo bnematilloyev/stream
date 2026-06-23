@@ -240,6 +240,11 @@ export default function WatchPage() {
               streamStartedAtUnix={stream?.started_at_unix ?? 0}
               playbackSec={chatPlaybackSec}
               onFeaturedProduct={setFeatured}
+              onStockUpdate={(skuId, stock) =>
+                setFeatured((prev) =>
+                  prev && prev.sku_id === skuId ? { ...prev, stock } : prev,
+                )
+              }
             />
           </aside>
         </div>

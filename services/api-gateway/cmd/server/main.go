@@ -179,6 +179,9 @@ func main() {
 					internal.Get("/live", broadcastHandler.ListMarketplaceLive)
 					internal.Post("/sessions", broadcastHandler.CreateSession)
 					internal.Get("/streams/{stream_id}/playback", broadcastHandler.GetStreamPlayback)
+					internal.Post("/streams/{stream_id}/stock", chatHandler.StockInternal)
+					internal.Post("/streams/{stream_id}/featured", chatHandler.FeaturedInternal)
+					internal.Delete("/streams/{stream_id}/featured", chatHandler.FeaturedInternal)
 
 					internal.Route("/sellers/{seller_id}", func(sellers chi.Router) {
 						sellers.Get("/streams", broadcastHandler.ListSellerStreams)

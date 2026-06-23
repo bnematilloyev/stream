@@ -130,6 +130,10 @@ func main() {
 		chat.Get("/{streamID}/featured", featuredHandler.Get)
 		chat.Post("/{streamID}/featured", featuredHandler.Set)
 		chat.Delete("/{streamID}/featured", featuredHandler.Clear)
+		chat.Post("/{streamID}/stock", featuredHandler.Stock)
+		// Internal (gateway service-token orqali) — broadcaster JWT'siz.
+		chat.Post("/{streamID}/featured-internal", featuredHandler.SetInternal)
+		chat.Delete("/{streamID}/featured-internal", featuredHandler.ClearInternal)
 	})
 	httpServer := &http.Server{
 		Addr:              cfg.HTTPAddr,

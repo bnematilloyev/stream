@@ -28,6 +28,8 @@ interface ChatPanelProps {
   playbackSec?: number;
   /** Efir egasi mahsulot ajratganda real-vaqtda chaqiriladi (null = bekor qilindi). */
   onFeaturedProduct?: (product: FeaturedProduct | null) => void;
+  /** Sotilganda mahsulot qoldig'i yangilanganda chaqiriladi. */
+  onStockUpdate?: (skuId: string, stock: number) => void;
 }
 
 type WsEvent = {
@@ -40,6 +42,8 @@ type WsEvent = {
   message_id?: number;
   ts?: number;
   product?: FeaturedProduct | null;
+  sku_id?: string;
+  stock?: number;
 };
 
 const MAX_WS_RETRIES = 6;
@@ -56,6 +60,7 @@ export function ChatPanel({
   streamStartedAtUnix = 0,
   playbackSec = 0,
   onFeaturedProduct,
+  onStockUpdate,
 }: ChatPanelProps) {
   const hydrated = useAuthStore((s) => s.hydrated);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -78,10 +83,15 @@ export function ChatPanel({
   const accessTokenRef = useRef(accessToken);
   const canChatRef = useRef(canChat);
   const featuredCbRef = useRef(onFeaturedProduct);
+  const stockCbRef = useRef(onStockUpdate);
 
   useEffect(() => {
     featuredCbRef.current = onFeaturedProduct;
   }, [onFeaturedProduct]);
+
+  useEffect(() => {
+    stockCbRef.current = onStockUpdate;
+  }, [onStockUpdate]);
 
   useEffect(() => {
     accessTokenRef.current = accessToken;
@@ -203,6 +213,10 @@ export function ChatPanel({
           }
           if (data.type === "featured_product") {
             featuredCbRef.current?.(data.product ?? null);
+            return;
+          }
+          if (data.type === "stock_update" && data.sku_id) {
+            stockCbRef.current?.(data.sku_id, data.stock ?? 0);
             return;
           }
           if (data.type === "message" && data.id) {

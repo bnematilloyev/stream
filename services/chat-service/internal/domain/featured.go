@@ -11,11 +11,14 @@ import (
 // canonical product data; the stream platform only relays this card to viewers.
 type FeaturedProduct struct {
 	ProductID string `json:"product_id"`
+	SkuID     string `json:"sku_id,omitempty"`
 	Title     string `json:"title"`
 	ImageURL  string `json:"image_url,omitempty"`
 	Price     int64  `json:"price,omitempty"`
 	Currency  string `json:"currency,omitempty"`
 	URL       string `json:"url,omitempty"`
+	// Stock — efir vaqtidagi qoldiq (amount_on_sale). nil = noma'lum/ko'rsatilmaydi.
+	Stock *int64 `json:"stock,omitempty"`
 }
 
 // FeaturedStore persists the currently featured product per stream so that

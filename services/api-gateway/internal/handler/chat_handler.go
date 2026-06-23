@@ -71,6 +71,23 @@ func (h *ChatHandler) Featured(w http.ResponseWriter, r *http.Request) {
 	h.proxy.ServeHTTP(w, r)
 }
 
+// FeaturedInternal proxies a marketplace-originated spotlight set/clear to
+// chat-service's trusted endpoint (broadcaster JWT not required).
+func (h *ChatHandler) FeaturedInternal(w http.ResponseWriter, r *http.Request) {
+	streamID := chi.URLParam(r, "stream_id")
+	r.URL.Path = "/v1/chat/" + streamID + "/featured-internal"
+	h.proxy.ServeHTTP(w, r)
+}
+
+// StockInternal proxies a marketplace-originated stock update to chat-service.
+// It is mounted under the gateway's service-token-protected internal route, so
+// chat-service trusts the call without a broadcaster JWT.
+func (h *ChatHandler) StockInternal(w http.ResponseWriter, r *http.Request) {
+	streamID := chi.URLParam(r, "stream_id")
+	r.URL.Path = "/v1/chat/" + streamID + "/stock"
+	h.proxy.ServeHTTP(w, r)
+}
+
 func (h *ChatHandler) DeleteMessage(w http.ResponseWriter, r *http.Request) {
 	u := requireUser(w, r)
 	if u == nil {

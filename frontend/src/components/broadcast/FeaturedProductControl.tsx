@@ -23,6 +23,7 @@ interface FeaturedProductControlProps {
 export function FeaturedProductControl({ streamId }: FeaturedProductControlProps) {
   const [active, setActive] = useState<FeaturedProduct | null>(null);
   const [productId, setProductId] = useState("");
+  const [skuId, setSkuId] = useState("");
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -52,6 +53,7 @@ export function FeaturedProductControl({ streamId }: FeaturedProductControlProps
     try {
       const product = await setFeaturedProduct(streamId, {
         product_id: productId.trim() || title.trim(),
+        sku_id: skuId.trim() || undefined,
         title: title.trim(),
         price: price ? Number(price) : undefined,
         image_url: imageUrl.trim() || undefined,
@@ -124,6 +126,11 @@ export function FeaturedProductControl({ streamId }: FeaturedProductControlProps
           placeholder="Mahsulot ID (ixtiyoriy)"
           value={productId}
           onChange={(e) => setProductId(e.target.value)}
+        />
+        <Input
+          placeholder="SKU ID (qoldiq yangilanishi uchun)"
+          value={skuId}
+          onChange={(e) => setSkuId(e.target.value)}
         />
       </div>
 

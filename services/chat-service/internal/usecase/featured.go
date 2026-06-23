@@ -22,6 +22,17 @@ type featuredEvent struct {
 
 const featuredEventType = "featured_product"
 
+// stockEvent is broadcast when a featured product's remaining stock changes,
+// so viewer overlays update "qoldi: N" live as buyers purchase.
+type stockEvent struct {
+	Type     string `json:"type"`
+	StreamID string `json:"stream_id"`
+	SkuID    string `json:"sku_id"`
+	Stock    int64  `json:"stock"`
+}
+
+const stockEventType = "stock_update"
+
 type FeaturedUseCase struct {
 	store     domain.FeaturedStore
 	moderator domain.StreamModerator
@@ -48,13 +59,19 @@ func (uc *FeaturedUseCase) authorize(ctx context.Context, streamID uuid.UUID, us
 }
 
 func (uc *FeaturedUseCase) Set(ctx context.Context, streamID uuid.UUID, userID, role string, product domain.FeaturedProduct) error {
+	if err := uc.authorize(ctx, streamID, userID, role); err != nil {
+		return err
+	}
+	return uc.SetTrusted(ctx, streamID, product)
+}
+
+// SetTrusted skips the ownership check — for internal server-to-server callers
+// (marketplace) that have already authorized the seller.
+func (uc *FeaturedUseCase) SetTrusted(ctx context.Context, streamID uuid.UUID, product domain.FeaturedProduct) error {
 	product.Title = strings.TrimSpace(product.Title)
 	product.ProductID = strings.TrimSpace(product.ProductID)
 	if product.ProductID == "" || product.Title == "" {
 		return apperrors.Validation("product_id and title are required", nil)
-	}
-	if err := uc.authorize(ctx, streamID, userID, role); err != nil {
-		return err
 	}
 	if err := uc.store.Set(ctx, streamID, product); err != nil {
 		return apperrors.Internal(err)
@@ -66,10 +83,42 @@ func (uc *FeaturedUseCase) Clear(ctx context.Context, streamID uuid.UUID, userID
 	if err := uc.authorize(ctx, streamID, userID, role); err != nil {
 		return err
 	}
+	return uc.ClearTrusted(ctx, streamID)
+}
+
+// ClearTrusted skips the ownership check — for internal callers.
+func (uc *FeaturedUseCase) ClearTrusted(ctx context.Context, streamID uuid.UUID) error {
 	if err := uc.store.Clear(ctx, streamID); err != nil {
 		return apperrors.Internal(err)
 	}
 	return uc.broadcast(ctx, streamID, nil)
+}
+
+// UpdateStock is called server-to-server (marketplace order flow) — no ownership
+// check. It refreshes the Redis snapshot when the sku matches the featured one,
+// then broadcasts a stock_update event to every viewer.
+func (uc *FeaturedUseCase) UpdateStock(ctx context.Context, streamID uuid.UUID, skuID string, stock int64) error {
+	skuID = strings.TrimSpace(skuID)
+	if skuID == "" {
+		return apperrors.Validation("sku_id is required", nil)
+	}
+	if current, err := uc.store.Get(ctx, streamID); err == nil && current != nil && current.SkuID == skuID {
+		current.Stock = &stock
+		_ = uc.store.Set(ctx, streamID, *current)
+	}
+	payload, err := json.Marshal(stockEvent{
+		Type:     stockEventType,
+		StreamID: streamID.String(),
+		SkuID:    skuID,
+		Stock:    stock,
+	})
+	if err != nil {
+		return apperrors.Internal(err)
+	}
+	if err := uc.bus.Publish(ctx, streamID.String(), payload); err != nil {
+		return apperrors.Internal(err)
+	}
+	return nil
 }
 
 func (uc *FeaturedUseCase) Get(ctx context.Context, streamID uuid.UUID) (*domain.FeaturedProduct, error) {
